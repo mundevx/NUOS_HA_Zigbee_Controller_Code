@@ -1,0 +1,2 @@
+source C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/bootloader/gdbinit/symbols
+source C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/bootloader/gdbinit/connect
