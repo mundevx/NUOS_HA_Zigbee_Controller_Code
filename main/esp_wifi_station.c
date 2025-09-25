@@ -324,19 +324,9 @@ void set_wifi_additional_config_settings(){
 void wifi_init_sta()
 {
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-	// ESP_ERROR_CHECK(esp_netif_init());
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
     esp_netif_create_default_wifi_sta();
 
-    // Create mutex here if needed
-    // if (xWebServerSemaphore == NULL) {
-    //     xWebServerSemaphore = xSemaphoreCreateMutex();
-    // }
-
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-	// cfg.static_rx_buf_num = 16;  // Default: 10
-	// cfg.dynamic_rx_buf_num = 32; // Default: 32	
 	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 	esp_event_handler_instance_t instance_any_id;
 	esp_event_handler_instance_t instance_got_ip;
@@ -546,11 +536,11 @@ bool wifi_station_main(void)
     	wifi_init_softap();
     }
 	#else
-	    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-        wifi_init_sta();
-		#else
+	    // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+        // wifi_init_sta();
+		// #else
 		wifi_init_softap();
-		#endif
+		// #endif
 	#endif
 	return wifi_info.is_wifi_sta_mode;
 }

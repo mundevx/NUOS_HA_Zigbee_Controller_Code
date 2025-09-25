@@ -293,7 +293,7 @@ CMAKE_STRIP:FILEPATH=C:/esp/esp-zigbee-sdk/tools/riscv32-esp-elf/esp-14.2.0_2024
 CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 
 //The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=C:/esp/esp-idf/tools/cmake/toolchain-esp32h2.cmake
+CMAKE_TOOLCHAIN_FILE:FILEPATH=C:/esp/esp-idf/tools/cmake/toolchain-esp32c6.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -320,7 +320,7 @@ GEN_FILES:BOOL=
 GIT_EXECUTABLE:FILEPATH=C:/esp/esp-zigbee-sdk/tools/idf-git/2.39.2/cmd/git.exe
 
 //IDF Build Target
-IDF_TARGET:STRING=esp32h2
+IDF_TARGET:STRING=esp32c6
 
 //IDF Build Toolchain Type
 IDF_TOOLCHAIN:STRING=gcc
@@ -380,7 +380,7 @@ esp-idf_SOURCE_DIR:STATIC=C:/esp/esp-idf
 everest_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_riscv;
 
 //Dependencies for the target
-mbedcrypto_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_riscv;general;everest;general;p256m;general;idf::esp_security;general;idf::esp_mm;general;idf::efuse;
+mbedcrypto_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_riscv;general;everest;general;p256m;general;idf::esp_security;general;idf::esp_mm;
 
 //Dependencies for the target
 mbedtls_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_riscv;general;mbedx509;

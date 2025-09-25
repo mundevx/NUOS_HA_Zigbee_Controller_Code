@@ -42,8 +42,10 @@ cJSON *dstate                           = NULL;
 cJSON *dlevel                           = NULL;
 cJSON *dcolor                           = NULL;
 cJSON *dcheck                           = NULL;
+cJSON *offset_json                      = NULL;
+cJSON *calibration_json                 = NULL;
 
-extern SemaphoreHandle_t bind_sem;
+
 uint8_t node_index, ep_index;
 void query_all_groups_task(void* args);
 void remove_scene_task(void* args);
@@ -81,8 +83,16 @@ void parse_json(const char *json_string) {
     cJSON *fxn = cJSON_GetObjectItem(root, "fxn");
     if (fxn == NULL){  printf("------------ERROR returning back----------\n");  cJSON_Delete(root); return;}
 
-    printf("Function: %s\n", fxn->valuestring);
-    int fxnInt = atoi( fxn->valuestring);
+    
+
+    int fxnInt = 0;//atoi( fxn->valuestring);
+    if(cJSON_IsNumber(fxn)){
+        fxnInt = fxn->valueint;    
+    }else if(cJSON_IsString(fxn)) {
+        if( fxn->valuestring != NULL )
+            fxnInt = atoi( fxn->valuestring);
+    }
+    printf("Function: %d\n", fxnInt);
     switch(fxnInt){
         case 1:
             cJSON *wifi_ssid = cJSON_GetObjectItem(root, "ssid");
@@ -454,6 +464,35 @@ void parse_json(const char *json_string) {
                 xTaskCreate(remove_scene_task, "remove_scene_task", 8192, &index, 25, NULL); 
             break;                   
         #endif 
+    #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+        case 60: // Set curtain offset time (expecting seconds, convert to ms)
+            offset_json = cJSON_GetObjectItem(root, "offset");
+            if (offset_json == NULL) {
+                printf("Missing JSON keys index\n");
+                cJSON_Delete(root);
+                return;
+            } 
+            // Convert seconds to milliseconds
+            device_info[0].ac_mode = (uint8_t)(offset_json->valueint/10);
+            
+            ESP_LOGI(TAG, "Curtain offset set via JSON: %ds (%.1fms)", 
+                        device_info[0].ac_mode, offset_json->valueint);
+ 
+            calibration_json = cJSON_GetObjectItem(root, "calibration");
+            if (calibration_json == NULL) {
+                printf("Missing JSON keys index\n");
+                cJSON_Delete(root);
+                return;
+            }             
+            // Convert seconds to milliseconds
+            device_info[0].device_val = (uint32_t)(calibration_json->valueint/100);
+            
+            ESP_LOGI(TAG, "Curtain calibration set via JSON: %ds (%dms)", 
+                        device_info[0].device_val, (int)calibration_json->valueint);
+            nuos_store_data_to_nvs(0);            
+            break;
+
+            
     #else
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI )
             case 10:
@@ -851,11 +890,6 @@ char* replaceSubstring(const char* original, const char* toReplace, const char* 
     return result;
 }
 
-
-// Global semaphore
-// SemaphoreHandle_t xWebServerSemaphore = xSemaphoreCreateMutex();
-
-
 const char resp1[] = "Post data received successfully";
 const char resp2[] = "Error Getting Responses!!";
 // Handler to process the form data sent via POST request
@@ -897,19 +931,6 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     ESP_LOGI("content", " : %s", content);
     parse_json(content); 
     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
-    // xWebServerSemaphore = xSemaphoreCreateMutex();
-
-    // if (xSemaphoreTake(xWebServerSemaphore, pdMS_TO_TICKS(100))) {
-    //     // Process request
-    //     parse_json(content);         
-    //     xSemaphoreGive(xWebServerSemaphore);
- 
-    //     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);      
-    // } else {
-    //    // httpd_resp_send_500(req);
-    //    httpd_resp_send(req, resp2, HTTPD_RESP_USE_STRLEN); 
-    // }
-
 
     cb_requests_counts = 0;
     cb_response_counts = 0;
@@ -917,41 +938,28 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 
+
+// Modify your http_get_handler to serve the embedded HTML
+esp_err_t http_get_handler(httpd_req_t *req) {
+    // Add these external declarations for the embedded HTML
+    extern const char index_html_start[] asm("_binary_index_html_start");
+    extern const char index_html_end[]   asm("_binary_index_html_end");
+    // Calculate HTML size from embedded binary
+    size_t html_size = index_html_end - index_html_start;
+    
+    httpd_resp_set_type(req, "text/html");
+    return httpd_resp_send(req, index_html_start, html_size);
+}
+#else
 esp_err_t http_get_handler(httpd_req_t *req) {
     printf("On http get :%d\n", strlen(webpage));
     httpd_resp_send(req, webpage, strlen(webpage));
     return ESP_OK;
 }
 
-// esp_err_t http_get_handler(httpd_req_t *req) {
-//     ESP_LOGI(TAG, "HTTP GET Request");
-    
-//     // 1. Send headers first
-//     httpd_resp_set_type(req, "text/html");
-    
-//     // 2. Send content in chunks
-//     const size_t chunk_size = 1024; // Optimal for ESP32
-//     size_t offset = 0;
-    
-//     while (offset < sizeof(webpage)) {
-//         size_t send_len = MIN(chunk_size, sizeof(webpage) - offset);
-//         esp_err_t ret = httpd_resp_send_chunk(req, webpage + offset, send_len);
-        
-//         if (ret != ESP_OK) {
-//             ESP_LOGE(TAG, "Send failed at offset %d: %s", offset, esp_err_to_name(ret));
-//             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Send Error");
-//             return ESP_FAIL;
-//         }
-        
-//         offset += send_len;
-//         taskYIELD(); // Allow other tasks to run
-//         //vTaskDelay(10 / portTICK_PERIOD_MS);
-//     }
-    
-//     // 3. Finalize response
-//     return httpd_resp_send_chunk(req, NULL, 0);
-// }
+#endif
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
@@ -1181,13 +1189,24 @@ esp_err_t http_get_handler(httpd_req_t *req) {
         return ESP_OK;
     }
 #endif
+// Handler for curtain values API - now using /items endpoint
+esp_err_t curtain_values_get_handler(httpd_req_t *req) {
+    char json_response[100];
+
+    snprintf(json_response, sizeof(json_response), 
+             "{\"offset\":%d,\"calibration\":%d}", 
+             device_info[0].ac_mode*10, device_info[0].device_val*100);
+    
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, json_response, strlen(json_response));
+}
 
 void start_webserver() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;  // Increase the stack size
     httpd_handle_t server = NULL;
     httpd_uri_t index_uri = {
-        .uri       = "/index",
+        .uri       = "/",
         .method    = HTTP_GET,
         .handler   = http_get_handler,
         .user_ctx  = NULL
@@ -1199,36 +1218,6 @@ void start_webserver() {
         .handler   = submit_post_handler,
         .user_ctx  = NULL
     };
-    // server.on("/action", HTTP_POST, [](AsyncWebServerRequest *request){
-    //     bool valid = true;
-        
-    //     // Process 4x5 grid
-    //     for(int row = 1; row <= 4; row++) {
-    //       for(int col = 1; col <= 5; col++) {
-    //         String paramName = "input" + String(row) + "_" + String(col);
-    //         if(request->hasParam(paramName, true)) {
-    //           int value = request->getParam(paramName, true)->value().toInt();
-              
-    //           // Validate range
-    //           if(value < 0 || value > 10) {
-    //             valid = false;
-    //             break;
-    //           }
-              
-    //           // Process valid value
-    //           Serial.printf("Received %s: %d\n", paramName.c_str(), value);
-    //         }
-    //       }
-    //       if(!valid) break;
-    //     }
-    
-    //     if(valid) {
-    //       request->send(200, "text/plain", "Values accepted");
-    //     } else {
-    //       request->send(400, "text/plain", "Invalid values (0-10 only)");
-    //     }
-    //   });
-
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
         httpd_uri_t items_uri = {
             .uri       = "/items",
@@ -1236,11 +1225,20 @@ void start_webserver() {
             .handler   = http_get_items_handler,
             .user_ctx  = NULL
         };
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)    
+        httpd_uri_t items_uri = {
+            .uri       = "/items",
+            .method    = HTTP_GET,
+            .handler   = curtain_values_get_handler,
+            .user_ctx  = NULL
+        };    
     #endif
     if (httpd_start(&server, &config) == ESP_OK) {
     	httpd_register_uri_handler(server, &index_uri);
 		httpd_register_uri_handler(server, &submit_uri);
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+            httpd_register_uri_handler(server, &items_uri);
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
             httpd_register_uri_handler(server, &items_uri);
         #endif
     }

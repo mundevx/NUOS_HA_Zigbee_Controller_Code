@@ -37,17 +37,17 @@ $<TARGET_FILE:__idf_app_update>
 $<TARGET_FILE:__idf_esp_app_format>
 $<TARGET_FILE:__idf_esp_bootloader_format>
 $<TARGET_FILE:idf::esp_mm>
-$<TARGET_FILE:idf::efuse>
 $<TARGET_FILE:__idf_esp_gdbstub>
+$<TARGET_FILE:__idf_esp_coex>
 $<TARGET_FILE:__idf_driver>
 $<TARGET_FILE:__idf_esp_driver_pcnt>
 $<TARGET_FILE:__idf_esp_driver_gptimer>
 $<TARGET_FILE:__idf_esp_driver_spi>
 $<TARGET_FILE:__idf_esp_driver_mcpwm>
-$<TARGET_FILE:__idf_esp_driver_ana_cmpr>
 $<TARGET_FILE:__idf_esp_driver_i2s>
 $<TARGET_FILE:__idf_sdmmc>
 $<TARGET_FILE:__idf_esp_driver_sdspi>
+$<TARGET_FILE:__idf_esp_driver_sdio>
 $<TARGET_FILE:__idf_esp_driver_rmt>
 $<TARGET_FILE:__idf_esp_driver_tsens>
 $<TARGET_FILE:__idf_esp_driver_sdm>
@@ -67,6 +67,7 @@ $<TARGET_FILE:idf::mbedtls>
 $<TARGET_FILE:__idf_esp_wifi>
 $<TARGET_FILE:__idf_esp_phy>
 $<TARGET_FILE:__idf_esp_netif>
+$<TARGET_FILE:__idf_wpa_supplicant>
 $<TARGET_FILE:__idf_esp_https_ota>
 $<TARGET_FILE:__idf_esp_security>
 $<TARGET_FILE:__idf_pthread>
@@ -76,6 +77,7 @@ $<TARGET_FILE:idf::esp_app_format>
 $<TARGET_FILE:idf::esp_bootloader_format>
 $<TARGET_FILE:idf::app_update>
 $<TARGET_FILE:idf::esp_partition>
+$<TARGET_FILE:idf::efuse>
 $<TARGET_FILE:idf::bootloader_support>
 $<TARGET_FILE:idf::spi_flash>
 $<TARGET_FILE:idf::esp_system>
@@ -102,6 +104,8 @@ $<TARGET_FILE:idf::esp_driver_usb_serial_jtag>
 $<TARGET_FILE:idf::esp_vfs_console>
 $<TARGET_FILE:idf::lwip>
 $<TARGET_FILE:idf::esp_netif>
+$<TARGET_FILE:idf::wpa_supplicant>
+$<TARGET_FILE:idf::esp_coex>
 $<TARGET_FILE:idf::esp_wifi>
 $<TARGET_FILE:idf::esp_driver_spi>
 $<TARGET_FILE:idf::esp_gdbstub>
@@ -111,10 +115,10 @@ $<TARGET_FILE:__idf_unity>
 $<TARGET_FILE:idf::console>
 $<TARGET_FILE:idf::esp_driver_pcnt>
 $<TARGET_FILE:idf::esp_driver_mcpwm>
-$<TARGET_FILE:idf::esp_driver_ana_cmpr>
 $<TARGET_FILE:idf::esp_driver_i2s>
 $<TARGET_FILE:idf::sdmmc>
 $<TARGET_FILE:idf::esp_driver_sdspi>
+$<TARGET_FILE:idf::esp_driver_sdio>
 $<TARGET_FILE:idf::esp_driver_rmt>
 $<TARGET_FILE:idf::esp_driver_tsens>
 $<TARGET_FILE:idf::esp_driver_sdm>
@@ -152,6 +156,8 @@ $<TARGET_FILE:idf::mqtt>
 $<TARGET_FILE:idf::nvs_sec_provider>
 $<TARGET_FILE:idf::rt>
 $<TARGET_FILE:idf::spiffs>
+$<TARGET_FILE:idf::wifi_provisioning>
+$<TARGET_FILE:__idf_json>
 $<TARGET_FILE:idf::espressif__led_strip>
 $<TARGET_FILE:idf::light_driver>
 $<TARGET_FILE:__idf_espressif__led_strip>

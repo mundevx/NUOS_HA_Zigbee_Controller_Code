@@ -2,10 +2,10 @@
   "idf.flashType": "UART",
   "idf.portWin": "COM3",
   "idf.openOcdConfigs": [
-    "board/esp32h2-builtin.cfg"
+    "board/esp32c6-builtin.cfg"
   ],
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32h2"
+    "IDF_TARGET": "esp32c6"
   },
   "clangd.path": "c:\\esp\\esp-zigbee-sdk\\tools\\esp-clang\\esp-19.1.2_20250312\\esp-clang\\bin\\clangd.exe",
   "clangd.arguments": [

@@ -65,8 +65,8 @@
     bool getNVSAllLedsOff();
     void setNVSAllLedsOff(uint8_t value);
     void nuos_init_nvs();
-    void store_curtain_cal_time(uint64_t time);
-    int64_t read_curtain_cal_time();
+    // void store_curtain_cal_time(uint32_t time);
+    // uint32_t read_curtain_cal_time();
     // esp_err_t update_binding_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, void* new_binding_data);
     esp_err_t update_binding_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, uint8_t binding_val);
     void save_specific_ep_data(int scene_index, int node_index, int ep_index);
@@ -78,6 +78,9 @@
 
     extern void setNVSPanicAttack(uint8_t value);
     extern uint8_t getNVSPanicAttack();
+
+    // extern esp_err_t save_curtain_settings_to_nvs(uint32_t offset, uint32_t calibration) ;
+    // extern esp_err_t load_curtain_settings_from_nvs() ;
 
 #endif
     

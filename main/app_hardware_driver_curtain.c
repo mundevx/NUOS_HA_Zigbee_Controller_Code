@@ -57,8 +57,9 @@ static void curtain_timer_start_task(void *pvParameters){
     while(1){
         vTaskDelay(pdMS_TO_TICKS(10));
         if(curtain_timer_start_flag){
-            if(curtain_timer_counts++ > 250){  //2.5 sec
+            if(curtain_timer_counts++ > device_info[0].ac_mode ){  //2.5 sec
                 curtain_timer_counts = 0;
+                printf("----------TIMER STARTED AFTEr OFFSET:%d----------\n", device_info[0].ac_mode);
                 esp_timer_start_periodic(periodic_timer, 100000);   // 100ms Tick
                 curtain_timer_start_flag = false;
                 break;
@@ -155,8 +156,10 @@ void periodic_timer_callback(void *arg)
     uint8_t current_pct = device_info[0].light_color_x / 10;
     
     // Report state
-    if(elapsed_ds%10 == 0) //report every 1 second
-    nuos_report_curtain_blind_state(0, current_pct);  
+    if(wifi_webserver_active_flag == 0){
+        if(elapsed_ds%10 == 0) //report every 1 second
+            nuos_report_curtain_blind_state(0, current_pct);  
+    }
     
     printf("t=%u.%u s  level=%u%% (target %u%%)\n", 
            elapsed_ds / 10, elapsed_ds % 10, 
@@ -187,7 +190,9 @@ void periodic_timer_callback(void *arg)
             device_info[0].light_color_x = target_pct * 10;
             uint8_t final_pct = ds_to_pct(elapsed_ds);
             device_info[0].device_level = final_pct;
-            nuos_report_curtain_blind_state(0, final_pct);
+            if(wifi_webserver_active_flag == 0){
+                nuos_report_curtain_blind_state(0, final_pct);
+            }
             printf("Snapped to exact target: %d%%\n", final_pct);
         }
     }
@@ -211,97 +216,6 @@ void pause_curtain_timer()
     nuos_store_data_to_nvs(0);
 }
 
-// static inline uint8_t sec_to_pct(uint32_t sec)
-// {
-//     return (sec * 100) / device_info[0].device_val;
-// }
-// static inline uint32_t pct_to_sec(uint8_t pct)
-// {
-//     return (pct * device_info[0].device_val) / 100;
-// }
-
-
-// /* New generic handler for “Go-to-percentage” */
-// uint8_t curtain_cmd_goto_pct(uint8_t pct)   // 0-100
-// {
-//     /* Clamp and ignore if already there */
-//     if (pct > 100) pct = 100;
-//     if (device_info[0].device_level == pct) return device_info[0].fan_speed;
-
-//     if(device_info[0].device_level > 100) device_info[0].device_level = 100;
-//     /* Determine direction */
-//     curtain_dir  = (pct > device_info[0].device_level)
-//                    ? CURTAIN_DIR_OPENING
-//                    : CURTAIN_DIR_CLOSING;
-//     target_pct   = pct;
-
-//     /* Sync elapsed_sec with current level */
-//     elapsed_sec  = pct_to_sec(device_info[0].device_level);
-
-//     /* Issue proper Zigbee motor command */
-//     curtain_state = (curtain_dir == CURTAIN_DIR_OPENING)
-//                     ? ESP_ZB_ZCL_CMD_WINDOW_COVERING_UP_OPEN
-//                     : ESP_ZB_ZCL_CMD_WINDOW_COVERING_DOWN_CLOSE;
-
-//     esp_timer_start_periodic(periodic_timer, 1e6);   // 1s Tick
-//     timer_paused = false;
-//     return curtain_state;
-// }
-// void curtain_cmd_open(void)
-// {
-//     curtain_cmd_goto_pct(100);
-//     device_info[0].ac_mode = 100;
-// }
-
-// void curtain_cmd_close(void)
-// {
-//     curtain_cmd_goto_pct(0);
-//     device_info[0].ac_mode= 0;
-// }
-
-// void curtain_cmd_stop(void)
-// {
-//     pause_curtain_timer();
-//     curtain_dir = CURTAIN_DIR_STOPPED;
-// }
-// // extern int fix_percentage(int input_val);
-// void periodic_timer_callback(void *arg)
-// {
-//     if (timer_paused || curtain_dir == CURTAIN_DIR_STOPPED) return;
-
-//     if (curtain_dir == CURTAIN_DIR_OPENING && elapsed_sec < device_info[0].device_val)
-//         elapsed_sec++;
-//     else if (curtain_dir == CURTAIN_DIR_CLOSING && elapsed_sec > 0)
-//         elapsed_sec--;
-
-//     device_info[0].light_color_x = sec_to_pct(elapsed_sec);
-//     // device_info[0].device_level = (uint8_t)fix_percentage(sec_to_pct(elapsed_sec));
-//     nuos_report_curtain_blind_state(0, device_info[0].light_color_x/10);  
-//     printf("t=%u s  level=%u (target %u %%)\n", elapsed_sec, device_info[0].light_color_x, target_pct);
-//     // --- FIX: Stop when passing or matching target ---
-//     bool reached_limit  = (device_info[0].light_color_x == 0 || device_info[0].light_color_x == 1000);
-//     bool reached_target = false;
-
-//     //
-
-//     if (curtain_dir == CURTAIN_DIR_OPENING)
-//         reached_target = (device_info[0].light_color_x >= target_pct);
-//     else if (curtain_dir == CURTAIN_DIR_CLOSING)
-//         reached_target = (device_info[0].light_color_x <= target_pct);
-
-//     if (reached_limit || reached_target) {
-//         curtain_cmd_stop();
-//         printf("curtain_cmd_stop   reached_limit:%d  reached_target:%d\n", reached_limit, reached_target);
-//         // Force to exact target if not at limit
-//         if (!reached_limit) {
-//             device_info[0].device_level = target_pct/10;
-//             elapsed_sec = pct_to_sec(target_pct);
-//             nuos_report_curtain_blind_state(0, device_info[0].device_level);          
-//         }
-//         printf("Auto-stop at %s\n", reached_limit ? "limit" : "requested percentage");
-//     }
-// }
-
     void init_curtain_timer(){
         const esp_timer_create_args_t periodic_timer_args = {
             .callback = &periodic_timer_callback,
@@ -309,25 +223,6 @@ void pause_curtain_timer()
         };
         esp_timer_create(&periodic_timer_args, &periodic_timer);
     }
-
-    // // Call this function from any event (button, command, etc.) to pause
-    // void pause_curtain_timer()
-    // {
-    //     #ifdef TUYA_ATTRIBUTES
-    //         if (!timer_paused) {
-    //             esp_timer_stop(periodic_timer);
-    //             timer_paused = true;
-    //             printf("Timer paused at %d seconds (%d%%)\n", elapsed_sec, device_info[0].device_level);
-    //         }
-    //     #endif
-    //     //set load pins
-    //     gpio_set_level(gpio_load_pins[0], 0);
-    //     //set load pins
-    //     #ifdef OLD_CURTAIN_BOARD
-    //     gpio_set_level(gpio_load_pins[1], 0);
-    //     #endif
-    //     nuos_store_data_to_nvs(0);
-    // }
 
     void nuos_zb_init_hardware(){
         uint32_t pins = 0; 
@@ -391,8 +286,9 @@ void pause_curtain_timer()
     }
 
     void set_curtain_percentage(uint8_t value){
-
-        nuos_report_curtain_blind_state(0, value);    
+        if(wifi_webserver_active_flag == 0){
+            nuos_report_curtain_blind_state(0, value);    
+        }
         int state = curtain_cmd_goto_pct( value);
         if(state != -1){
             device_info[0].device_state = 0;

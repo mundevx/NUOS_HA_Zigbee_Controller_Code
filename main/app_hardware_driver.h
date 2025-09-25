@@ -205,7 +205,9 @@
     //     uint8_t zb_network_bdb_steering_count;
 
     // } commissioning_info_handle_t;
-
+// Default values for curtain motor
+#define DEFAULT_OFFSET_TIME 2000
+#define DEFAULT_CALIBRATION_TIME 30000
 //  https://yatyyt4jowdyyswqkog4i42helmwilyu.ui.nabu.casa/lovelace/0
 ////////////////////////////////////////////////////////////////////////
     #define MAX_BINDINGS                                                        40  // adjust this based on how many you expect
@@ -249,7 +251,10 @@
         uint8_t last_selected_color_mode                                        = 0xff;
         bool mode_change_flag                                                   = false;
 
-        int64_t curtain_cal_time                                               = 0;
+        //uint32_t curtain_cal_time                                               = DEFAULT_CALIBRATION_TIME;
+        // Global variables for curtain settings
+        //uint32_t offset_time                                                    = DEFAULT_OFFSET_TIME;
+
 
         bool double_press_click_enable                                          = false;
         uint16_t disable_double_press_enable_counts                             = 0;
@@ -1259,7 +1264,8 @@
         extern uint8_t selected_color_mode;
         extern uint8_t last_selected_color_mode;
         extern bool mode_change_flag;
-        extern int64_t curtain_cal_time;
+        //extern uint32_t curtain_cal_time;
+        //extern uint32_t offset_time;
         extern bool double_press_click_enable;
         extern uint16_t disable_double_press_enable_counts;
 

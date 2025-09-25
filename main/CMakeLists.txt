@@ -34,6 +34,7 @@ idf_component_register(
     "zigbee_2_uart.c"
 
     SRC_DIRS "." "../../../common/zcl_utility/src"
-    INCLUDE_DIRS "." "../../../common/zcl_utility/include"
+    INCLUDE_DIRS "." "../../../common/zcl_utility/include" 
+    EMBED_FILES "web_files/index.html"
     REQUIRES light_driver espressif__esp-zboss-lib mbedtls nvs_flash esp_timer app_update esp_http_server cjson esp_wifi
 )

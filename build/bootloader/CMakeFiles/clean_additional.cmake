@@ -7,6 +7,6 @@ if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "")
   "bootloader.map"
   "config\\sdkconfig.cmake"
   "config\\sdkconfig.h"
-  "project_elf_src_esp32h2.c"
+  "project_elf_src_esp32c6.c"
   )
 endif()

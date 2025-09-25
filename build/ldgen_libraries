@@ -37,17 +37,17 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_app_format/libesp_app_format.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_mm/libesp_mm.a
-C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/efuse/libefuse.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_coex/libesp_coex.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/driver/libdriver.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_gptimer/libesp_driver_gptimer.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
-C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_ana_cmpr/libesp_driver_ana_cmpr.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/sdmmc/libsdmmc.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdio/libesp_driver_sdio.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
@@ -67,6 +67,7 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_wifi/libesp_wifi.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_phy/libesp_phy.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_netif/libesp_netif.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_https_ota/libesp_https_ota.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_security/libesp_security.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/pthread/libpthread.a
@@ -76,6 +77,7 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_bootloader_format/libesp_bootloader_format.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/app_update/libapp_update.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_partition/libesp_partition.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/efuse/libefuse.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/bootloader_support/libbootloader_support.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/spi_flash/libspi_flash.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_system/libesp_system.a
@@ -102,6 +104,8 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_vfs_console/libesp_vfs_console.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/lwip/liblwip.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_netif/libesp_netif.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/wpa_supplicant/libwpa_supplicant.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_coex/libesp_coex.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_wifi/libesp_wifi.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_spi/libesp_driver_spi.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
@@ -111,10 +115,10 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/console/libconsole.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_pcnt/libesp_driver_pcnt.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_mcpwm/libesp_driver_mcpwm.a
-C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_ana_cmpr/libesp_driver_ana_cmpr.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_i2s/libesp_driver_i2s.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/sdmmc/libsdmmc.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdspi/libesp_driver_sdspi.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdio/libesp_driver_sdio.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_rmt/libesp_driver_rmt.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_tsens/libesp_driver_tsens.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_driver_sdm/libesp_driver_sdm.a
@@ -152,6 +156,8 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/nvs_sec_provider/libnvs_sec_provider.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/rt/librt.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/spiffs/libspiffs.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/json/libjson.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/espressif__led_strip/libespressif__led_strip.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/light_driver/liblight_driver.a
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/espressif__led_strip/libespressif__led_strip.a

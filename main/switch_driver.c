@@ -257,42 +257,20 @@ void button_click_handler(TimerHandle_t xTimer)
                     #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
                         uint8_t button_index = nuos_get_button_press_index(switch_num_pressed[0]);
                         nuos_do_task(button_index, button_index + 1, 1);
-                    #else
-                        // touchLedsOffAfter1MinuteEnable = !touchLedsOffAfter1MinuteEnable;
-                        // setNVSAllLedsOff(touchLedsOffAfter1MinuteEnable);
-                        // #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
-                        // bool t_state = false;
-                        // for (int j = 0; j < 5; j++) {
-                        //     t_state = !t_state;
-                        //     for (int i = 0; i < TOTAL_LEDS; i++){                         
-                        //         nuos_on_off_led(i, t_state);
-                        //     }
-                        //     vTaskDelay(pdMS_TO_TICKS(200));  
+                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+                        // if(wifi_webserver_active_flag){
+                        //     wifi_webserver_active_flag = false;
+                        // }else{
+                            wifi_webserver_active_flag = true;  
                         // }
-                        // uint8_t index = nuos_get_button_press_index(switch_num_pressed[MAX_COUNTS_FOR_TRIPLE_CLICK-1]);
-                        // nuos_zb_set_hardware(index, false);
+                        setNVSCommissioningFlag(false);
+                        setNVSWebServerEnableFlag(wifi_webserver_active_flag);                        
+                        esp_restart();	
+                    #else    
                     #endif
                     
                 }
-            }
-        // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)  
-        // #ifdef TUYA_ATTRIBUTES  
-        // }else if (click_count == 5) {
-        //         bool same_bt_pressed = true;
-        //         for (int p = 0; p < click_count; p++) {   //switch_num_pressed
-        //             if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
-        //                 same_bt_pressed = false;
-        //                 break;
-        //             }
-        //         }
-        //         if(same_bt_pressed){
-        //             bCalMode = true;
-        //              //start calibration task
-        //             xTaskCreate(curtain_calibration_task, "curtain_calibration_task", 4096, NULL, 22, NULL); 
-                    
-        //         }
-        // #endif        
-        // #endif        
+            }     
         }else if (click_count == 10) {
                 bool same_bt_pressed = true;
                 for (int p = 0; p < click_count; p++) {   //switch_num_pressed

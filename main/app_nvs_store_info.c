@@ -187,7 +187,7 @@ void setNVSWebServerEnableFlag(uint8_t value){
     writeKeyValueToNVRAM(nvram_webserver_keys, value);
 }
 uint8_t getNVSWebServerEnableFlag(){
-    #if( (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI) || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+    #ifdef USE_WIFI_WEBSERVER
 	return (uint8_t)readKeyValueFromNVRAM(nvram_webserver_keys);
     #else
     return 0;
@@ -201,7 +201,8 @@ void setNVSPanicAttack(uint8_t value){
 uint8_t getNVSPanicAttack(){
 	return (uint8_t)readKeyValueFromNVRAM(nvram_nvs_panic_attack);
 }
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+///#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+#ifdef USE_WIFI_WEBSERVER
     void writeEpWifiStruct(wifi_info_handle_t *strt){
         #ifdef USE_NVS_INIT
         ESP_ERROR_CHECK(nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
@@ -320,41 +321,41 @@ uint8_t read_color_mode_value() {
 
 
 
-void store_curtain_cal_time(uint64_t time) {
-    // Open
-   esp_err_t err;
-   #ifdef USE_NVS_INIT
-   err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-   if (err == ESP_OK) {
-    #endif
+// void store_curtain_cal_time(uint32_t time) {
+//     // Open
+//    esp_err_t err;
+//    #ifdef USE_NVS_INIT
+//    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+//    if (err == ESP_OK) {
+//     #endif
     
-       // Write
-       err = nvs_set_i64(my_handle, nvram_cal_keys, time);
-       // Commit
-       err = nvs_commit(my_handle);
-       #ifdef USE_NVS_INIT
-       // Close
-       nvs_close(my_handle);
-   }
-   #endif
-}
+//        // Write
+//        err = nvs_set_i32(my_handle, nvram_cal_keys, time);
+//        // Commit
+//        err = nvs_commit(my_handle);
+//        #ifdef USE_NVS_INIT
+//        // Close
+//        nvs_close(my_handle);
+//    }
+//    #endif
+// }
 
-int64_t read_curtain_cal_time() {
-    int64_t time = 0;
-    // Open
-	esp_err_t err;
-    #ifdef USE_NVS_INIT
-    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-	if (err == ESP_OK) {
-        #endif
-		err = nvs_get_i64(my_handle, nvram_cal_keys, &time);
-        #ifdef USE_NVS_INIT
-		// Close
-		nvs_close(my_handle);
-	}
-    #endif
-    return time;
-}
+// int32_t read_curtain_cal_time() {
+//     int32_t time = 0;
+//     // Open
+// 	esp_err_t err;
+//     #ifdef USE_NVS_INIT
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+// 	if (err == ESP_OK) {
+//         #endif
+// 		err = nvs_get_i32(my_handle, nvram_cal_keys, &time);
+//         #ifdef USE_NVS_INIT
+// 		// Close
+// 		nvs_close(my_handle);
+// 	}
+//     #endif
+//     return time;
+// }
 
 bool getNVSAllLedsOff(){
 	return (bool)readKeyValueFromNVRAM(nvram_all_leds_off_keys);
@@ -440,7 +441,18 @@ void write_nvs_configuration(){
 		writeEpStruct(index, (led_indicator_handle_t*)&device_info[index]);
 	}	
 	
-	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+	#ifdef USE_WIFI_WEBSERVER
+        nuos_read_wifi_info_data_from_nvs();
+        printf("wifi_ssid:%s \n", wifi_info.wifi_ssid);
+        printf("wifi_pass:%s \n", wifi_info.wifi_pass);
+        printf("wifi_info:%d \n", wifi_info.ip4);
+        if(strlen(wifi_info.wifi_ssid) == 0){
+            strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
+            strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
+            wifi_info.ip4 = 119;
+            wifi_info.is_wifi_sta_mode = 0;
+            writeEpWifiStruct(&wifi_info);	
+        }
 		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
         #else
@@ -596,6 +608,81 @@ void nuos_store_dali_data_to_nvs(uint8_t index){
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+
+#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+#define NVS_KEY_OFFSET "offset_time"
+#define NVS_KEY_CALIBRATION "calibration_time"
+
+
+// // Function to save settings to NVS
+// esp_err_t save_curtain_settings_to_nvs(uint32_t offset, uint32_t calibration) {
+//     esp_err_t err;
+//     #ifdef USE_NVS_INIT
+//     // Open NVS handle
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+//     if (err != ESP_OK) {
+//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+//         return;
+//     }
+//     #endif
+
+//     err = nvs_set_u32(my_handle, NVS_KEY_OFFSET, offset);
+//     if (err != ESP_OK) {
+//         #ifdef USE_NVS_INIT
+//         // Close NVS handle
+//         nvs_close(my_handle);
+//         #endif
+//         return err;
+//     }
+    
+//     err = nvs_set_u32(my_handle, NVS_KEY_CALIBRATION, calibration);
+//     if (err != ESP_OK) {
+//         #ifdef USE_NVS_INIT
+//         // Close NVS handle
+//         nvs_close(my_handle);
+//         #endif
+//         return err;
+//     }
+    
+//     err = nvs_commit(my_handle);
+//     #ifdef USE_NVS_INIT
+//     // Close NVS handle
+//     nvs_close(my_handle);
+//     #endif
+//     return err;
+// }
+
+// // Function to load settings from NVS
+// esp_err_t load_curtain_settings_from_nvs() {
+//     esp_err_t err;
+//     #ifdef USE_NVS_INIT
+//     // Open NVS handle
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+//     if (err != ESP_OK) {
+//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+//         return;
+//     }
+//     #endif
+    
+//     err = nvs_get_u32(my_handle, NVS_KEY_OFFSET, &offset_time);
+//     if (err != ESP_OK) {
+//         offset_time = DEFAULT_OFFSET_TIME;
+//     }
+    
+//     err = nvs_get_u32(my_handle, NVS_KEY_CALIBRATION, &curtain_cal_time);
+//     if (err != ESP_OK) {
+//         curtain_cal_time = DEFAULT_CALIBRATION_TIME;
+//     }
+    
+//     #ifdef USE_NVS_INIT
+//     // Close NVS handle
+//     nvs_close(my_handle);
+//     #endif
+//     return ESP_OK;
+// }
+
+#endif
+
 void save_nodes_info_to_nvs(uint8_t index) {
     esp_err_t err;
     #ifdef USE_NVS_INIT
@@ -707,46 +794,46 @@ size_t load_nodes_info_from_nvs(uint8_t index) {
     return existing_nodes_info[index].scene_switch_info.total_records;
 }
 
-size_t load_nodes_info_from_nvs12(uint8_t index) {
-    esp_err_t err;
-    #ifdef USE_NVS_INIT
-    // Open NVS handle
-    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READONLY, &my_handle);
-    if (err != ESP_OK) {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-        return 0;
-    }
-    #endif
-    // Generate unique key based on index
-    char key[16];
-    snprintf(key, sizeof(key), "scene_%d", index);
+// size_t load_nodes_info_from_nvs12(uint8_t index) {
+//     esp_err_t err;
+//     #ifdef USE_NVS_INIT
+//     // Open NVS handle
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READONLY, &my_handle);
+//     if (err != ESP_OK) {
+//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+//         return 0;
+//     }
+//     #endif
+//     // Generate unique key based on index
+//     char key[16];
+//     snprintf(key, sizeof(key), "scene_%d", index);
 
-    size_t required_size = sizeof(stt_scene_switch_t);
+//     size_t required_size = sizeof(stt_scene_switch_t);
 
-    // Try to get the blob from NVS
-    err = nvs_get_blob(my_handle, key, &existing_nodes_info[index], &required_size);
-    if (err == ESP_OK) {
-        printf("Scene switch %u read from NVS successfully.\n", index);
-    } else if (err == ESP_ERR_NVS_NOT_FOUND) {
-        printf("Scene switch %u not found in NVS.\n", index);
-        #ifdef USE_NVS_INIT
-        nvs_close(my_handle);
-        #endif
-        return 0;  // Key not found, return 0 records
-    } else {
-        printf("Error reading scene switch %u from NVS: %s\n", index, esp_err_to_name(err));
-        #ifdef USE_NVS_INIT
-        nvs_close(my_handle);
-        #endif
-        return 0;
-    }
-    #ifdef USE_NVS_INIT
-    // Close NVS handle
-    nvs_close(my_handle);
-    #endif
-    printf("TOTAL_RECORDS: %d\n", existing_nodes_info[index].scene_switch_info.total_records);
-    return existing_nodes_info[index].scene_switch_info.total_records;
-}
+//     // Try to get the blob from NVS
+//     err = nvs_get_blob(my_handle, key, &existing_nodes_info[index], &required_size);
+//     if (err == ESP_OK) {
+//         printf("Scene switch %u read from NVS successfully.\n", index);
+//     } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+//         printf("Scene switch %u not found in NVS.\n", index);
+//         #ifdef USE_NVS_INIT
+//         nvs_close(my_handle);
+//         #endif
+//         return 0;  // Key not found, return 0 records
+//     } else {
+//         printf("Error reading scene switch %u from NVS: %s\n", index, esp_err_to_name(err));
+//         #ifdef USE_NVS_INIT
+//         nvs_close(my_handle);
+//         #endif
+//         return 0;
+//     }
+//     #ifdef USE_NVS_INIT
+//     // Close NVS handle
+//     nvs_close(my_handle);
+//     #endif
+//     printf("TOTAL_RECORDS: %d\n", existing_nodes_info[index].scene_switch_info.total_records);
+//     return existing_nodes_info[index].scene_switch_info.total_records;
+// }
 
 
 size_t store_new_nodes(void* n_node, uint8_t index) {
@@ -828,108 +915,108 @@ size_t store_new_nodes(void* n_node, uint8_t index) {
     return existing_nodes_info[index].scene_switch_info.total_records;
 }
 
-size_t store_new_nodes1234(void* n_node, uint8_t index) {
-    esp_err_t err;
-    #ifdef USE_NVS_INIT
-    // Open NVS handle for read/write
-    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-        return 0;
-    }
-    #endif
-    stt_scene_switch_t *new_node = (stt_scene_switch_t *)n_node;
+// size_t store_new_nodes1234(void* n_node, uint8_t index) {
+//     esp_err_t err;
+//     #ifdef USE_NVS_INIT
+//     // Open NVS handle for read/write
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+//     if (err != ESP_OK) {
+//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+//         return 0;
+//     }
+//     #endif
+//     stt_scene_switch_t *new_node = (stt_scene_switch_t *)n_node;
 
-    // Read existing nodes from NVS
-    size_t required_size = sizeof(existing_nodes_info);
-    char key[16];
-    snprintf(key, sizeof(key), "scene_%d", index);
-    err = nvs_get_blob(my_handle, key, existing_nodes_info, &required_size);
-    if (err == ESP_OK) {
-        printf("Existing nodes read from NVS successfully.\n");
-    } else {
-        printf("No existing nodes found in NVS or error occurred: %s\n", esp_err_to_name(err));
-    }
+//     // Read existing nodes from NVS
+//     size_t required_size = sizeof(existing_nodes_info);
+//     char key[16];
+//     snprintf(key, sizeof(key), "scene_%d", index);
+//     err = nvs_get_blob(my_handle, key, existing_nodes_info, &required_size);
+//     if (err == ESP_OK) {
+//         printf("Existing nodes read from NVS successfully.\n");
+//     } else {
+//         printf("No existing nodes found in NVS or error occurred: %s\n", esp_err_to_name(err));
+//     }
 
-    printf("new_node->scene_switch_info.total_records:%d\n", new_node->scene_switch_info.total_records);
+//     printf("new_node->scene_switch_info.total_records:%d\n", new_node->scene_switch_info.total_records);
 
-    // Iterate over new nodes
-    for (int src_ep_index = 0; src_ep_index < TOTAL_ENDPOINTS; src_ep_index++) {
-        new_node->scene_id = global_scene_id[src_ep_index];
-        new_node->scene_switch_info.src_ep = ENDPOINTS_LIST[src_ep_index];
+//     // Iterate over new nodes
+//     for (int src_ep_index = 0; src_ep_index < TOTAL_ENDPOINTS; src_ep_index++) {
+//         new_node->scene_id = global_scene_id[src_ep_index];
+//         new_node->scene_switch_info.src_ep = ENDPOINTS_LIST[src_ep_index];
         
-        for (size_t j = 0; j < new_node->scene_switch_info.total_records; j++) {
-            taskYIELD();
-            uint16_t current_short_addr = new_node->scene_switch_info.dst_node_info[j].short_addr;
-            if (current_short_addr != 0) {
-                snprintf(key, sizeof(key), "scene_%d", src_ep_index);
-                bool found = false;
+//         for (size_t j = 0; j < new_node->scene_switch_info.total_records; j++) {
+//             taskYIELD();
+//             uint16_t current_short_addr = new_node->scene_switch_info.dst_node_info[j].short_addr;
+//             if (current_short_addr != 0) {
+//                 snprintf(key, sizeof(key), "scene_%d", src_ep_index);
+//                 bool found = false;
 
-                // Check for existence in the current storage
-                for (size_t l = 0; l < existing_nodes_info[src_ep_index].scene_switch_info.total_records; l++) {
+//                 // Check for existence in the current storage
+//                 for (size_t l = 0; l < existing_nodes_info[src_ep_index].scene_switch_info.total_records; l++) {
                     
-                    if (existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].short_addr == current_short_addr) {
-                        existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].endpoint_counts = new_node->scene_switch_info.dst_node_info[j].endpoint_counts;
+//                     if (existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].short_addr == current_short_addr) {
+//                         existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].endpoint_counts = new_node->scene_switch_info.dst_node_info[j].endpoint_counts;
 
-                        memcpy(&existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].dst_ep_info, &new_node->scene_switch_info.dst_node_info[j].dst_ep_info, sizeof(dst_endpoint_info_t));
-                        strcpy(existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].node_name, new_node->scene_switch_info.dst_node_info[j].node_name);
-                        existing_nodes_info[src_ep_index].scene_switch_info.total_records++;
-                        // Write the new struct to NVS
-                        size_t size = sizeof(stt_scene_switch_t);
-                        err = nvs_set_blob(my_handle, key, &existing_nodes_info[src_ep_index], size);
-                        if (err != ESP_OK) {
-                            printf("Error modifying record to NVS: %s\n", esp_err_to_name(err));
-                        } else {
-                            printf("Record modified successfully to NVS.\n");
-                        }
-                        taskYIELD();
-                        found = true;
-                        break;
-                    }
-                }
+//                         memcpy(&existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].dst_ep_info, &new_node->scene_switch_info.dst_node_info[j].dst_ep_info, sizeof(dst_endpoint_info_t));
+//                         strcpy(existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].node_name, new_node->scene_switch_info.dst_node_info[j].node_name);
+//                         existing_nodes_info[src_ep_index].scene_switch_info.total_records++;
+//                         // Write the new struct to NVS
+//                         size_t size = sizeof(stt_scene_switch_t);
+//                         err = nvs_set_blob(my_handle, key, &existing_nodes_info[src_ep_index], size);
+//                         if (err != ESP_OK) {
+//                             printf("Error modifying record to NVS: %s\n", esp_err_to_name(err));
+//                         } else {
+//                             printf("Record modified successfully to NVS.\n");
+//                         }
+//                         taskYIELD();
+//                         found = true;
+//                         break;
+//                     }
+//                 }
 
-                // If the node wasn't found, insert it as a new entry
-                if (!found) {
-                    printf("Adding new entry for short_addr %d...\n", current_short_addr);
-                    // Look for an available slot in existing records
-                    for (size_t l = 0; l < MAX_NODES; l++) {
-                        if (existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].short_addr == 0) {
-                            // Find the first available slot
-                            memcpy(&existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l], &new_node->scene_switch_info.dst_node_info[j], sizeof(dst_node_info_t));
-                            existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].endpoint_counts = new_node->scene_switch_info.dst_node_info[j].endpoint_counts;
-                            existing_nodes_info[src_ep_index].scene_switch_info.src_ep = new_node->scene_switch_info.src_ep;
-                            existing_nodes_info[src_ep_index].scene_id = global_scene_id[src_ep_index];
-                            existing_nodes_info[src_ep_index].scene_switch_info.total_records++; // Increment the count of records
-                            printf("Added new entry for short_addr %d at index %d.\n", current_short_addr, l);
-                            taskYIELD();
-                            break; // Exit the loop after adding
-                        }
-                    }
+//                 // If the node wasn't found, insert it as a new entry
+//                 if (!found) {
+//                     printf("Adding new entry for short_addr %d...\n", current_short_addr);
+//                     // Look for an available slot in existing records
+//                     for (size_t l = 0; l < MAX_NODES; l++) {
+//                         if (existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].short_addr == 0) {
+//                             // Find the first available slot
+//                             memcpy(&existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l], &new_node->scene_switch_info.dst_node_info[j], sizeof(dst_node_info_t));
+//                             existing_nodes_info[src_ep_index].scene_switch_info.dst_node_info[l].endpoint_counts = new_node->scene_switch_info.dst_node_info[j].endpoint_counts;
+//                             existing_nodes_info[src_ep_index].scene_switch_info.src_ep = new_node->scene_switch_info.src_ep;
+//                             existing_nodes_info[src_ep_index].scene_id = global_scene_id[src_ep_index];
+//                             existing_nodes_info[src_ep_index].scene_switch_info.total_records++; // Increment the count of records
+//                             printf("Added new entry for short_addr %d at index %d.\n", current_short_addr, l);
+//                             taskYIELD();
+//                             break; // Exit the loop after adding
+//                         }
+//                     }
 
-                    // Write the new struct to NVS
-                    size_t size = sizeof(stt_scene_switch_t);
-                    err = nvs_set_blob(my_handle, key, &existing_nodes_info[src_ep_index], size);
-                    if (err != ESP_OK) {
-                        printf("Error adding new scene switch to NVS: %s\n", esp_err_to_name(err));
-                    } else {
-                        printf("New scene switch added successfully to NVS.\n");
-                    }
-                }
-            }
-        }
-    }
+//                     // Write the new struct to NVS
+//                     size_t size = sizeof(stt_scene_switch_t);
+//                     err = nvs_set_blob(my_handle, key, &existing_nodes_info[src_ep_index], size);
+//                     if (err != ESP_OK) {
+//                         printf("Error adding new scene switch to NVS: %s\n", esp_err_to_name(err));
+//                     } else {
+//                         printf("New scene switch added successfully to NVS.\n");
+//                     }
+//                 }
+//             }
+//         }
+//     }
 
-    // Commit changes to NVS
-    err = nvs_commit(my_handle);
-    if (err != ESP_OK) {
-        printf("Error committing changes to NVS: %s\n", esp_err_to_name(err));
-    }
-    #ifdef USE_NVS_INIT
-    // Close NVS handle
-    nvs_close(my_handle);
-    #endif
-    return (existing_nodes_info[index].scene_switch_info.total_records);
-}
+//     // Commit changes to NVS
+//     err = nvs_commit(my_handle);
+//     if (err != ESP_OK) {
+//         printf("Error committing changes to NVS: %s\n", esp_err_to_name(err));
+//     }
+//     #ifdef USE_NVS_INIT
+//     // Close NVS handle
+//     nvs_close(my_handle);
+//     #endif
+//     return (existing_nodes_info[index].scene_switch_info.total_records);
+// }
 
 esp_err_t update_attr_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, void* new_attr_data) {
     esp_err_t err;
@@ -1298,8 +1385,8 @@ void nuos_get_data_from_nvs() {
     }
 
     #if (USE_ZIGBE_DEVICE_CATEGORY == CATEGORY_ZIGBEE_CURTAIN) 
-        curtain_cal_time = read_curtain_cal_time() / 100;
-        printf("Read cal_time_percentage:%lld\n", curtain_cal_time);
+        //curtain_cal_time = read_curtain_cal_time() / 100;
+        //printf("Read cal_time_percentage:%ld\n", curtain_cal_time);
         if(device_info[0].fan_speed > 1){
             device_info[0].fan_speed = 1;
         }
@@ -1352,5 +1439,4 @@ void init_nvs_for_zb_devices(){
         }
     }        
 #endif 
-
 }

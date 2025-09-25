@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_hw_support/port/esp32h2/cmake_install.cmake")
+  include("C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_hw_support/port/esp32c6/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)

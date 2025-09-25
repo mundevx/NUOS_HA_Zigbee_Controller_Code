@@ -4696,7 +4696,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                     uint16_t val2 = *(uint16_t *)message->attribute.data.value;
                     printf("val2: %d\n", val2);
                 }    
-            } else if (message->info.cluster == 0x0102) { //window covering
+            } else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING) { //window covering
                 static uint8_t last_value = 0xFF;
                 if (message->attribute.id == 0xF003 && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16) {
                     // if(*(uint16_t *)message->attribute.data.value != last_value){
@@ -5683,22 +5683,21 @@ bool nuos_init_sequence(){
             
         #endif 
     #endif
-
+    printf("wifi_webserver_active_flag:%d\n", wifi_webserver_active_flag); //This line, Added by NUOS
     if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
         setNVSWebServerEnableFlag(0); 
         #ifndef ZB_FACTORY_RESET
-            if(wifi_info.is_wifi_sta_mode){
-                #ifdef USE_WIFI_WEBSERVER
-                    nuos_init_wifi_webserver(); 
-                    //nuos_start_rgb_led_blink_task(0);
-                #endif       
-                return true;
-            }else{
+            // if(wifi_info.is_wifi_sta_mode){
+            //     #ifdef USE_WIFI_WEBSERVER
+            //         nuos_init_wifi_webserver(); 
+            //     #endif       
+            //     return true;
+            // }else{
                 #ifdef USE_WIFI_WEBSERVER
                     nuos_init_wifi_webserver();
-                    //nuos_start_rgb_led_blink_task(0);
-                #endif              
-            }
+                #endif 
+                return false;             
+            // }
         #else
         return true; 
         #endif 

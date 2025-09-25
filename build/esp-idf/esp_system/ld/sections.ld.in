@@ -55,9 +55,9 @@ SECTIONS
   {
     /* Align the start of RTC code region as per PMP granularity
 
-     * this ensures we do not overwrite the permissions for any potential previous
+     * this ensures we do not overwrite the permissions for the previous
 
-     * region regardless of its end alignment
+     * region (ULP mem) regardless of its end alignment
 
      */
     
@@ -212,9 +212,6 @@ SECTIONS
     _vector_table_start = ABSOLUTE(.);
     KEEP(*(.exception_vectors_table.text));
     KEEP(*(.exception_vectors.text));
-    
- . = ALIGN(4); 
- _invalid_pc_placeholder = ABSOLUTE(.);
     /* esp_tee_config_t structure: used to share information between the TEE and REE
 
      * (e.g. interrupt handler addresses, REE flash text-rodata boundaries, etc.)
