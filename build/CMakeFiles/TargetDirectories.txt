@@ -862,6 +862,13 @@ C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Co
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/light_driver/CMakeFiles/install.dir
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/light_driver/CMakeFiles/install/local.dir
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/light_driver/CMakeFiles/install/strip.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/__idf_cjson.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/edit_cache.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/rebuild_cache.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/list_install_components.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/install.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/install/local.dir
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/cjson/CMakeFiles/install/strip.dir
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/espressif__esp-zigbee-lib/CMakeFiles/edit_cache.dir
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/espressif__esp-zigbee-lib/CMakeFiles/rebuild_cache.dir
 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/espressif__esp-zigbee-lib/CMakeFiles/list_install_components.dir

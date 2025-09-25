@@ -36,7 +36,7 @@
 // #include "zcl/zb_zcl_common.h"
 #include <unistd.h> // For usleep in Linux (or vTaskDelay for ESP32)
 #include <esp_zigbee_type.h>
-
+#include "zigbee_2_uart.h"
 static const char *TAG = "ZB_CLUSTERS";
 
 extern void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message);
@@ -445,9 +445,9 @@ static esp_err_t zb_switch_send_recall_scene_to_light(uint8_t ep, uint16_t group
         .scene_id = scene_id,
     };
 
-    //esp_zb_lock_acquire(portMAX_DELAY);
+    esp_zb_lock_acquire(portMAX_DELAY);
     esp_zb_zcl_scenes_recall_scene_cmd_req(&recall_scene_cmd);
-    //esp_zb_lock_release();
+    esp_zb_lock_release();
 
     ESP_LOGI(TAG, "Ask the short: 0x%04x to recall Scene ID: %d of Group ID: 0x%04x",
              recall_scene_cmd.zcl_basic_cmd.dst_addr_u.addr_short, recall_scene_cmd.scene_id,
@@ -772,7 +772,10 @@ void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
     // single_endpoint_gateway = true;
     if(!single_endpoint_gateway){
         dst_ep = ENDPOINTS_LIST[index];
-        addr_mode = ESP_ZB_APS_ADDR_MODE_DST_ADDR_ENDP_NOT_PRESENT;
+        //printf("SEND REPORT\n");
+        //addr_mode = ESP_ZB_APS_ADDR_MODE_DST_ADDR_ENDP_NOT_PRESENT;
+    }else{
+        //printf("SINGLE ENDPOINT\n");
     }
     esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
         .zcl_basic_cmd = {
@@ -1906,9 +1909,11 @@ esp_err_t nuos_driver_init(void)
  
 
         #ifdef TUYA_ATTRIBUTES
-            uint8_t state = curtain_cmd_goto_pct(device_info[0].device_level);
-            printf("device_info[0].device_level:%d\n", device_info[0].device_level);
-            nuos_zb_set_hardware_curtain(0, state); 
+            // uint8_t state = curtain_cmd_goto_pct(device_info[0].device_level);
+            // printf("device_info[0].device_level:%d\n", device_info[0].device_level);
+            // nuos_zb_set_hardware_curtain(0, state); 
+
+            set_curtain_percentage(device_info[0].device_level);
         #else
             for(int i=0; i<TOTAL_ENDPOINTS; i++){
                 nuos_zb_set_hardware_curtain(i, false); 
@@ -2647,6 +2652,97 @@ void nuos_zb_request_ieee_address(esp_zb_zdp_status_t zdo_status, uint16_t addr,
 
 void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
 
+    esp_zb_zdo_match_desc_req_param_t find_req;
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
+        //#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
+            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        //#else     
+        //    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        //#endif
+        find_req.num_in_clusters = 5;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_COLOR_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_COLOR_DIMMABLE_LIGHT)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 3;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)  
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TIME, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 4;
+        find_req.num_out_clusters = 0;    
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)   
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
+        find_req.num_out_clusters = 0;       
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
+        find_req.num_out_clusters = 0; 
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
+        find_req.num_out_clusters = 0;                  
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+        #ifdef USE_FAN_CTRL
+            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+            find_req.num_in_clusters = 2;
+            find_req.num_out_clusters = 0;             
+        #else
+            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+            find_req.num_in_clusters = 1;
+            find_req.num_out_clusters = 0;             
+        #endif
+ 
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;  
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;        
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;   
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_POWER_CONFIG, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;                
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)   
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0; 
+    #elif(USE_NUOS_ZB_DEVICE_TYPE ==  DEVICE_RINGING_BELL_2)  
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 1;
+        find_req.num_out_clusters = 0;                
+    #endif
+    
+    find_req.dst_nwk_addr = 0;
+    find_req.addr_of_interest = 0x0000;
+    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
+    find_req.cluster_list = cluster_list;
+    if (esp_zb_bdb_dev_joined()) {
+        printf("Matching Clusters.....\n");
+        esp_zb_zdo_match_cluster(&find_req, user_cb, NULL);
+    }  
+    
     start_commissioning = false;
     is_my_device_commissionned = !start_commissioning;
 
@@ -2662,103 +2758,6 @@ void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
     #else
         nuos_zb_set_hardware_led_for_zb_commissioning(false);
     #endif
-    
-    // ZB_NWK_COMMAND_STATUS_NO_ROUTE_AVAILABLE 
-    esp_zb_zdo_match_desc_req_param_t find_req;
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 1;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-        //#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        //#else     
-        //    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        //#endif
-        find_req.num_in_clusters = 5;
-        find_req.num_out_clusters = 2;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 2;
-        find_req.num_out_clusters = 2;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_COLOR_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_COLOR_DIMMABLE_LIGHT)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 3;
-        find_req.num_out_clusters = 3;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)  
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TIME, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 4;
-        find_req.num_out_clusters = 4;    
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)   
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 2;
-        find_req.num_out_clusters = 2;       
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 2;
-        find_req.num_out_clusters = 2;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 2;
-        find_req.num_out_clusters = 2; 
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 2;
-        find_req.num_out_clusters = 2;                  
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
-        #ifdef USE_FAN_CTRL
-            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-            find_req.num_in_clusters = 2;
-            find_req.num_out_clusters = 2;             
-        #else
-            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-            find_req.num_in_clusters = 1;
-            find_req.num_out_clusters = 1;             
-        #endif
- 
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 1;  
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 2;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 2;        
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ILLUMINANCE_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 2;   
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_POWER_CONFIG, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 1;                
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)   
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 1; 
-    #elif(USE_NUOS_ZB_DEVICE_TYPE ==  DEVICE_RINGING_BELL_2)  
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
-        find_req.num_out_clusters = 1;                
-    #endif
-    
-    find_req.dst_nwk_addr = 0;
-    find_req.addr_of_interest = 0x0000;
-    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
-    find_req.cluster_list = cluster_list;
-    if (esp_zb_bdb_dev_joined()) {
-        printf("Matching Clusters.....\n");
-        // if(getNVSPanicAttack() > 0){
-        //     setNVSPanicAttack(0);
-        //     esp_zb_factory_reset();
-        // } else {     
-            esp_zb_zdo_match_cluster(&find_req, user_cb, NULL);
-        // }
-    }    
 }
 
 /////////////////////////////////CLUSTERS CREATION////////////////////////////////////////////
@@ -4902,7 +4901,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         uint8_t level = *(uint8_t *)message->attribute.data.value;
                         if(device_info[0].device_state && level != 0){
                             ESP_LOGI(TAG, "ac device_level %d\n", level);
-                            if(level>16) level= level/16
+                            if(level>16) level= level/16;
                             if(level <= 15 ){
                                 if(level > 0){
                                     device_info[0].device_level = level; 
@@ -5566,6 +5565,9 @@ static void scene_store_task(void *pvParameters){
 
 static void send_active_request_task(void* args){
     static bool pin_state = false;
+    #ifdef USE_IR_UART_WS4_HW
+    uart_init();
+    #endif
     while(1){
         vTaskDelay(20 / portTICK_PERIOD_MS);
         #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)
@@ -5582,7 +5584,7 @@ static void send_active_request_task(void* args){
             // Check if the device is joined
             if (esp_zb_bdb_dev_joined()) {
                 // printf("BDB device joined!!\n");
-                uint16_t attributes[] = {ESP_ZB_ZCL_ATTR_TIME_LOCAL_TIME_ID};
+                uint16_t attributes[] = {ESP_ZB_ZCL_ATTR_BASIC_ZCL_VERSION_ID};
                 esp_zb_zcl_read_attr_cmd_t read_cmd = {
                     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[0],
                     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[0],

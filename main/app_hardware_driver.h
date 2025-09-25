@@ -1424,4 +1424,4 @@ extern void resume_curtain_timer(uint8_t index);
 extern void curtain_cmd_open(void);
 extern void curtain_cmd_close(void);
 extern void curtain_cmd_stop(void);
-extern uint8_t curtain_cmd_goto_pct(uint8_t pct) ;
+extern int curtain_cmd_goto_pct(uint8_t pct) ;

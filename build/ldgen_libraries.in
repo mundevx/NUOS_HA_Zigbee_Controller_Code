@@ -155,6 +155,8 @@ $<TARGET_FILE:idf::spiffs>
 $<TARGET_FILE:idf::espressif__led_strip>
 $<TARGET_FILE:idf::light_driver>
 $<TARGET_FILE:__idf_espressif__led_strip>
+$<TARGET_FILE:idf::cjson>
 $<TARGET_FILE:__idf_ieee802154>
 $<TARGET_FILE:idf::main>
 $<TARGET_FILE:__idf_light_driver>
+$<TARGET_FILE:__idf_cjson>

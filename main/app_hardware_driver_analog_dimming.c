@@ -266,9 +266,9 @@
     void nuos_init_hardware_dimming_up_down(uint32_t pin){
         uint8_t index = nuos_get_button_press_index(pin);
         if(device_info[index].device_state){
-            if(device_info[index].device_level <= MIN_DIM_LEVEL_VALUE){
+            if(device_info[index].device_level <= MIN_DIM_LEVEL_VALUE+20){
                 device_info[index].dim_up = 1;
-            }else if(device_info[index].device_level >= MAX_DIM_LEVEL_VALUE){
+            }else if(device_info[index].device_level >= MAX_DIM_LEVEL_VALUE-20){
                 device_info[index].dim_up = 0;
             }
         }

@@ -122,7 +122,8 @@ void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8
         // esp_zb_zcl_scenes_add_scene_cmd_req(&cmd);  
         
         esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
-                                            &on_off_extension_field);        
+                                            &on_off_extension_field);
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
         esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
             .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
@@ -209,6 +210,7 @@ void nuos_zb_scenes_add_scene_curtain_request(uint16_t group_id, uint8_t scene_i
                                         uint8_t curtain_state, uint8_t lift_percentage) {
 
 
+            printf("curtain value:%d\n", lift_percentage);                                
             esp_zb_zcl_scenes_extension_field_t lift_percentage_extension_field = {
                 .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, // Cluster ID for lift percentage Control cluster
                 .length = sizeof(uint8_t),
@@ -225,10 +227,10 @@ void nuos_zb_scenes_add_scene_curtain_request(uint16_t group_id, uint8_t scene_i
                 .extension_field = &lift_percentage_extension_field,
             };
             // //esp_zb_lock_acquire(portMAX_DELAY);
-            //esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
+            esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
             // //esp_zb_lock_release(); 
-            esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
-                                                &lift_percentage_extension_field);
+            //esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
+                                                //&lift_percentage_extension_field);
 
 }
 
@@ -603,7 +605,7 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                 nuos_zb_scenes_add_scene_curtain_request(message->group_id, message->scene_id, 
                                         0, ENDPOINTS_LIST[index], 
                                         esp_zb_get_short_address(),
-                                        device_info[0].fan_speed, device_info[0].device_level);
+                                        device_info[0].fan_speed, device_info[0].ac_mode);
                 #else
                 nuos_zb_scenes_add_scene_request(message->group_id, message->scene_id, 
                         0, ENDPOINTS_LIST[index], 

@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS
+    SRCS 
     "esp_zb_controller_main.c"
     "app_hardware_driver_on_off.c"
     "app_hardware_driver_analog_dimming.c"
@@ -14,6 +14,7 @@ idf_component_register(
     "app_zigbee_clusters.c"
     "switch_driver.c"
     "app_nuos_timer.c"
+    "parson.c"
     "app_hardware_driver_ir_blaster.cpp"
     "app_hardware_driver_sensor_motion.c"
     "app_hardware_driver_sensor_gas_leak.cpp"
@@ -34,5 +35,5 @@ idf_component_register(
 
     SRC_DIRS "." "../../../common/zcl_utility/src"
     INCLUDE_DIRS "." "../../../common/zcl_utility/include"
-    REQUIRES light_driver espressif__esp-zboss-lib mbedtls nvs_flash esp_timer app_update
+    REQUIRES light_driver espressif__esp-zboss-lib mbedtls nvs_flash esp_timer app_update esp_http_server cjson esp_wifi
 )

@@ -1,6 +1,3 @@
-
-
-
 #include "app_hardware_driver.h"
 
 #ifdef USE_IR_UART_WS4_HW
@@ -10,16 +7,64 @@
     #include "freertos/task.h"
     #include "esp_system.h"
     #include "esp_log.h"
-    #include "cJSON.h"
     #include "esp_zigbee_core.h"
-    #include "driver/uart.h"
     #include "app_zigbee_clusters.h"
 
+    #include "parson.h"
+    #include "driver/uart.h"
+
+
+
     #define UART_PORT_NUM                                           UART_NUM_1
-    #define UART_TX_PIN                                             14
-    #define UART_RX_PIN                                             13
+    #define UART_TX_PIN                                             TOUCH_5_PIN
+    #define UART_RX_PIN                                             TOUCH_6_PIN
     #define UART_BAUD_RATE                                          115200
     #define UART_BUF_SIZE                                           1024
+
+
+void json_parse_data_light(const char* data) {
+    JSON_Value *parsed = json_parse_string(data);
+    JSON_Object *root_object = json_value_get_object(parsed);
+    
+    if (root_object != NULL) {
+        // Extract "power"
+        JSON_Value *powerItem = json_object_get_value(root_object, "power");
+        if (powerItem != NULL && json_value_get_type(powerItem) == JSONNumber) {
+            int power = (int)json_value_get_number(powerItem);
+            printf("Power = %d\n", power);
+            device_info[0].device_state = power > 0 ? true : false;
+        }
+
+        // Extract "temp"
+        JSON_Value *tempItem = json_object_get_value(root_object, "temp");
+        if (tempItem != NULL && json_value_get_type(tempItem) == JSONNumber) {
+            int temp = (int)json_value_get_number(tempItem);
+            printf("Temp = %d\n", temp);
+            device_info[0].ac_temperature = temp;
+
+            for (int i = 0; i < 17; i++) {
+                if (ac_temp_values[i] == device_info[0].ac_temperature) {
+                    device_info[0].device_level = i;
+                    break;
+                }
+            }
+        }
+
+        // Extract "time"
+        JSON_Value *timeItem = json_object_get_value(root_object, "time");
+        if (timeItem != NULL && json_value_get_type(timeItem) == JSONNumber) {
+            int time = (int)json_value_get_number(timeItem);
+            if (time >= 20) {
+                setNVSCommissioningFlag(true);
+                setNVSWebServerEnableFlag(false);
+                setNVSPanicAttack(0);
+                esp_zb_factory_reset();
+            }
+        }
+    }
+    // Cleanup
+    json_value_free(parsed);
+}
 
     static void esp_zb_callback2(uint8_t param) {
         printf("param:%d\n", param);
@@ -34,51 +79,10 @@
             if (len > 0 && len < UART_BUF_SIZE) {
                 data[len] = '\0'; // Null-terminate safely
                 printf("As string: %s\n", (char*)data);
-                cJSON *parsed = cJSON_Parse((char*)data);
 
-                    // Extract "power"
-                cJSON *powerItem = cJSON_GetObjectItem(parsed, "power");
-                if(powerItem != NULL){
-                    if (cJSON_IsNumber(powerItem)) {
-                        printf("Power = %d\n", powerItem->valueint);
-                        device_info[0].device_state = powerItem->valueint>0?true:false;
-                    }
-                }
-                // Extract "temp"
-                cJSON *tempItem = cJSON_GetObjectItem(parsed, "temp");
-                if(tempItem != NULL){
-                    if (cJSON_IsNumber(tempItem)) {
-                        printf("Temp = %d\n", tempItem->valueint);
-                        device_info[0].ac_temperature = tempItem->valueint;
 
-                        for(int i=0; i<17; i++){
-                            if(ac_temp_values[i] == device_info[0].ac_temperature){
-                                device_info[0].device_level = i;
-                                break;
-                            }
-                        }
-                    }
-                }
-                // cJSON *longItem = cJSON_GetObjectItem(parsed, "press");
-                // if (cJSON_IsString(longItem)) {
-                    cJSON *timeItem = cJSON_GetObjectItem(parsed, "time");
-                    if(timeItem != NULL){
-                        if (cJSON_IsNumber(timeItem)) {
-                            int time = timeItem->valueint;
-                            if(time >= 20){
-                                setNVSCommissioningFlag(true);
-                                setNVSWebServerEnableFlag(false);
-                                setNVSPanicAttack(0);
-                                // esp_zb_scheduler_alarm_cancel(esp_zb_callback2, 0);
-                                // esp_zb_bdb_reset_via_local_action(); 
-                                // printf("esp_zb_bdb_reset_via_local_action\n");
-                                esp_zb_factory_reset();
-                            }
-                        }
-                    }
-                // Cleanup
-                cJSON_Delete(parsed); 
-
+                //json_parse_data((char*)data);
+                json_parse_data_light((char*)data);
                 nuos_set_zigbee_attribute(0);
             }
             vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -105,6 +109,7 @@
 
     void send_serial(const char* data){
         uart_write_bytes(UART_PORT_NUM, data, strlen(data));
+        uart_write_bytes(UART_PORT_NUM, "\n", 1);
     }
     
 #endif

@@ -19,7 +19,7 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "protocol_examples_common.h"
+// #include "protocol_examples_common.h"
 #include "esp_coexist.h"
 #include "esp_http_server.h"
 #include "esp_wifi_station.h"
@@ -189,7 +189,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 			} else {
 				xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
 				wifi_info.is_wifi_sta_mode = 0;
+				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+
 				nuos_store_wifi_info_data_to_nvs();
+				#endif
 				esp_restart();
 			}
 			ESP_LOGI(TAG,"connect to the AP fail");
@@ -434,7 +437,10 @@ void wifi_init_sta()
 					wifi_info.wifi_ssid, wifi_info.wifi_pass);
 			// //start in AP mode
 			wifi_info.is_wifi_sta_mode = 0;
+			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+
 			nuos_store_wifi_info_data_to_nvs();
+			#endif
 			esp_restart();
 		} else {
 			ESP_LOGE(TAG, "UNEXPECTED EVENT");

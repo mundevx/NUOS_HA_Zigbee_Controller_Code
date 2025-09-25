@@ -334,9 +334,11 @@ uint8_t get_button_pressed_mode(){
 			return 1;
 		}else if(third_button_pressed && fourth_button_pressed){
 			return 2;
+		}else if(second_button_pressed){
+			return 0;
 		}
 	#endif
-	return 0;
+	return 0xff;
 }
 
 

@@ -24,7 +24,8 @@
     #else
         #include <stdio.h>
         #include <stdlib.h>
-        #include "cJSON.h"
+        // #include "cJSON.h"
+        #include "parson.h"
     #endif
 
 
@@ -123,16 +124,36 @@
     void send_ac(bool state){
         // 1. Create JSON
         #ifdef USE_IR_UART_WS4_HW
-            cJSON *root = cJSON_CreateObject();   // Create object
-            cJSON_AddNumberToObject(root, "power", state);  // Add key: power=1
-            cJSON_AddNumberToObject(root, "temp", device_info[0].ac_temperature);  // Add key: temp=37
-            // Convert to JSON string
-            char *json_str = cJSON_PrintUnformatted(root);
+            // cJSON *root = cJSON_CreateObject();   // Create object
+            // cJSON_AddNumberToObject(root, "power", state);  // Add key: power=1
+            // cJSON_AddNumberToObject(root, "temp", device_info[0].ac_temperature);  // Add key: temp=37
+            // // Convert to JSON string
+            // char *json_str = cJSON_PrintUnformatted(root);
+            // printf("Generated JSON: %s\n", json_str);
+            // send_serial(json_str);
+            // // Free the original JSON object
+            // cJSON_Delete(root); 
+            // free(json_str); 
+
+            // Create object
+            JSON_Value *root_value = json_value_init_object();
+            JSON_Object *root_object = json_value_get_object(root_value);
+
+            // Add key: power=state
+            json_object_set_number(root_object, "power", state);
+
+            // Add key: temp=device_info[0].ac_temperature
+            json_object_set_number(root_object, "temp", device_info[0].ac_temperature);
+
+            // Convert to JSON string (unformatted)
+            char *json_str = json_serialize_to_string(root_value);
             printf("Generated JSON: %s\n", json_str);
+
             send_serial(json_str);
-            // Free the original JSON object
-            cJSON_Delete(root); 
-            free(json_str); 
+
+            // Free the JSON value (which includes the object) and the serialized string
+            json_value_free(root_value);
+            json_free_serialized_string(json_str);            
         #else
             send_ac_flag = true;
         #endif

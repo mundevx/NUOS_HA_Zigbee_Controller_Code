@@ -469,13 +469,14 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
  
                     if(getNVSPanicAttack() > 0){
                         setNVSPanicAttack(0);
-                        
                         ready_commisioning_flag = false;
                         setNVSStartCommissioningFlag(0);
-                        setNVSCommissioningFlag(1);
-                        start_commissioning = true;
                         is_my_device_commissionned = !start_commissioning;
-                        nvs_flash_erase();                      
+                        if(!start_commissioning){
+                            setNVSCommissioningFlag(1);
+                            start_commissioning = true;
+                            esp_zb_factory_reset();
+                        }                   
                     }else{
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
                         network_steering_mode_flag = true;  
@@ -485,48 +486,33 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "My Short Address : 0x%x", esp_zb_get_short_address());
                 network_steering_mode_flag = false;
 
-                nuos_zb_find_clusters(user_find_cb);
-                // esp_zb_rejoin_network(true);
-                if (!esp_zb_bdb_dev_joined()) {
-                    printf("BDB not joined!!.....\n");
-                    esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 2000);
+               
+                if(getNVSPanicAttack() > 0){
+                    setNVSPanicAttack(0);
+                    setNVSCommissioningFlag(1);
+                    
+                    is_my_device_commissionned = !start_commissioning;
+                    if(!start_commissioning){
+                        start_commissioning = true;
+                        setNVSStartCommissioningFlag(0); 
+                        //nvs_flash_erase(); 
+                        esp_zb_factory_reset();
+                    }           
+                }else{
+                    nuos_zb_find_clusters(user_find_cb);
+                    if (!esp_zb_bdb_dev_joined()) {
+                        printf("BDB not joined!!.....\n");
+                        esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 2000);
+                    }
                 }
-                #ifdef USE_FADING
-                init_fading();  
-                #endif
             }
-          
         } else {
             ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
             
             esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb,
                                    ESP_ZB_BDB_MODE_INITIALIZATION, 1000);
         }
-        break;
-    // case ESP_ZB_BDB_SIGNAL_TOUCHLINK_TARGET:
-    //     ESP_LOGI(TAG, "Touchlink target is ready, awaiting commissioning");
-    //     break;
-    // case ESP_ZB_BDB_SIGNAL_TOUCHLINK_NWK:
-    //     if (err_status == ESP_OK) {
-    //         esp_zb_ieee_addr_t extended_pan_id;
-    //         esp_zb_get_extended_pan_id(extended_pan_id);
-    //         ESP_LOGI(TAG,
-    //                  "Commissioning successfully, network information (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, "
-    //                  "Channel:%d, Short Address: 0x%04hx)",
-    //                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3], extended_pan_id[2],
-    //                  extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
-            
-    //         // esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-    //     }
-    //     break;
-    // case ESP_ZB_BDB_SIGNAL_TOUCHLINK_TARGET_FINISHED:
-    //     if (err_status == ESP_OK) {
-    //         ESP_LOGI(TAG, "Touchlink target commissioning finished");
-    //     } else {
-    //         ESP_LOGI(TAG, "Touchlink target commissioning failed");
-    //     }
-    //     // esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-    //     break;        
+        break;       
     case ESP_ZB_BDB_SIGNAL_STEERING:
         if (err_status == ESP_OK) {
             esp_zb_ieee_addr_t extended_pan_id;
@@ -590,7 +576,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         // Attempt to rejoin the network
         esp_zb_bdb_commissioning_mode_mask_t mode_unavailable = esp_zb_get_bdb_commissioning_mode();
         printf("SIGNAL:UNAVAILABLE = %d\n", mode_unavailable);
-        if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+        //if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         //is_my_device_commissionned = false;        
         break;
     default:
@@ -1207,6 +1193,47 @@ time_t add_9h30m_to_time(time_t current_time)
 //     esp_zb_zcl_window_covering_cluster_send_cmd_req(&cmd_req);  
 // }
 
+// Revised target generation and finding function
+void generate_targets(int* targets, int size) {
+    for (int i = 0; i < size; i++) {
+        // Calculate exact percentage for each interval
+        targets[i] = (i * 100) / (size - 1);
+    }
+}
+
+int find_nearest_percentage(int x, int* targets, int size) {
+    if (x < 0) x = 0;
+    if (x > 100) x = 100;
+
+    int min_diff = 1000;
+    int nearest = targets[0];
+
+    for (int i = 0; i < size; i++) {
+        int diff = abs(x - targets[i]);
+        if (diff < min_diff) {
+            min_diff = diff;
+            nearest = targets[i];
+        } else if (diff == min_diff) {
+            // On tie, prefer the higher value (consistent with typical UI behavior)
+            if (targets[i] > nearest) {
+                nearest = targets[i];
+            }
+        }
+    }
+
+    return nearest;
+}
+
+int fix_percentage(int input_val) {
+    const int NUM_SECONDS = device_info[0].device_val; // Fixed 12-second interval
+    const int ARRAY_SIZE = NUM_SECONDS + 1;
+    
+    int targets[ARRAY_SIZE];
+    generate_targets(targets, ARRAY_SIZE);
+    
+    return find_nearest_percentage(input_val, targets, ARRAY_SIZE);
+}
+
 static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering_movement_message_t *message){
 
     esp_err_t ret = ESP_OK;
@@ -1240,12 +1267,10 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_UP_OPEN:
                 if(device_info[0].fan_speed != message->command){
                     device_info[0].fan_speed = message->command;  
-
                     ESP_LOGI(TAG, "Curtain OPEN : %d", device_info[0].fan_speed);
                     device_info[0].device_state = 0;   
                     device_info[1].device_state = 0; 
-                    //nuos_report_curtain_blind_state(0, 100);                   
-                    nuos_zb_set_hardware(0, false);
+                    nuos_zb_set_hardware(0, false);                       
                 }
                 break;        
             case  ESP_ZB_ZCL_CMD_WINDOW_COVERING_DOWN_CLOSE:
@@ -1254,8 +1279,8 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                     ESP_LOGI(TAG, "Curtain CLOSE : %d", device_info[0].fan_speed);
                     device_info[1].device_state = 0;
                     device_info[0].device_state = 0;    
-                    //nuos_report_curtain_blind_state(0, 0);        
                     nuos_zb_set_hardware(1, false);
+
                 }
                 break;        
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_STOP:
@@ -1269,11 +1294,16 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
 
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_GO_TO_LIFT_PERCENTAGE:  
                 ESP_LOGI("WINDOW", "Go To Lift Percentage: %d%%\n", message->payload.percentage_lift_value);
-                nuos_report_curtain_blind_state(0, message->payload.percentage_lift_value);    
+                int result = fix_percentage(message->payload.percentage_lift_value);
+                //int result = message->payload.percentage_lift_value;
+                printf("Input: %d%%, Nearest: %d%%\n", message->payload.percentage_lift_value, result);
 
-                uint8_t state = curtain_cmd_goto_pct( message->payload.percentage_lift_value);
+                nuos_report_curtain_blind_state(0, result);    
+               
+                uint8_t state = curtain_cmd_goto_pct(result);
                 if(state == 0) device_info[0].device_state = 1;
                 else if(state == 1) device_info[1].device_state = 1;
+                device_info[0].ac_mode = result;
                 nuos_zb_set_hardware_curtain(0, state);                              
                 break;
             default:
@@ -1759,10 +1789,9 @@ static void esp_zb_task(void *pvParameters)
     //  ESP_ERROR_CHECK(esp_zb_io_buffer_size_set(64)); 
     // esp_zb_scheduler_queue_size_set(150); 
     printf("---------esp_zb_task---------\n");
-    const uint16_t table_size = 32;
-    // esp_zb_zcl_scenes_table_init(table_size);
-    ESP_ERROR_CHECK(esp_zb_aps_src_binding_table_size_set(table_size));
-    // ESP_ERROR_CHECK(esp_zb_aps_dst_binding_table_size_set(table_size));
+    const uint16_t table_size = 64;
+    ESP_ERROR_CHECK(esp_zb_aps_src_binding_table_size_set(32));
+    ESP_ERROR_CHECK(esp_zb_aps_dst_binding_table_size_set(32));
     // ESP_ERROR_CHECK(esp_zb_overall_network_size_set(32)); // Coordinator + 31 devices
 
     /* initialize Zigbee stack */

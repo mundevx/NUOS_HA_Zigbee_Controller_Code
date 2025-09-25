@@ -158,7 +158,7 @@ void curtain_calibration_task(void* args) {
     gpio_set_level(gpio_touch_led_pins[1], 0);
 
     while(bCalMode){
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10));
         switch(vTaskMode){
             case TASK_CURTAIN_CAL_INIT:
                 //blink 1st LED
@@ -275,24 +275,24 @@ void button_click_handler(TimerHandle_t xTimer)
                     
                 }
             }
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)  
-        #ifdef TUYA_ATTRIBUTES  
-        }else if (click_count == 5) {
-                bool same_bt_pressed = true;
-                for (int p = 0; p < click_count; p++) {   //switch_num_pressed
-                    if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
-                        same_bt_pressed = false;
-                        break;
-                    }
-                }
-                if(same_bt_pressed){
-                    bCalMode = true;
-                     //start calibration task
-                    xTaskCreate(curtain_calibration_task, "curtain_calibration_task", 4096, NULL, 22, NULL); 
+        // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)  
+        // #ifdef TUYA_ATTRIBUTES  
+        // }else if (click_count == 5) {
+        //         bool same_bt_pressed = true;
+        //         for (int p = 0; p < click_count; p++) {   //switch_num_pressed
+        //             if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
+        //                 same_bt_pressed = false;
+        //                 break;
+        //             }
+        //         }
+        //         if(same_bt_pressed){
+        //             bCalMode = true;
+        //              //start calibration task
+        //             xTaskCreate(curtain_calibration_task, "curtain_calibration_task", 4096, NULL, 22, NULL); 
                     
-                }
-        #endif        
-        #endif        
+        //         }
+        // #endif        
+        // #endif        
         }else if (click_count == 10) {
                 bool same_bt_pressed = true;
                 for (int p = 0; p < click_count; p++) {   //switch_num_pressed
@@ -435,6 +435,40 @@ void show_commissioning_done_indication(){
 }
 uint8_t brightness_testing_value = 0;
 
+
+
+/************************************************************** */
+
+
+// static esp_timer_handle_t dimming_timer = NULL;
+
+// void dimming_timer_callback(void* arg) {
+//     // Called every 1ms during long press
+//     //if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+//         is_long_press_brightness = true;
+//         nuos_set_hardware_brightness((gpio_num_t)(intptr_t)arg);
+//     //}
+// }
+
+// void start_dimming_timer(gpio_num_t pin) {
+//     if (dimming_timer == NULL) {
+//         const esp_timer_create_args_t dimming_timer_args = {
+//             .callback = &dimming_timer_callback,
+//             .arg = (void*)(intptr_t)pin,
+//             .name = "dimming_timer"
+//         };
+//         esp_timer_create(&dimming_timer_args, &dimming_timer);
+//     }
+//     esp_timer_start_periodic(dimming_timer, 1000); // 1ms
+// }
+
+// void stop_dimming_timer(void) {
+//     if (dimming_timer != NULL) {
+//         esp_timer_stop(dimming_timer);
+//     }
+// }
+
+/*********************************************************************** */
 static void switch_driver_button_detected(void *arg) {
     gpio_num_t io_num = GPIO_NUM_NC;
     uint32_t reduced_bounce_time = DEBOUNCE_TIME_MS;
@@ -525,6 +559,7 @@ static void switch_driver_button_detected(void *arg) {
                     press_duration = current_time - last_press_time;
                     if (press_duration > 1000) { // Long press
                         if (switch_state == SWITCH_PRESS_DETECTED) {
+
                             reduced_bounce_time = DEBOUNCE_TIME_MS;
                             if ((current_time - last_release_time) >= 2) { // 2 ms
                                 last_release_time = current_time;
@@ -555,10 +590,18 @@ static void switch_driver_button_detected(void *arg) {
                                             }
                                         }
                                     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
-                                        if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                                            is_long_press_brightness = true;
-                                            nuos_set_hardware_brightness(io_num);
-                                        }
+                                        // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
+                                        
+                                        //     if (!dimming_active) {
+                                        //         start_dimming_timer(io_num);
+                                        //         dimming_active = true;
+                                        //     }
+                                        // #else
+                                            if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                                                is_long_press_brightness = true;
+                                                nuos_set_hardware_brightness(io_num);
+                                            }
+                                        // #endif
                                     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH) 
                                         // if(brightness_count % 200 == 0){
                                         //     is_long_press_brightness = true;
@@ -631,15 +674,22 @@ static void switch_driver_button_detected(void *arg) {
                                             }                          
                                         }
                                     }
-                                    if(total_press_in_secs <= 3){
-                                        if (IdentifyTwoSwitchPressed() >= 2) {   
-                                            if(get_button_pressed_mode() == 1){
-                                                set_touchlink_on = true;
-                                                //Added by Nuos 
-                                                
-                                            }                          
+
+                                                                            // }   
+                                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
+                                        #ifdef TUYA_ATTRIBUTES
+                                        if(total_press_in_secs >= 5 && total_press_in_secs < 10){
+                                            if (IdentifyTwoSwitchPressed() == 1) {   
+                                                if(get_button_pressed_mode() == 0){
+                                                    printf("-----------------------------\n");
+                                                    set_touchlink_on = true;
+                                                    //Added by Nuos 
+                                                    
+                                                }                          
+                                            }
                                         }
-                                    }
+                                        #endif
+                                    #endif
 
                                 }
                             }
@@ -657,6 +707,11 @@ static void switch_driver_button_detected(void *arg) {
                 case SWITCH_RELEASE_DETECTED:
                     switch_state = SWITCH_IDLE;
                     reduced_bounce_time = 10;
+
+                    // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
+                    //     stop_dimming_timer();
+                    //     dimming_active = false;
+                    // #endif
                     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
                         switch_num_pressed[click_count] = io_num;
                         click_count++;
@@ -679,20 +734,25 @@ static void switch_driver_button_detected(void *arg) {
                         nuos_zb_set_scene_switch_click(io_num, 0);
                     #endif
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-                        //#ifdef TUYA_ATTRIBUTES
+                        
                         if(longpress_detected){
                             
                             button_func_pair.keypressed = LONG_PRESS;
                         }
-                        //#endif
+                        #ifdef TUYA_ATTRIBUTES
+                        if(set_touchlink_on){
+                            set_touchlink_on = false;
+                            if(!bCalMode){
+                                
+                                bCalMode = true;
+                                //start calibration task
+                                xTaskCreate(curtain_calibration_task, "curtain_calibration_task", 4096, NULL, 22, NULL);  
+                            }else{
+                                bCalMode = false;
+                            }
+                        }
+                        #endif
                     #endif
-                    if(set_touchlink_on){
-                        set_touchlink_on = false;
-                        // esp_zb_bdb_cancel_formation();
-                        // esp_zb_bdb_cancel_steering();
-	                    // esp_zb_bdb_close_network();
-                        esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_TOUCHLINK_TARGET); 
-                    }                    
                     break;
 
                 case SWITCH_LONG_PRESS_DETECTED:

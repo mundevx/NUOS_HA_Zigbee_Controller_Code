@@ -1,0 +1,9 @@
+Command: cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DPYTHON=c:\esp\esp-zigbee-sdk\python_env\idf5.5_py3.11_env\Scripts\python.exe -DESP_PLATFORM=1 -DIDF_TARGET=esp32h2 -DCCACHE_ENABLE=0 C:\esp\esp-zigbee-sdk\examples\esp_zigbee_HA_sample\NUOS_HA_Zigbee_Controller_Code
+8c750b088-4f758c4-1.6.4-2025-09-25 08:06:33 UTC
+CMake Warning at C:/esp/esp-idf/tools/cmake/component.cmake:274 (message):
+  SRCS and SRC_DIRS are both specified; ignoring SRC_DIRS.
+Call Stack (most recent call first):
+  C:/esp/esp-idf/tools/cmake/component.cmake:455 (__component_add_sources)
+  main/CMakeLists.txt:1 (idf_component_register)
+
+

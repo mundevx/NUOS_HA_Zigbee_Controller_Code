@@ -11,7 +11,7 @@
 #include "esp_wifi_station.h"
 #include "esp_wifi_webserver.h"
 #include "cJSON.h"
-#include "eeprom.h"
+// #include "eeprom.h"
 
 typedef const char*  String;
 char webpage[33000];
@@ -806,7 +806,10 @@ bool nuos_init_webserver(){
 		#ifdef USE_WEB_LOG_MODE
         	start_curtain_webserver(); 
 		#else
+		    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+
 			prepare_html_complete_string();
+			#endif
 			start_webserver();
 		#endif
 		return station_mode;

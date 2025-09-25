@@ -102,7 +102,7 @@
         #ifndef DONT_USE_ZIGBEE
         #define USE_RGB_LED
         #endif     
-        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT   
+        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT  
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254
         //#define CHANGE_LOAD_PIN
@@ -120,7 +120,7 @@
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254        
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
-        #define CHANGE_LOAD_PIN
+        //#define CHANGE_LOAD_PIN
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       4
@@ -151,7 +151,23 @@
         #define TOTAL_LOADS                                         2
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
-        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5 //USE_ESP32H2_MINI1_V5
+        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+            #define USE_WIFI_WEBSERVER
+           
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000/TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
+        
+            #define ESP_WIFI_SSID      				                    "NUOS CURTAIN CONTROLLER"
+            #define ESP_WIFI_PASS      				                    "NUOS1234"
+        #endif  
+
         #ifndef DONT_USE_ZIGBEE
         #define USE_RGB_LED
         #endif  
@@ -190,7 +206,7 @@
         #define USE_FADING      
         #define FAN_INDEX                                           1
         #define LONG_PRESS_BRIGHTNESS_ENABLE        
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                       8 
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                       2//8 
         #define DIMMING_STEPS                                       1    
         #define ENABLE_PWM_DIMMING           
         #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 255)
@@ -322,28 +338,31 @@
         #define TOTAL_LEDS                                          1
         #define TOTAL_LOADS                                         0
         //#define USE_RGB_LED
-        // #define USE_IR_UART_WS4_HW
+        #define USE_IR_UART_WS4_HW
 
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
-        #define MAX_DIM_LEVEL_VALUE                                 254        
-        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
-        #define USE_WIFI_WEBSERVER
-        #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+        #define MAX_DIM_LEVEL_VALUE                                 254      
         
+        #ifndef USE_IR_UART_WS4_HW
+            #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+                #define USE_WIFI_WEBSERVER
+                #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+                
 
-        #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //Change this value
+                #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //Change this value
 
-        #define TIME_PERIOD_IN_MS                                   100
-        #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+                #define TIME_PERIOD_IN_MS                                   100
+                #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
 
-        #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
-        #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
-        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
-    
-        #define ESP_WIFI_SSID      				                    "NUOS IR BLASTER"
-        #define ESP_WIFI_PASS      				                    "NUOS1234"
+                #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+                #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+                #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
+            
+                #define ESP_WIFI_SSID      				                    "NUOS IR BLASTER"
+                #define ESP_WIFI_PASS      				                    "NUOS1234"
+            #endif
         #endif
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT   
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)

@@ -489,7 +489,11 @@
         #define TOUCH_4_PIN                                                 GPIO_NUM_13
         #define TOUCH_5_PIN                                                 GPIO_NUM_5
         #define TOUCH_6_PIN                                                 GPIO_NUM_4
-        
+
+
+        #define UART_TX                                                     5
+        #define UART_RX                                                     4     
+
         #define TOUCH_IR_BLASTER_PIN                                        GPIO_NUM_22
 
         #define ZCD_PIN                                                     GPIO_NUM_10
@@ -545,6 +549,11 @@
         #define TOUCH_4_PIN                                                 GPIO_NUM_0
         #define TOUCH_5_PIN                                                 GPIO_NUM_14
         #define TOUCH_6_PIN                                                 GPIO_NUM_13
+
+
+        #define UART_TX                                                     14
+        #define UART_RX                                                     13
+
 
         #define ZCD_PIN                                                     GPIO_NUM_15
 
