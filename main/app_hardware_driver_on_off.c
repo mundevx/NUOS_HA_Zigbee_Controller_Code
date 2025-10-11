@@ -9,35 +9,35 @@
     
     void nuos_zb_init_hardware(){
 
-        uint32_t pins = 0; 
-        for(int i=0; i<TOTAL_LEDS; i++){
-            pins |= 1ULL << gpio_touch_led_pins[i];
-        }  
-        for(int j=0; j<TOTAL_LOADS; j++){
-            pins |= 1ULL << gpio_load_pins[j];
-        }         
-        gpio_config_t io_conf;
-        // Configure the output pin
-        io_conf.intr_type = GPIO_INTR_DISABLE;       // Disable interrupt
-        io_conf.mode = GPIO_MODE_OUTPUT;             // Set as output mode
-        io_conf.pin_bit_mask = pins;                 // Bit mask for the output pin
-        io_conf.pull_down_en = 0;                    // Disable pull-down mode
-        io_conf.pull_up_en = 1;                      // Disable pull-up mode
-        gpio_config(&io_conf);
+        // uint32_t pins = 0; 
+        // for(int i=0; i<TOTAL_LEDS; i++){
+        //     pins |= 1ULL << gpio_touch_led_pins[i];
+        // }  
+        // for(int j=0; j<TOTAL_LOADS; j++){
+        //     pins |= 1ULL << gpio_load_pins[j];
+        // }         
+        // gpio_config_t io_conf;
+        // // Configure the output pin
+        // io_conf.intr_type = GPIO_INTR_DISABLE;       // Disable interrupt
+        // io_conf.mode = GPIO_MODE_OUTPUT;             // Set as output mode
+        // io_conf.pin_bit_mask = pins;                 // Bit mask for the output pin
+        // io_conf.pull_down_en = 0;                    // Disable pull-down mode
+        // io_conf.pull_up_en = 1;                      // Disable pull-up mode
+        // gpio_config(&io_conf);
 
-        // for(int index=0; index<TOTAL_LEDS; index++) {
-        //     gpio_reset_pin(gpio_touch_led_pins[index]);
-        //     /* Set the GPIO as a push/pull output */
-        //     gpio_set_direction(gpio_touch_led_pins[index], GPIO_MODE_OUTPUT);
-        //     gpio_set_level(gpio_touch_led_pins[index], 0);
-        // }   
+        for(int index=0; index<TOTAL_LEDS; index++) {
+            gpio_reset_pin(gpio_touch_led_pins[index]);
+            /* Set the GPIO as a push/pull output */
+            gpio_set_direction(gpio_touch_led_pins[index], GPIO_MODE_OUTPUT);
+            gpio_set_level(gpio_touch_led_pins[index], 0);
+        }   
 
-        // for(int index_2=0; index_2<TOTAL_LOADS; index_2++) {
-        //     gpio_reset_pin(gpio_load_pins[index_2]);
-        //     /* Set the GPIO as a push/pull output */
-        //     gpio_set_direction(gpio_load_pins[index_2], GPIO_MODE_OUTPUT);
-        //     gpio_set_level(gpio_load_pins[index_2], 0);
-        // }               
+        for(int index_2=0; index_2<TOTAL_LOADS; index_2++) {
+            gpio_reset_pin(gpio_load_pins[index_2]);
+            /* Set the GPIO as a push/pull output */
+            gpio_set_direction(gpio_load_pins[index_2], GPIO_MODE_OUTPUT);
+            gpio_set_level(gpio_load_pins[index_2], 0);
+        }               
     }
 
     void nuos_zb_set_hardware_led_for_zb_commissioning(uint8_t is_toggle){

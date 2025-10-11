@@ -23,6 +23,6 @@
     void nuos_zb_scene_remove_scene_groupcast_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep);
 
     esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message);
-    void set_curtain_percentage(uint8_t value);
+    void set_curtain_percentage(uint8_t value, bool set_hw_flag);
 #endif
     

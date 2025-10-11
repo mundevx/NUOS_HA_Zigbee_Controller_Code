@@ -31,42 +31,43 @@ typedef enum {
     CURTAIN_DIR_CLOSING
 } curtain_dir_t;
 
-static curtain_dir_t curtain_dir = CURTAIN_DIR_STOPPED;
-static uint8_t       target_pct  = 0;          // for GOTO command
+static curtain_dir_t curtain_dir        = CURTAIN_DIR_STOPPED;
+static uint8_t target_pct               = 0;          // for GOTO command
+int curtain_timer_counts                = 0;
+bool curtain_timer_start_flag           = false;
 // Updated conversion functions for deciseconds (100ms)
-// Updated conversion functions for deciseconds (100ms)
+#ifdef ENABLE_CURTAIN_TIMER_CONTROL
 static inline uint16_t ds_to_pct_x10(uint32_t ds)
 {
-    if (device_info[0].device_val == 0) return 0;
-    return (ds * 1000) / (device_info[0].device_val * 10);  // Returns 0-1000 range
+    if (device_info[0].curtain_motor_total_time == 0) return 0;
+    return (ds * 1000) / (device_info[0].curtain_motor_total_time * 10);  // Returns 0-1000 range
 }
 
 static inline uint32_t pct_to_ds(uint8_t pct)
 {
-    if (device_info[0].device_val == 0) return 0;
-    return (pct * device_info[0].device_val * 10) / 100;
+    if (device_info[0].curtain_motor_total_time == 0) return 0;
+    return (pct * device_info[0].curtain_motor_total_time * 10) / 100;
 }
 
 static inline uint8_t ds_to_pct(uint32_t ds)
 {
     return ds_to_pct_x10(ds) / 10;  // Convert to 0-100 range
 }
-int curtain_timer_counts = 0;
-bool curtain_timer_start_flag = false;
+
 static void curtain_timer_start_task(void *pvParameters){
     while(1){
         vTaskDelay(pdMS_TO_TICKS(10));
         if(curtain_timer_start_flag){
-            if(curtain_timer_counts++ > device_info[0].ac_mode ){  //2.5 sec
+            if(curtain_timer_counts++ > device_info[0].curtain_motor_start_offset ){  //2.5 sec
                 curtain_timer_counts = 0;
-                printf("----------TIMER STARTED AFTEr OFFSET:%d----------\n", device_info[0].ac_mode);
+                printf("----------TIMER STARTED AFTEr OFFSET:%d----------\n", device_info[0].curtain_motor_start_offset);
                 esp_timer_start_periodic(periodic_timer, 100000);   // 100ms Tick
                 curtain_timer_start_flag = false;
-                break;
+                //break;
             }
         }
     }
-    vTaskDelete(NULL);
+    //vTaskDelete(NULL);
 }
 /* New generic handler for "Go-to-percentage" */
 int curtain_cmd_goto_pct(uint8_t pct)   // 0-100
@@ -75,7 +76,7 @@ int curtain_cmd_goto_pct(uint8_t pct)   // 0-100
     if (pct > 100) pct = 100;
     
     // Convert current percentage to deciseconds for accurate starting position
-    uint8_t current_pct = device_info[0].light_color_x / 10;
+    uint8_t current_pct = device_info[0].device_val / 10;
     if (current_pct > 100) current_pct = 100;
     
     if (current_pct == pct) {
@@ -99,7 +100,8 @@ int curtain_cmd_goto_pct(uint8_t pct)   // 0-100
     curtain_state = (curtain_dir == CURTAIN_DIR_OPENING)
                     ? ESP_ZB_ZCL_CMD_WINDOW_COVERING_UP_OPEN
                     : ESP_ZB_ZCL_CMD_WINDOW_COVERING_DOWN_CLOSE;
-
+    device_info[0].curtain_state = curtain_state;
+    device_info[0].device_level = pct;
     gpio_set_level(gpio_load_pins[0], 1);
     printf("----------STARt TIMER----------\n");
     #ifdef TUYA_ATTRIBUTES
@@ -108,106 +110,139 @@ int curtain_cmd_goto_pct(uint8_t pct)   // 0-100
             timer_paused = true;
             printf("Timer paused at %d.%d seconds (%d%%)\n", 
                    elapsed_ds / 10, elapsed_ds % 10, 
-                   device_info[0].light_color_x / 10);
+                   device_info[0].device_val / 10);
         }
     #endif
-    xTaskCreate(curtain_timer_start_task, "curtain_start", 2048, NULL, TASK_PRIORITY_ATTR, NULL);
+    // xTaskCreate(curtain_timer_start_task, "curtain_start", 4096, NULL, TASK_PRIORITY_ATTR, NULL);
     
     curtain_timer_counts = 0;
     curtain_timer_start_flag = true;
     timer_paused = false;
     return curtain_state;
 }
-
+#endif
 void curtain_cmd_open(void)
 {
+    #ifdef ENABLE_CURTAIN_TIMER_CONTROL
+    if(device_info[0].curtain_motor_total_time>0)
     curtain_cmd_goto_pct(100);
-    device_info[0].ac_mode = 100;
+    else curtain_timer_start_flag = false;
+    device_info[0].device_level = 100;
+    #endif
 }
 
 void curtain_cmd_close(void)
 {
+    #ifdef ENABLE_CURTAIN_TIMER_CONTROL
+    if(device_info[0].curtain_motor_total_time>0)
     curtain_cmd_goto_pct(0);
-    device_info[0].ac_mode = 0;
+    else curtain_timer_start_flag = false;
+    device_info[0].device_level = 0;
+    #endif
 }
 
 void curtain_cmd_stop(void)
 {
+    #ifdef ENABLE_CURTAIN_TIMER_CONTROL
     pause_curtain_timer();
     curtain_dir = CURTAIN_DIR_STOPPED;
+    
+    set_curtain_load(CURTAIN_STOP);
+    #else
+    set_curtain_load(CURTAIN_STOP);
+    #endif
 }
 
-// extern int fix_percentage(int input_val);
-void periodic_timer_callback(void *arg)
-{
-    if (timer_paused || curtain_dir == CURTAIN_DIR_STOPPED) return;
 
-    // Update position every 100ms
-    uint32_t max_ds = device_info[0].device_val * 10;
-    
-    if (curtain_dir == CURTAIN_DIR_OPENING && elapsed_ds < max_ds) {
-        elapsed_ds++;
-    } else if (curtain_dir == CURTAIN_DIR_CLOSING && elapsed_ds > 0) {
-        elapsed_ds--;
-    }
 
-    // Convert deciseconds to percentage (scaled by 10 for light_color_x)
-    device_info[0].light_color_x = ds_to_pct_x10(elapsed_ds);
-    uint8_t current_pct = device_info[0].light_color_x / 10;
-    
-    // Report state
-    if(wifi_webserver_active_flag == 0){
-        if(elapsed_ds%10 == 0) //report every 1 second
-            nuos_report_curtain_blind_state(0, current_pct);  
-    }
-    
-    printf("t=%u.%u s  level=%u%% (target %u%%)\n", 
-           elapsed_ds / 10, elapsed_ds % 10, 
-           current_pct, target_pct);
-    
-    // Calculate target in deciseconds for accurate comparison
-    uint32_t target_ds = pct_to_ds(target_pct);
-    
-    // Improved stopping conditions
-    bool reached_limit = false;
-    bool reached_target = false;
+#ifdef ENABLE_CURTAIN_TIMER_CONTROL
+    // extern int fix_percentage(int input_val);
+    void periodic_timer_callback(void *arg)
+    {
+        if (timer_paused || curtain_dir == CURTAIN_DIR_STOPPED) return;
 
-    if (curtain_dir == CURTAIN_DIR_OPENING) {
-        reached_limit = (elapsed_ds >= max_ds);
-        reached_target = (elapsed_ds >= target_ds);
-    } else if (curtain_dir == CURTAIN_DIR_CLOSING) {
-        reached_limit = (elapsed_ds == 0);
-        reached_target = (elapsed_ds <= target_ds);
-    }
-
-    if (reached_limit || reached_target) {
-        printf("Stopping condition met: limit=%d, target=%d\n", reached_limit, reached_target);
-        curtain_cmd_stop();
+        // Update position every 100ms
+        uint32_t max_ds = device_info[0].curtain_motor_total_time * 10;
         
-        // Snap to exact target if not at hardware limit
-        if (!reached_limit) {
-            elapsed_ds = target_ds;
-            device_info[0].light_color_x = target_pct * 10;
-            uint8_t final_pct = ds_to_pct(elapsed_ds);
-            device_info[0].device_level = final_pct;
-            if(wifi_webserver_active_flag == 0){
-                nuos_report_curtain_blind_state(0, final_pct);
+        if (curtain_dir == CURTAIN_DIR_OPENING && elapsed_ds < max_ds) {
+            elapsed_ds++;
+        } else if (curtain_dir == CURTAIN_DIR_CLOSING && elapsed_ds > 0) {
+            elapsed_ds--;
+        }
+
+        // Convert deciseconds to percentage (scaled by 10 for device_val)
+        device_info[0].device_val = ds_to_pct_x10(elapsed_ds);
+        uint8_t current_pct = device_info[0].device_val / 10;
+        
+        // Report State
+        
+        if(wifi_webserver_active_flag == 0){
+            if(elapsed_ds%10 == 0) //report every 1 second
+            if(is_my_device_commissionned)
+                nuos_report_curtain_blind_state(0, current_pct);  
+        }
+        
+        printf("t=%u.%u s  level=%u%% (target %u%%)\n", 
+            elapsed_ds / 10, elapsed_ds % 10, 
+            current_pct, target_pct);
+        
+        // Calculate target in deciseconds for accurate comparison
+        uint32_t target_ds = pct_to_ds(target_pct);
+        
+        // Improved stopping conditions
+        bool reached_limit = false;
+        bool reached_target = false;
+        nuos_store_data_to_nvs(0);
+        if (curtain_dir == CURTAIN_DIR_OPENING) {
+            reached_limit = (elapsed_ds >= max_ds);
+            reached_target = (elapsed_ds >= target_ds);
+        } else if (curtain_dir == CURTAIN_DIR_CLOSING) {
+            reached_limit = (elapsed_ds == 0);
+            reached_target = (elapsed_ds <= target_ds);
+        }
+
+        if (reached_limit || reached_target) {
+            printf("Stopping condition met: limit=%d, target=%d\n", reached_limit, reached_target);
+            // Snap to exact target if not at hardware limit
+            if (!reached_limit) {
+                elapsed_ds = target_ds;
+                device_info[0].device_val = target_pct * 10;
+                
+                uint8_t final_pct = ds_to_pct(elapsed_ds);
+                device_info[0].device_level = final_pct;
+                if(wifi_webserver_active_flag == 0){
+                    if(is_my_device_commissionned)
+                    nuos_report_curtain_blind_state(0, final_pct);
+                }
+                printf("Snapped to exact target: %d%%\n", final_pct);
             }
-            printf("Snapped to exact target: %d%%\n", final_pct);
+            curtain_cmd_stop();
         }
     }
-}
+    void init_curtain_timer(){
+        const esp_timer_create_args_t periodic_timer_args = {
+            .callback = &periodic_timer_callback,
+            .name = "periodic"
+        };
+        esp_timer_create(&periodic_timer_args, &periodic_timer);
+    }
+#endif
 void pause_curtain_timer()
 {
-    #ifdef TUYA_ATTRIBUTES
-        if (!timer_paused) {
-            esp_timer_stop(periodic_timer);
-            timer_paused = true;
-            printf("Timer paused at %d.%d seconds (%d%%)\n", 
-                   elapsed_ds / 10, elapsed_ds % 10, 
-                   device_info[0].light_color_x / 10);
-        }
-    #endif
+    if(device_info[0].curtain_motor_total_time>0){
+        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
+        #ifdef TUYA_ATTRIBUTES
+            if (!timer_paused) {
+                esp_timer_stop(periodic_timer);
+                timer_paused = true;
+                printf("Timer paused at %d.%d seconds (%d%%)\n", 
+                    elapsed_ds / 10, elapsed_ds % 10, 
+                    device_info[0].device_val / 10);
+            }
+        #endif
+        device_info[0].device_level = ds_to_pct(elapsed_ds);
+        #endif
+    }
     // Stop hardware movement
     gpio_set_level(gpio_load_pins[0], 0);
     #ifdef OLD_CURTAIN_BOARD
@@ -216,13 +251,6 @@ void pause_curtain_timer()
     nuos_store_data_to_nvs(0);
 }
 
-    void init_curtain_timer(){
-        const esp_timer_create_args_t periodic_timer_args = {
-            .callback = &periodic_timer_callback,
-            .name = "periodic"
-        };
-        esp_timer_create(&periodic_timer_args, &periodic_timer);
-    }
 
     void nuos_zb_init_hardware(){
         uint32_t pins = 0; 
@@ -242,10 +270,14 @@ void pause_curtain_timer()
         gpio_config(&io_conf);	
 
         timer_paused = true;
-        elapsed_sec = (device_info[0].device_level * device_info[0].device_val) / 100;
+        elapsed_sec = (device_info[0].device_level * device_info[0].curtain_motor_total_time) / 100;
         #ifdef TUYA_ATTRIBUTES
-        init_curtain_timer();
+            #ifdef ENABLE_CURTAIN_TIMER_CONTROL
+                init_curtain_timer();
+                xTaskCreate(curtain_timer_start_task, "curtain_start", 4096, NULL, TASK_PRIORITY_ATTR, NULL);
+            #endif
         #endif 
+
     }
 
     static bool state = false;
@@ -285,16 +317,35 @@ void pause_curtain_timer()
         }
     }
 
-    void set_curtain_percentage(uint8_t value){
+    void set_curtain_percentage(uint8_t value, bool set_hw_flag){
+        
+        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
         if(wifi_webserver_active_flag == 0){
             nuos_report_curtain_blind_state(0, value);    
         }
-        int state = curtain_cmd_goto_pct( value);
+        
+        int state = curtain_cmd_goto_pct(value);
         if(state != -1){
-            device_info[0].device_state = 0;
-            device_info[1].device_state = 0;
-            nuos_zb_set_hardware_curtain(0, state);
+            if(set_hw_flag) nuos_zb_set_hardware_curtain(0, state);
+        }else{
+            printf("device_info[0].curtain_state:%d\n", device_info[0].curtain_state);
+            printf("device_info[0].device_state:%d\n", device_info[0].device_state);
+            printf("device_info[1].device_state:%d\n", device_info[1].device_state);
+            nuos_zb_set_hardware_curtain(0, device_info[0].curtain_state);
         }
+        #else
+            if(value <= 50){
+                value = 0;
+                device_info[0].curtain_state = 0;
+            }else{
+                device_info[0].curtain_state = 1;
+                value = 100;
+            }
+            if(wifi_webserver_active_flag == 0){
+                nuos_report_curtain_blind_state(0, value);    
+            }
+            nuos_zb_set_hardware_curtain(0, device_info[0].curtain_state);
+        #endif
     }
 
     void set_harware(uint8_t index, uint8_t is_toggle){
@@ -348,63 +399,63 @@ void pause_curtain_timer()
         }
         nuos_store_data_to_nvs(0);
         #else
-        if(index == 0){
-            device_info[0].fan_speed = 0;
-            if(device_info[1].device_state){
-                device_info[1].device_state = false;
-                device_info[0].device_state = false;
-                
+            if(is_toggle>0) {
+                if(index == 0){
+                    device_info[0].device_state = !device_info[0].device_state; 
+                    if(device_info[0].curtain_state == 1){
+                        device_info[0].device_state = true;
+                        device_info[0].curtain_state = 0;
+                    }
+                }else if(index == 1){
+                    device_info[1].device_state = !device_info[1].device_state;
+                    if(device_info[0].curtain_state == 0){
+                        device_info[1].device_state = true;
+                        device_info[0].curtain_state = 1;
+                    }
+                }
             }
-            gpio_set_level(gpio_touch_led_pins[0], 1);
-            gpio_set_level(gpio_touch_led_pins[1], 0);
-            if(device_info[0].device_state){
-                device_info[0].device_state = false;
-                //set load pins
-                set_curtain_load(CURTAIN_STOP);
-                #ifdef TUYA_ATTRIBUTES
-                curtain_cmd_stop();
-                #endif
-            }else{
-                //set load pins
-                device_info[0].device_state = true;
-                set_curtain_load(CURTAIN_OPEN);
-                #ifdef TUYA_ATTRIBUTES
-                curtain_cmd_open();  
-                #endif                
-            }
-            
 
-
-            nuos_store_data_to_nvs(0);
-            nuos_store_data_to_nvs(1);
-        }else if(index == 1){ 
-            device_info[0].fan_speed = 1;
-            if(device_info[0].device_state){
-                device_info[0].device_state = false; 
-                device_info[1].device_state = false;
-            }
-            gpio_set_level(gpio_touch_led_pins[0], 0);
-            gpio_set_level(gpio_touch_led_pins[1], 1);            
-            if(device_info[1].device_state){
-                device_info[1].device_state = false;
-                set_curtain_load(CURTAIN_STOP);
-                #ifdef TUYA_ATTRIBUTES
-                curtain_cmd_stop();
-                #endif
+            if(device_info[0].curtain_state == 0){
+                gpio_set_level(gpio_touch_led_pins[0], 1);
+                gpio_set_level(gpio_touch_led_pins[1], 0);
+                if(!device_info[0].device_state){
+                    //set load pins
+                    set_curtain_load(CURTAIN_STOP);
+                    #ifdef TUYA_ATTRIBUTES
+                    
+                    curtain_cmd_stop();
+                    #endif
+                }else{
+                    //set load pins
+                    set_curtain_load(CURTAIN_OPEN);
+                    #ifdef TUYA_ATTRIBUTES
+                    curtain_cmd_open();  
+                    #endif  
+                    nuos_store_data_to_nvs(0);
+                    nuos_store_data_to_nvs(1);                              
+                }
+            }else if(device_info[0].curtain_state == 1){
+                gpio_set_level(gpio_touch_led_pins[0], 0);
+                gpio_set_level(gpio_touch_led_pins[1], 1);
+                if(!device_info[1].device_state){
+                    //set load pins
+                    set_curtain_load(CURTAIN_STOP);
+                    #ifdef TUYA_ATTRIBUTES
+                    curtain_cmd_stop();
+                    #endif
+                }else{
+                    //set load pins
+                    set_curtain_load(CURTAIN_CLOSE);
+                    #ifdef TUYA_ATTRIBUTES
+                    curtain_cmd_close();  
+                    #endif  
+                    nuos_store_data_to_nvs(0);
+                    nuos_store_data_to_nvs(1);                              
+                }
             }else{
-                set_curtain_load(CURTAIN_CLOSE);
-                device_info[1].device_state = true;
-                #ifdef TUYA_ATTRIBUTES
-                curtain_cmd_close(); 
-                #endif                
+                device_info[0].curtain_state = 2; //stop
+                curtain_cmd_stop();
             }
-            
- 
-            nuos_store_data_to_nvs(0);
-            nuos_store_data_to_nvs(1);
-        }else{
-            curtain_cmd_stop();
-        }
         #endif
   
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
@@ -486,35 +537,35 @@ void pause_curtain_timer()
 
         void nuos_zb_set_hardware_curtain(uint8_t index, uint8_t device_state){
             printf("index:%d  device_state:%d\n", index, device_state);
-            if(index == 0){
-                if(device_state == CURTAIN_OPEN){
-                    device_info[0].device_state = false;
-                    device_info[1].device_state = false;
-                    #ifdef OLD_CURTAIN_BOARD
-                        gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
-                        //set load pins
-                        gpio_set_level(gpio_load_pins[0], CURTAIN_OPEN);
-                        gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
-                        //set load pins
-                        gpio_set_level(gpio_load_pins[1], CURTAIN_CLOSE); 
-                    #else
-                        gpio_set_level(gpio_touch_led_pins[0], 1);
-                        gpio_set_level(gpio_touch_led_pins[1], 0);
-                        //set load pins
-                        set_curtain_load(CURTAIN_OPEN);
-                    #endif
-                }else if(device_state == CURTAIN_CLOSE){
-                    device_info[0].device_state = true;
-                    device_info[1].device_state = false;
-                    
-                    gpio_set_level(gpio_touch_led_pins[0], 0);
-                    gpio_set_level(gpio_touch_led_pins[1], 1);
+            //if(index == 0){
+            if(device_state == CURTAIN_OPEN){
+                device_info[0].device_state = true;
+                device_info[1].device_state = false;
+                #ifdef OLD_CURTAIN_BOARD
+                    gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
                     //set load pins
-                    set_curtain_load(CURTAIN_CLOSE);
-                }
-                nuos_store_data_to_nvs(0); 
-                nuos_store_data_to_nvs(1); 
+                    gpio_set_level(gpio_load_pins[0], CURTAIN_OPEN);
+                    gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
+                    //set load pins
+                    gpio_set_level(gpio_load_pins[1], CURTAIN_CLOSE); 
+                #else
+                    gpio_set_level(gpio_touch_led_pins[0], 1);
+                    gpio_set_level(gpio_touch_led_pins[1], 0);
+                    //set load pins
+                    set_curtain_load(CURTAIN_OPEN);
+                #endif
+            }else if(device_state == CURTAIN_CLOSE){
+                device_info[0].device_state = false;
+                device_info[1].device_state = true;
+                
+                gpio_set_level(gpio_touch_led_pins[0], 0);
+                gpio_set_level(gpio_touch_led_pins[1], 1);
+                //set load pins
+                set_curtain_load(CURTAIN_CLOSE);
             }
+            nuos_store_data_to_nvs(0); 
+            nuos_store_data_to_nvs(1); 
+            //}
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN) 
                 if(index == 1){
                     if(device_info[1].device_state == CURTAIN_OPEN){
@@ -546,17 +597,25 @@ void pause_curtain_timer()
     // #endif
 
     void nuos_zb_set_leds_only(uint8_t index, uint8_t is_toggle){
-        if(index == 0){
-            if(device_info[0].device_state == CURTAIN_OPEN){
-                device_info[0].device_state = CURTAIN_OPEN;
-                gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
-                gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
-            }else if(device_info[0].device_state == CURTAIN_CLOSE){
-                device_info[0].device_state = CURTAIN_CLOSE;
-                gpio_set_level(gpio_touch_led_pins[0], CURTAIN_CLOSE);
-                gpio_set_level(gpio_touch_led_pins[1], CURTAIN_OPEN);
-            }
+
+        if(is_toggle>0) state = !state;
+        else state = device_info[index].device_state;
+        if(state == CURTAIN_OPEN){
+            gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
+            gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
+        }else if(state == CURTAIN_CLOSE){
+            gpio_set_level(gpio_touch_led_pins[0], CURTAIN_CLOSE);
+            gpio_set_level(gpio_touch_led_pins[1], CURTAIN_OPEN);
         }
+        // if(index == 0){
+            // if(device_info[0].device_state == CURTAIN_OPEN){
+            //     gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
+            //     gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
+            // }else if(device_info[0].device_state == CURTAIN_CLOSE){
+            //     gpio_set_level(gpio_touch_led_pins[0], CURTAIN_CLOSE);
+            //     gpio_set_level(gpio_touch_led_pins[1], CURTAIN_OPEN);
+            // }
+        // }
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN) 
             if(index == 1){
                 if(device_info[1].device_state == CURTAIN_OPEN){
@@ -579,6 +638,7 @@ void pause_curtain_timer()
         if(timer3_running_flag){
             set_harware(index, is_toggle);
         }else{
+            timer3_running_flag = true;
             if(nuos_check_state_touch_leds()){
                 for(int i=0; i<TOTAL_ENDPOINTS; i++){
                     nuos_zb_set_leds_only(i, false);
@@ -587,7 +647,6 @@ void pause_curtain_timer()
                 set_harware(index, is_toggle);         
             }
         }
-       
         nuos_store_data_to_nvs(index);
     }
 
@@ -622,4 +681,42 @@ void pause_curtain_timer()
     void nuos_init_hardware_dimming_up_down(uint32_t io_num){
 
     }
+
+
+    #ifdef TUYA_ATTRIBUTES
+    void curtain_calibration_task(void* args) {
+        vTaskMode = TASK_CURTAIN_CAL_INIT;
+        gpio_set_level(gpio_touch_led_pins[1], 0);
+
+        while(bCalMode){
+            vTaskDelay(pdMS_TO_TICKS(10));
+            switch(vTaskMode){
+                case TASK_CURTAIN_CAL_INIT:
+                    //blink 1st LED
+                    gpio_set_level(gpio_touch_led_pins[0], 1);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    gpio_set_level(gpio_touch_led_pins[0], 0);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+
+                break;
+
+                case TASK_CURTAIN_CAL_START:
+                    //blink 2nd LED
+                    gpio_set_level(gpio_touch_led_pins[1], 1);
+                    vTaskDelay(pdMS_TO_TICKS(100));
+                    gpio_set_level(gpio_touch_led_pins[1], 0);
+                    vTaskDelay(pdMS_TO_TICKS(100));                
+                break;
+                case TASK_CURTAIN_CAL_END:
+                    //exit from cal mode
+                    bCalMode = false;
+                    gpio_set_level(gpio_touch_led_pins[1], 1);
+                break;
+                default:
+                break;
+            }
+        }
+        vTaskDelete(NULL);
+    }
+    #endif
  #endif

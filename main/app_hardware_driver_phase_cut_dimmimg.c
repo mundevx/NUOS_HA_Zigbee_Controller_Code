@@ -1,5 +1,4 @@
-
- #include "app_hardware_driver.h"
+#include "app_hardware_driver.h"
  #include "app_zigbee_clusters.h"
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
     #include "esp_log.h"
@@ -19,414 +18,680 @@
 
     #define USE_NVS_STORE
 
-    #define LEDC_TIMER              		                    LEDC_TIMER_0
-    #define LEDC_MODE               		                    LEDC_LOW_SPEED_MODE
-
-    #define LEDC_DUTY_RES          		 	                    LEDC_TIMER_8_BIT // Set duty resolution to 13 bits
-    #define LEDC_DUTY               		                    100      // Set duty to 50%. ((2 ** 8) - 1) * 50% = 4095
-    #define LEDC_MAX_DUTY           		                    254     //8191
-    #define LEDC_FREQUENCY                                      (1000) // Frequency in Hz (5 kHz)
-    #define LEDC_FADE_TIME                                      (500) // Fade time in milliseconds (1 second)
-
-
-    uint8_t pwm_channels[TOTAL_ENDPOINTS]                       = { LEDC_CHANNEL_0, LEDC_CHANNEL_1 };
-    int LEDC_TIMER_T[TOTAL_ENDPOINTS]                           = { LEDC_TIMER_0, LEDC_TIMER_0};    
-
-
-    #if (CHIP_INFO == USE_ESP32C6)
-        #define START_LED_INDEX                                         1
-    #elif(CHIP_INFO == USE_ESP32C6_MINI1)      
-        #define START_LED_INDEX                                         1                      
-    #elif(CHIP_INFO == USE_ESP32H2)    
-        #define START_LED_INDEX                                         1
-    #elif(CHIP_INFO == USE_ESP32H2_MINI1) 
-        #define START_LED_INDEX                                         0   
-    #elif(CHIP_INFO == USE_ESP32H2_MINI1_V2) 
-        #define START_LED_INDEX                                         0                             
-    #elif(CHIP_INFO == USE_ESP32C6_MINI1_V2) 
-        #define START_LED_INDEX                                         0
-    #elif(CHIP_INFO == USE_ESP32H2_MINI1_V3) 
-        #define START_LED_INDEX                                         0                             
-    #elif(CHIP_INFO == USE_ESP32C6_MINI1_V3) 
-        #define START_LED_INDEX                                         0                                                                 
-    #endif
-
-    bool nuos_check_state_touch_leds();
-
+    
     bool is_init_done = false;
-    static bool state = false;
-    uint8_t level = 0;
-    // gpio_num_t gpio_total_init_pins[TOTAL_LEDS] = {0,0};
 
-    #define DEFAULT_BRIGHTNESS    50
-    // Dimming Parameters
-    const int MIN_DELAY = 50;   // 50μs delay for full brightness
-    const int MAX_DELAY = 9000; // 9000μs delay for minimum brightness (50Hz AC)
-    const int PULSE_WIDTH = 50; // 50μs triac trigger pulse width
 
-    uint8_t zigbee_level_to_percent(uint8_t level);
-    uint32_t brightness_to_delay(uint8_t brightness);
+    /*********************************************************************** */
+    
 
-    typedef struct {
-        int led_pin;
-        bool on;
-        uint8_t current_level;  // 0-100%
-        uint8_t target_level;
-        volatile uint32_t firing_delay;
-        esp_timer_handle_t triac_timer;
-        SemaphoreHandle_t mutex;
-    } light_channel_t;
 
-    light_channel_t light1 = {0};
-    light_channel_t light2 = {0};
 
-    void IRAM_ATTR triac_timer_cb1(void *arg) {
-        gpio_set_level(gpio_load_pins[0], 1);
-        esp_rom_delay_us(PULSE_WIDTH);
-        gpio_set_level(gpio_load_pins[0], 0);
+    // main.c - ESP-IDF port of the two-channel phase-cut dimmer with buttons and LED indicators
+// Target: ESP32-H2
+// Build: idf.py build
+
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "esp_err.h"
+#include "esp_timer.h"
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+#include "sdkconfig.h"
+
+static const char *TAG = "phase_cut_idf";
+
+/* ---------- User pins (change to match your board) ---------- */
+#define ZERO_CROSS_PIN   10
+#define TRIAC_PIN_1      2
+#define TRIAC_PIN_2      22
+#define BUTTON_PIN_1     0
+#define BUTTON_PIN_2     1
+#define LED_PIN_1        27
+#define LED_PIN_2        11
+
+/* ---------- Phase cut config ---------- */
+static const uint32_t AC_WAVE_MICROS = 9000U; // half-cycle microseconds ~50Hz
+static const uint32_t MIN_ENABLED_R = 5U;     // percent
+static const uint32_t MAX_R_CLAMP = 80U;      // percent
+static const uint32_t PULSE_WIDTH_US = 50U;   // triac gate pulse width
+
+/* ---------- Button/ramp config ---------- */
+// static const uint32_t DEBOUNCE_MS = 30U;
+// static const uint32_t LONG_PRESS_MS = 800U;
+// static const uint32_t RAMP_INTERVAL_MS = 120U;
+// static const float RAMP_STEP = 0.02f;
+static const float BRIGHTNESS_MIN = 0.05f;
+// static const float BRIGHTNESS_MAX = 1.0f;
+static const uint8_t LED_PWM_RESOLUTION = 8;  // 8-bit
+static const uint32_t LED_PWM_FREQ = 1000;    // 1kHz
+static const uint8_t DEFAULT_RESTORE_BRIGHTNESS_8BIT = 128U;
+
+/* ---------- LEDC (LEDC_LOW_SPEED_MODE for H2) ---------- */
+static const ledc_mode_t LEDC_MODE = LEDC_LOW_SPEED_MODE;
+static const ledc_timer_t LEDC_TIMER = LEDC_TIMER_0;
+static const ledc_channel_t LEDC_CH_1 = LEDC_CHANNEL_0;
+static const ledc_channel_t LEDC_CH_2 = LEDC_CHANNEL_1;
+
+/* ---------- State (shared) ---------- */
+static volatile bool zeroCrossingFlag = false;
+
+/* Channel 1 state */
+static volatile uint32_t delayForPulse_us_1 = AC_WAVE_MICROS;
+static int triacGpio1 = -1;
+static esp_timer_handle_t delayTimer1 = NULL;
+static esp_timer_handle_t clearTimer1 = NULL;
+static volatile bool stopped1 = true;
+static float currentBrightness1 = 0.0f; // 0..1
+// static bool logicalOn1 = false;
+static uint8_t last_brightness_1 = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+
+/* Channel 2 state */
+static volatile uint32_t delayForPulse_us_2 = AC_WAVE_MICROS;
+static int triacGpio2 = -1;
+static esp_timer_handle_t delayTimer2 = NULL;
+static esp_timer_handle_t clearTimer2 = NULL;
+static volatile bool stopped2 = true;
+static float currentBrightness2 = 0.0f;
+// static bool logicalOn2 = false;
+static uint8_t last_brightness_2 = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+
+/* Button structures (polled in a task) */
+typedef struct {
+    gpio_num_t pin;
+    bool active_low;
+    bool last_reading;
+    uint32_t last_bounce_ms;
+    uint32_t press_start_ms;
+    bool pressed;            // debounced state
+    bool long_press_active;
+    uint32_t last_ramp_ms;
+} button_t;
+
+static button_t btn1 = { .pin = BUTTON_PIN_1, .active_low = true, .last_reading = 1, .last_bounce_ms = 0, .press_start_ms = 0, .pressed = false, .long_press_active = false, .last_ramp_ms = 0 };
+static button_t btn2 = { .pin = BUTTON_PIN_2, .active_low = true, .last_reading = 1, .last_bounce_ms = 0, .press_start_ms = 0, .pressed = false, .long_press_active = false, .last_ramp_ms = 0 };
+
+/* LEDC last duty caches to avoid redundant writes */
+static int led_last_duty_ch1 = -1;
+static int led_last_duty_ch2 = -1;
+
+/* ---------- Helper prototypes ---------- */
+static void ledc_init_safe(void);
+static void ledc_write_safe(ledc_channel_t ch, uint8_t value8);
+static float map8bit_to_float(uint8_t v);
+static unsigned long brightness_to_delay_us(float r);
+static void set_period1(float r);
+static void set_period2(float r);
+static void stop_both(void);
+
+// simple clamp helper (replacement for Arduino constrain)
+static inline int clamp_i(int v, int lo, int hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
+
+
+/* ---------- esp_timer callbacks ---------- */
+static void delayTimerCb1(void *arg) {
+    // set triac gate
+    gpio_set_level(triacGpio1, 1);
+    if (clearTimer1) {
+        esp_timer_start_once(clearTimer1, PULSE_WIDTH_US);
+    }
+}
+static void clearTimerCb1(void *arg) {
+    gpio_set_level(triacGpio1, 0);
+}
+
+static void delayTimerCb2(void *arg) {
+    gpio_set_level(triacGpio2, 1);
+    if (clearTimer2) {
+        esp_timer_start_once(clearTimer2, PULSE_WIDTH_US);
+    }
+}
+static void clearTimerCb2(void *arg) {
+    gpio_set_level(triacGpio2, 0);
+}
+
+/* ---------- Zero-cross ISR ---------- */
+static void IRAM_ATTR zero_cross_isr(void* arg)
+{
+    zeroCrossingFlag = true;
+    // schedule timers only if channel enabled
+    if (!stopped1 && delayTimer1) {
+        // esp_timer_start_once is safe to call from ISR context
+        esp_timer_start_once(delayTimer1, delayForPulse_us_1);
+    }
+    if (!stopped2 && delayTimer2) {
+        esp_timer_start_once(delayTimer2, delayForPulse_us_2);
+    }
+}
+
+/* ---------- Brightness mapping ---------- */
+static float map8bit_to_float(uint8_t v) {
+    return (float)v / 255.0f;
+}
+
+static unsigned long brightness_to_delay_us(float r) {
+    if (r < 0.0f) r = 0.0f;
+    if (r > 1.0f) r = 1.0f;
+    if (r > ((float)MAX_R_CLAMP / 100.0f)) r = ((float)MAX_R_CLAMP / 100.0f);
+    const float gamma = 2.2f;
+    float corrected = powf(r, gamma);
+    unsigned long delay_us = (unsigned long)((1.0f - corrected) * AC_WAVE_MICROS);
+    if (delay_us > AC_WAVE_MICROS) delay_us = AC_WAVE_MICROS;
+    return delay_us;
+}
+
+/* ---------- Triac period setters ---------- */
+static void set_period1(float r) {
+    if (r < 0.0f) {
+        r = 0.0f;
+    }
+    if (r > 1.0f) {
+        r = 1.0f;
+    }
+    if (r < ((float)MIN_ENABLED_R / 100.0f) || !device_info[0].device_state) {
+        stopped1 = true;
+        if (delayTimer1) esp_timer_stop(delayTimer1);
+        if (clearTimer1) esp_timer_stop(clearTimer1);
+        gpio_set_level(triacGpio1, 0);
+        currentBrightness1 = 0.0f;
+        return;
+    } else {
+        stopped1 = false;
+    }
+    unsigned long delay_us = brightness_to_delay_us(r);
+    delayForPulse_us_1 = delay_us;
+    currentBrightness1 = r;
+}
+
+static void set_period2(float r) {
+    if (r < 0.0f) {
+        r = 0.0f;
+    }
+    if (r > 1.0f) {
+        r = 1.0f;
+    }
+    if (r < ((float)MIN_ENABLED_R / 100.0f) || !device_info[1].device_state) {
+        stopped2 = true;
+        if (delayTimer2) esp_timer_stop(delayTimer2);
+        if (clearTimer2) esp_timer_stop(clearTimer2);
+        gpio_set_level(triacGpio2, 0);
+        currentBrightness2 = 0.0f;
+        return;
+    } else {
+        stopped2 = false;
+    }
+    unsigned long delay_us = brightness_to_delay_us(r);
+    delayForPulse_us_2 = delay_us;
+    currentBrightness2 = r;
+}
+
+static void __attribute__((unused))  stop_both(void) {
+    stopped1 = true; stopped2 = true;
+    if (delayTimer1) esp_timer_stop(delayTimer1);
+    if (clearTimer1) esp_timer_stop(clearTimer1);
+    if (delayTimer2) esp_timer_stop(delayTimer2);
+    if (clearTimer2) esp_timer_stop(clearTimer2);
+    gpio_set_level(triacGpio1, 0);
+    gpio_set_level(triacGpio2, 0);
+}
+
+/* ---------- LEDC helpers (safe write) ---------- */
+static void ledc_init_safe(void)
+{
+    ledc_timer_config_t timer_conf = {
+        .speed_mode = LEDC_MODE,
+        .duty_resolution = (ledc_timer_bit_t)LED_PWM_RESOLUTION,
+        .timer_num = LEDC_TIMER,
+        .freq_hz = LED_PWM_FREQ,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&timer_conf));
+
+    ledc_channel_config_t ch1 = {
+        .gpio_num = LED_PIN_1,
+        .speed_mode = LEDC_MODE,
+        .channel = LEDC_CH_1,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER,
+        .duty = 0,
+        .hpoint = 0
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ch1));
+
+    ledc_channel_config_t ch2 = {
+        .gpio_num = LED_PIN_2,
+        .speed_mode = LEDC_MODE,
+        .channel = LEDC_CH_2,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER,
+        .duty = 0,
+        .hpoint = 0
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ch2));
+
+    led_last_duty_ch1 = -1;
+    led_last_duty_ch2 = -1;
+}
+
+static void ledc_write_safe(ledc_channel_t ch, uint8_t value8)
+{
+    uint32_t maxduty = ((1u << LED_PWM_RESOLUTION) - 1u);
+    uint32_t duty_scaled = (value8 * maxduty + 127) / 255; // rounded
+
+    int *cache = NULL;
+    if (ch == LEDC_CH_1) cache = &led_last_duty_ch1;
+    else if (ch == LEDC_CH_2) cache = &led_last_duty_ch2;
+
+    if (cache != NULL) {
+        if ((int)duty_scaled == *cache) return;
+        *cache = (int)duty_scaled;
     }
 
-    void IRAM_ATTR triac_timer_cb2(void *arg) {
-        gpio_set_level(gpio_load_pins[1], 1);
-        esp_rom_delay_us(PULSE_WIDTH);
-        gpio_set_level(gpio_load_pins[1], 0);
-    }
+    // set + update
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, ch, duty_scaled));
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, ch));
+}
 
-    #define DIMMING_STEPS 5  // Step size for fading (adjust as needed)
-
-    uint8_t increase_level(uint8_t level) {
-        // Increase level by DIMMING_STEPS, but don't exceed maximum brightness
-        if (level + DIMMING_STEPS > MAX_DIM_LEVEL_VALUE) {
-            return MAX_DIM_LEVEL_VALUE;
-        }
-        return level + DIMMING_STEPS;
-    }
-
-    uint8_t decrease_level(uint8_t level) {
-        // Decrease level by DIMMING_STEPS, but don't go below minimum
-        if (level < DIMMING_STEPS) {
-            return 0;
-        }
-        return level - DIMMING_STEPS;
-    }
-
-    void update_led(int led_pin, uint8_t current_level, bool on) {
-        if (!is_init_done) return;
-        
-        // Find the PWM channel index for this LED pin
-        int pwm_index = -1;
-        for (int i = 0; i < TOTAL_LEDS; i++) {
-            if (gpio_touch_led_pins[i] == led_pin) {
-                pwm_index = i;
-                break;
-            }
-        }
-        if (pwm_index < 0) return;  // Pin not found
-        
-        if (!on || current_level == 0) {
-            // Turn off LED completely
-            ledc_set_duty(LEDC_MODE, pwm_channels[pwm_index], 0);
-            ledc_update_duty(LEDC_MODE, pwm_channels[pwm_index]);
+/* ---------- External APIs ---------- */
+/* set_brightness(channel, value8) channel: 0=both,1,2 ; value: 0..255
+   semantics: value==0 -> turn off channel (logicalOn=false) but store last_brightness
+*/
+void set_brightness(uint8_t channel, uint8_t value)
+{
+    if (channel > 2) return;
+    if (channel == 1 || channel == 0) {
+        last_brightness_1 = value;
+        float mapped = map8bit_to_float(value);
+        printf("mapped:%.2f\n", mapped);
+        if (value == 0) {
+            // device_info[0].device_state = false;
+            currentBrightness1 = 0.0f;
+            set_period1(0.0f);
+            ledc_write_safe(LEDC_CH_1, 0);
         } else {
-            // Convert percentage to PWM duty cycle
-            uint32_t duty = (current_level * LEDC_MAX_DUTY) / 100;
-            // Set immediately without fading
-            ledc_set_duty(LEDC_MODE, pwm_channels[pwm_index], duty);
-            ledc_update_duty(LEDC_MODE, pwm_channels[pwm_index]);
+            currentBrightness1 = mapped;
+            // if (device_info[0].device_state) {
+                float apply = mapped;
+                if (apply < BRIGHTNESS_MIN) apply = BRIGHTNESS_MIN;
+                set_period1(apply);
+                int v = (int) roundf(apply * 255.0f);
+                v = clamp_i(v, 0, 255);
+                ledc_write_safe(LEDC_CH_1, (uint8_t)v);
+            // } else {
+            //      ledc_write_safe(LEDC_CH_1, 0);
+            // }
         }
     }
-    void update_light_channel(light_channel_t *light) {
-        xSemaphoreTake(light->mutex, portMAX_DELAY);
-        
-        if (!light->on && light->current_level > 0) {
-            // Fade out
-            light->current_level = decrease_level(light->current_level);
-        } else if (light->on && light->current_level < light->target_level) {
-            // Fade in
-            light->current_level = increase_level(light->current_level);
-        }
-        
-        // Update hardware
-        uint32_t delay = brightness_to_delay(light->current_level);
-        // portENTER_CRITICAL(&light->spinlock);
-        light->firing_delay = delay;
-        // portEXIT_CRITICAL(&light->spinlock);
-        
-        // Update LED indicator
-        update_led(light->led_pin, light->current_level, light->on);
-        
-        xSemaphoreGive(light->mutex);
-    }
-    void dimming_task(void *arg) {
-        while (1) {
-            update_light_channel(&light1);
-            update_light_channel(&light2);
-            vTaskDelay(10 / portTICK_PERIOD_MS);
+    if (channel == 2 || channel == 0) {
+        last_brightness_2 = value;
+        float mapped = map8bit_to_float(value);
+        if (value == 0) {
+            //device_info[1].device_state = false;
+            currentBrightness2 = 0.0f;
+            set_period2(0.0f);
+            ledc_write_safe(LEDC_CH_2, 0);
+        } else {
+            currentBrightness2 = mapped;
+            // if (device_info[1].device_state) {
+                float apply = mapped;
+                if (apply < BRIGHTNESS_MIN) apply = BRIGHTNESS_MIN;
+                set_period2(apply);
+                int v = (int) roundf(apply * 255.0f);
+                v = clamp_i(v, 0, 255);
+                ledc_write_safe(LEDC_CH_2, (uint8_t)v);
+            // } else {
+            //      ledc_write_safe(LEDC_CH_2, 0);
+            // }
         }
     }
-    uint32_t brightness_to_delay(uint8_t brightness) {
-        if (brightness <= 5) return MAX_DELAY;
-        if (brightness >= 100) return MIN_DELAY;
-        
-        // Exponential curve calculation
-        float factor = (100.0 - brightness) / 100.0;
-        return MIN_DELAY + (uint32_t)((MAX_DELAY - MIN_DELAY) * pow(factor, 2.5));
-    }
+}
 
-    void handle_onoff(light_channel_t *light, bool on) {
-        xSemaphoreTake(light->mutex, portMAX_DELAY);
-        
+static bool state_change_1 = false, state_change_2 = false;
+/* set_onoff(channel, on) - restore last_brightness when turning on */
+void set_onoff(uint8_t channel, bool on)
+{
+    if (channel > 2) return;
+    if (channel == 1 || channel == 0) {
+        //device_info[0].device_state = true;
         if (on) {
-            // Turn on - restore to last level
-            light->on = true;
-            light->target_level = light->current_level > 0 ? 
-                                light->current_level : DEFAULT_BRIGHTNESS;
+            if(last_brightness_1 != device_info[0].device_level || state_change_1){
+                last_brightness_1 = device_info[0].device_level;   
+                state_change_1 = false;         
+                uint8_t v = device_info[0].device_level; //last_brightness_1;
+                if (v == 0) v = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+                float mapped = map8bit_to_float(v);
+                if (mapped < BRIGHTNESS_MIN) mapped = BRIGHTNESS_MIN;
+                currentBrightness1 = mapped;
+                set_period1(mapped);
+                int v4 = (int) roundf(mapped * 255.0f);
+                v4 = clamp_i(v4, 0, 255);
+                ledc_write_safe(LEDC_CH_1, (uint8_t)v4);
+            }
         } else {
-            // Turn off
-            light->on = false;
-            light->target_level = 0;
+            state_change_1 = true;
+            set_period1(0.0f);
+            ledc_write_safe(LEDC_CH_1, 0);
         }
-        
-        xSemaphoreGive(light->mutex);
     }
-
-    void handle_level(light_channel_t *light, uint8_t zigbee_level) {
-        xSemaphoreTake(light->mutex, portMAX_DELAY);
-        
-        // Convert Zigbee level (0-254) to percentage (0-100)
-        uint8_t level_percent = zigbee_level_to_percent(zigbee_level);
-        
-        if (level_percent == 0) {
-            light->on = false;
+    if (channel == 2 || channel == 0) {
+        //device_info[1].device_state = true;
+        if (on) {
+            if(last_brightness_2 != device_info[1].device_level || state_change_2){
+                last_brightness_2 = device_info[1].device_level;
+                state_change_2 = false;
+                uint8_t v = device_info[1].device_level; //last_brightness_2;
+                if (v == 0) v = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+                float mapped = map8bit_to_float(v);
+                if (mapped < BRIGHTNESS_MIN) mapped = BRIGHTNESS_MIN;
+                currentBrightness2 = mapped;
+                set_period2(mapped);
+                int v1 = (int) roundf(mapped * 255.0f);
+                v1 = clamp_i(v1, 0, 255);
+                ledc_write_safe(LEDC_CH_2, (uint8_t)v1);
+            }
         } else {
-            light->on = true;
-            light->target_level = level_percent;
+            state_change_2 = true;
+            set_period2(0.0f);
+            ledc_write_safe(LEDC_CH_2, 0);
         }
-        
-        xSemaphoreGive(light->mutex);
     }
-
-    uint8_t zigbee_level_to_percent(uint8_t level) {
-        if (level == 0) return 0;
-        return (uint8_t)((level * 100) / 254);
 }
 
-    void light_init(light_channel_t *light, gpio_num_t triac_pin, gpio_num_t led_pin) {
-        // Hardware init
-        gpio_set_direction(triac_pin, GPIO_MODE_OUTPUT);
-        gpio_set_direction(led_pin, GPIO_MODE_OUTPUT);
-        light->led_pin = led_pin;
-        
-        // Timer init
-        esp_timer_create_args_t timer_cfg = {
-            .callback = (triac_pin == gpio_load_pins[0]) ? triac_timer_cb1 : triac_timer_cb2,
-            .name = "triac_timer"
-        };
-        esp_timer_create(&timer_cfg, &light->triac_timer);
-        
-        // Sync objects
-        light->mutex = xSemaphoreCreateMutex();
-        // light->spinlock = portMUX_INITIALIZER_UNLOCKED;
-        
-        // Default state
-        light->on = false;
-        light->current_level = 0;
-        light->target_level = DEFAULT_BRIGHTNESS;
-        light->firing_delay = MAX_DELAY;
-    }
+// /* ---------- Button task ---------- */
+// static void button_task(void *arg)
+// {
+//     (void)arg;
+//     while (1) {
+//         uint32_t now = (uint32_t)(esp_timer_get_time() / 1000ULL); // ms
 
-    void IRAM_ATTR zero_crossing_isr(void *arg) {
-        // Channel 1
-        if (light1.current_level > 0) {
-            esp_timer_stop(light1.triac_timer);
-            esp_timer_start_once(light1.triac_timer, light1.firing_delay);
-        }
-        
-        // Channel 2
-        if (light2.current_level > 0) {
-            esp_timer_stop(light2.triac_timer);
-            esp_timer_start_once(light2.triac_timer, light2.firing_delay);
-        }
+//         // process single button
+//         button_t *b = &btn1;
+//         bool raw = gpio_get_level(b->pin);
+//         bool is_pressed_now = b->active_low ? (raw == 0) : (raw == 1);
+
+//         if (is_pressed_now != b->last_reading) {
+//             b->last_bounce_ms = now;
+//             b->last_reading = is_pressed_now;
+//         }
+
+//         if ((now - b->last_bounce_ms) > DEBOUNCE_MS) {
+//             if (is_pressed_now != b->pressed) {
+//                 b->pressed = is_pressed_now;
+//                 if (b->pressed) {
+//                     b->press_start_ms = now;
+//                     b->long_press_active = false;
+//                     b->last_ramp_ms = now;
+//                 } else {
+//                     uint32_t pressDuration = now - b->press_start_ms;
+//                     if (!b->long_press_active && pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS) {
+//                         // short press -> toggle channel 1
+//                         logicalOn1 = !logicalOn1;
+//                         if (!logicalOn1) {
+//                             set_period1(0.0f);
+//                             ledc_write_safe(LEDC_CH_1, 0);
+//                         } else {
+//                             uint8_t v = last_brightness_1;
+//                             if (v == 0) v = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+//                             float mapped = map8bit_to_float(v);
+//                             if (mapped < BRIGHTNESS_MIN) mapped = BRIGHTNESS_MIN;
+//                             currentBrightness1 = mapped;
+//                             set_period1(mapped);
+//                             int v2 = (int) roundf(mapped * 255.0f);
+//                             v2 = clamp_i(v2, 0, 255);
+//                             ledc_write_safe(LEDC_CH_1, (uint8_t)v);
+//                         }
+//                     }
+//                     b->long_press_active = false;
+//                 }
+//             } else {
+//                 if (b->pressed && !b->long_press_active) {
+//                     if ((now - b->press_start_ms) >= LONG_PRESS_MS) {
+//                         b->long_press_active = true;
+//                         logicalOn1 = true;
+//                         if (currentBrightness1 < BRIGHTNESS_MIN) currentBrightness1 = BRIGHTNESS_MIN;
+//                         //ledc_write_safe(LEDC_CH_1, (uint8_t)constrain(roundf(currentBrightness1*255.0f),0,255));
+//     int v = (int) roundf(currentBrightness1 * 255.0f);
+//     v = clamp_i(v, 0, 255);
+//     ledc_write_safe(LEDC_CH_1, (uint8_t)v);                        
+//                     }
+//                 } else if (b->pressed && b->long_press_active) {
+//                     if ((now - b->last_ramp_ms) >= RAMP_INTERVAL_MS) {
+//                         b->last_ramp_ms = now;
+//                         currentBrightness1 += RAMP_STEP;
+//                         if (currentBrightness1 > BRIGHTNESS_MAX) currentBrightness1 = BRIGHTNESS_MIN;
+//                         float apply = currentBrightness1;
+//                         if (apply < BRIGHTNESS_MIN) apply = BRIGHTNESS_MIN;
+//                         set_period1(apply);
+//                         //last_brightness_1 = (uint8_t)constrain(roundf(apply*255.0f),0,255);
+//     int v = (int) roundf(apply * 255.0f);
+//     last_brightness_1 = clamp_i(v, 0, 255);
+//     ledc_write_safe(LEDC_CH_1, last_brightness_1);                         
+//                         ledc_write_safe(LEDC_CH_1, last_brightness_1);
+//                     }
+//                 }
+//             }
+//         }
+
+//         // process second button (copy of above with channel 2)
+//         b = &btn2;
+//         raw = gpio_get_level(b->pin);
+//         is_pressed_now = b->active_low ? (raw == 0) : (raw == 1);
+
+//         if (is_pressed_now != b->last_reading) {
+//             b->last_bounce_ms = now;
+//             b->last_reading = is_pressed_now;
+//         }
+
+//         if ((now - b->last_bounce_ms) > DEBOUNCE_MS) {
+//             if (is_pressed_now != b->pressed) {
+//                 b->pressed = is_pressed_now;
+//                 if (b->pressed) {
+//                     b->press_start_ms = now;
+//                     b->long_press_active = false;
+//                     b->last_ramp_ms = now;
+//                 } else {
+//                     uint32_t pressDuration = now - b->press_start_ms;
+//                     if (!b->long_press_active && pressDuration >= DEBOUNCE_MS && pressDuration < LONG_PRESS_MS) {
+//                         // short press -> toggle channel 2
+//                         logicalOn2 = !logicalOn2;
+//                         if (!logicalOn2) {
+//                             set_period2(0.0f);
+//                             ledc_write_safe(LEDC_CH_2, 0);
+//                         } else {
+//                             uint8_t v = last_brightness_2;
+//                             if (v == 0) v = DEFAULT_RESTORE_BRIGHTNESS_8BIT;
+//                             float mapped = map8bit_to_float(v);
+//                             if (mapped < BRIGHTNESS_MIN) mapped = BRIGHTNESS_MIN;
+//                             currentBrightness2 = mapped;
+//                             set_period2(mapped);
+//                             int v5 = (int) roundf(mapped * 255.0f);
+//                             v5 = clamp_i(v5, 0, 255);
+//                             ledc_write_safe(LEDC_CH_2, (uint8_t)v5);
+//                         }
+//                     }
+//                     b->long_press_active = false;
+//                 }
+//             } else {
+//                 if (b->pressed && !b->long_press_active) {
+//                     if ((now - b->press_start_ms) >= LONG_PRESS_MS) {
+//                         b->long_press_active = true;
+//                         logicalOn2 = true;
+//                         if (currentBrightness2 < BRIGHTNESS_MIN) currentBrightness2 = BRIGHTNESS_MIN;
+//                         // ledc_write_safe(LEDC_CH_2, (uint8_t)constrain(roundf(currentBrightness2*255.0f),0,255));
+//     int v = (int) roundf(currentBrightness2 * 255.0f);
+//     v = clamp_i(v, 0, 255);
+//     ledc_write_safe(LEDC_CH_2, (uint8_t)v);                         
+//                     }
+//                 } else if (b->pressed && b->long_press_active) {
+//                     if ((now - b->last_ramp_ms) >= RAMP_INTERVAL_MS) {
+//                         b->last_ramp_ms = now;
+//                         currentBrightness2 += RAMP_STEP;
+//                         if (currentBrightness2 > BRIGHTNESS_MAX) currentBrightness2 = BRIGHTNESS_MIN;
+//                         float apply = currentBrightness2;
+//                         if (apply < BRIGHTNESS_MIN) apply = BRIGHTNESS_MIN;
+//                         set_period2(apply);
+//                         //last_brightness_2 = (uint8_t)constrain(roundf(apply*255.0f),0,255);
+//     int v = (int) roundf(apply * 255.0f);
+//     last_brightness_2 = clamp_i(v, 0, 255);
+//     ledc_write_safe(LEDC_CH_2, last_brightness_2);                          
+//                         // ledc_write_safe(LEDC_CH_2, last_brightness_2);
+//                     }
+//                 }
+//             }
+//         }
+
+//         vTaskDelay(pdMS_TO_TICKS(10));
+//     }
+// }
+
+/* ---------- Setup / Initialization ---------- */
+void init_phasecut(void)
+{
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    ESP_LOGI(TAG, "Starting phase-cut dimmer (ESP-IDF) ...");
+
+    // configure triac pins
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << TRIAC_PIN_1) | (1ULL << TRIAC_PIN_2),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    triacGpio1 = TRIAC_PIN_1;
+    triacGpio2 = TRIAC_PIN_2;
+    gpio_set_level(triacGpio1, 0);
+    gpio_set_level(triacGpio2, 0);
+
+    // configure zero-cross pin and ISR (RISING)
+    gpio_config_t zc_conf = {
+        .pin_bit_mask = (1ULL << ZERO_CROSS_PIN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_POSEDGE
+    };
+    ESP_ERROR_CHECK(gpio_config(&zc_conf));
+    // install ISR service
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ZERO_CROSS_PIN, zero_cross_isr, NULL));
+
+    // create esp_timers for triac pulses (one-shot)
+    esp_timer_create_args_t dt1 = {
+        .callback = &delayTimerCb1,
+        .arg = NULL,
+        .name = "triac_delay1"
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&dt1, &delayTimer1));
+    esp_timer_create_args_t ct1 = {
+        .callback = &clearTimerCb1,
+        .arg = NULL,
+        .name = "triac_clear1"
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&ct1, &clearTimer1));
+
+    esp_timer_create_args_t dt2 = {
+        .callback = &delayTimerCb2,
+        .arg = NULL,
+        .name = "triac_delay2"
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&dt2, &delayTimer2));
+    esp_timer_create_args_t ct2 = {
+        .callback = &clearTimerCb2,
+        .arg = NULL,
+        .name = "triac_clear2"
+    };
+    ESP_ERROR_CHECK(esp_timer_create(&ct2, &clearTimer2));
+
+    // // configure buttons as inputs with pullups
+    // gpio_config_t btn_conf = {
+    //     .pin_bit_mask = (1ULL << BUTTON_PIN_1) | (1ULL << BUTTON_PIN_2),
+    //     .mode = GPIO_MODE_INPUT,
+    //     .pull_up_en = GPIO_PULLUP_ENABLE,
+    //     .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    //     .intr_type = GPIO_INTR_DISABLE
+    // };
+    // ESP_ERROR_CHECK(gpio_config(&btn_conf));
+
+    // LEDC PWM init
+    ledc_init_safe();
+
+    // // start button task
+    // BaseType_t ok = xTaskCreate(button_task, "button_task", 4*1024, NULL, tskIDLE_PRIORITY + 1, NULL);
+    // if (ok != pdPASS) {
+    //     ESP_LOGE(TAG, "Failed to create button_task");
+    // }
+
+    // initial values: triacs off
+    // logicalOn1 = false;
+    // logicalOn2 = false;
+    currentBrightness1 = map8bit_to_float(device_info[0].device_level);
+    currentBrightness2 = map8bit_to_float(device_info[1].device_level);
+    set_period1(0.0f);
+    set_period2(0.0f);
+
+    ESP_LOGI(TAG, "Initialization complete.");
+    // app_main returns; FreeRTOS tasks keep running
 }
 
 
-    #ifdef USE_FADING
+/************************************************************************************ */
     void init_fading(){
 
-    } 
-    #endif 
-    void nuos_zb_init_hardware(){
-        // for(int i=0; i<TOTAL_LOADS; i++){
-        //     gpio_total_init_pins[i] = gpio_load_pins[i];
-        //     // gpio_set_drive_capability(gpio_load_pins[i], GPIO_DRIVE_CAP_3);
-        // }
-        // for(int j=0; j<TOTAL_LEDS; j++){
-        //     gpio_total_init_pins[j] = gpio_touch_led_pins[j];
-        //     // gpio_set_drive_capability(gpio_touch_led_pins[j], GPIO_DRIVE_CAP_3);
-        // }        
-        // Prepare and then apply the LEDC PWM timer configuration
-        ledc_timer_config_t ledc_timer = {
-            .speed_mode       = LEDC_MODE,
-            .timer_num        = LEDC_TIMER,
-            .duty_resolution  = LEDC_DUTY_RES,
-            .freq_hz          = LEDC_FREQUENCY,  // Set output frequency at 100Hz
-            .clk_cfg          = LEDC_AUTO_CLK
-        };
-        ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+    }
 
-        for(int index=0; index<TOTAL_LEDS; index++){
-            // Prepare and then apply the LEDC PWM channel configuration
-            ledc_channel_config_t ledc_channel = {
-                .speed_mode     = LEDC_MODE,
-                .channel        = pwm_channels[index],
-                .timer_sel      = LEDC_TIMER_T[index],
-                .intr_type      = LEDC_INTR_DISABLE,
-                .gpio_num       = gpio_touch_led_pins[index],
-                .duty           = level, // Set duty to 0%
-                .hpoint         = 0
-            };
-            ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
-        } 
-        #ifdef USE_FADING
-            init_fading();
-        #endif      
-        
-        // Initialize lights
-        light_init(&light1, gpio_load_pins[0], gpio_touch_led_pins[0]);
-        light_init(&light2, gpio_load_pins[1], gpio_touch_led_pins[1]);
-        
-        // Create tasks
-        xTaskCreate(dimming_task, "dimming_task", 4096, NULL, 8, NULL);        
+    void nuos_zb_init_hardware(){
+        init_phasecut();
         is_init_done = true;             
     }
 
 
     void nuos_on_off_led(uint8_t index, uint8_t _state){
         if(is_init_done){
-            if(index < TOTAL_LEDS){
-                if(_state)  {
-                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], LEDC_MAX_DUTY));
-                }else{
-                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], 0));
-                }            
-                ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-            }
+           set_onoff(index+1, _state);
         }
     }
 
+    static bool _state_ = false;
     void nuos_toggle_leds(uint8_t index){
-        state = !state;
-        if(state) level = LEDC_MAX_DUTY; 
-        else level = 0;         
-        nuos_on_off_led(index, state);
+        _state_ = !_state_;
+        set_onoff(index+1, _state_);
+
     }
 
-    void set_level_value(uint8_t _level){
-        level = _level;
-    }
+    // void set_level_value(uint8_t _level){
+    //     set_brightness(1, _level);
+    // }
 
     void nuos_zb_set_hardware_led_for_zb_commissioning(uint8_t is_toggle){
-        #ifdef USE_RGB_LED
-            nuos_toggle_rgb_led();
-        #else
-            // uint8_t _level = 0;
-            if(TOTAL_LEDS >= TOTAL_LEDS_SHOW_ON_COMMISSIONING){
-                if(is_toggle>0) {
-                    state = !state; 
-                    if(state) level = LEDC_MAX_DUTY; 
-                    else level = 0;
-                }
-                for(int index=TOTAL_LEDS-TOTAL_LEDS_SHOW_ON_COMMISSIONING; index<TOTAL_LEDS; index++){
-                    if(is_toggle==0) {
-                        state = device_info[index].device_state; 
-                        level = device_info[index].device_level;
-                    }
-                    if(is_init_done){
-                        nuos_on_off_led(index, state);
-                    }
-                }
-            }
-        #endif
+
     }
 
     void set_harware(uint8_t index, uint8_t is_toggle){
         if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
         if(is_init_done){
-            #ifdef USE_FADING
-                //xTaskCreate(nuos_set_hw_task, "nuos_set_hw_task", 4096, &index, 28, NULL); 
-                if(is_init_done){
-                    if(!device_info[index].device_state) {
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], level));
-                        // ledc_set_fade_time_and_start(LEDC_MODE, pwm_channels[index], 0, LEDC_FADE_TIME, LEDC_FADE_WAIT_DONE);  
-                        if(index == 0){
-                            light1.on = false;
-                            light1.target_level = 0;  
-                        }else if(index == 1){
-                            light2.on = false;
-                            light2.target_level = 0;
-                        }
-                    }else{
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level));
-                        // ledc_set_fade_time_and_start(LEDC_MODE, pwm_channels[index], device_info[index].device_level, LEDC_FADE_TIME, LEDC_FADE_WAIT_DONE);
-                        if(index == 0){
-                            // // Turn on - restore to last level
-                            // light1.on = true;
-                            // light1.target_level = light1.current_level > 0 ? 
-                            //                     light1.current_level : DEFAULT_BRIGHTNESS;
-
-
-                            // Convert Zigbee level (0-254) to percentage (0-100)
-                            uint8_t level_percent = zigbee_level_to_percent(device_info[index].device_level);
-                            
-                            if (level_percent == 0) {
-                                light1.on = false;
-                            } else {
-                                light1.on = true;
-                                light1.target_level = level_percent;
-                            }
-                        }else if(index == 1){
-                            // // Turn on - restore to last level
-                            // light2.on = true;
-                            // light2.target_level = light2.current_level > 0 ? 
-                            //                     light2.current_level : DEFAULT_BRIGHTNESS;
-
-
-                            // Convert Zigbee level (0-254) to percentage (0-100)
-                            uint8_t level_percent = zigbee_level_to_percent(device_info[index].device_level);
-                            
-                            if (level_percent == 0) {
-                                light2.on = false;
-                            } else {
-                                light2.on = true;
-                                light2.target_level = level_percent;
-                            }
-                        }
-        
-
-                    } 
-                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));                    
-                }
-            #else
+            
                 if(!device_info[index].device_state){
-                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], 0));
-                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], 0));
-                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
+                    set_onoff(index+1, false);
+                    //set_brightness(uint8_t channel, uint8_t value)
                 }else{
-                    if(device_info[index].device_level >= MIN_DIM_LEVEL_VALUE){
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level));
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level));
-                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-                    }else{
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], MIN_DIM_LEVEL_VALUE));
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], MIN_DIM_LEVEL_VALUE));
-                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));                   
-                    }
+                    // if(device_info[index].device_level >= MIN_DIM_LEVEL_VALUE){
+                        set_onoff(index+1, true);
+                    // }else{
+                    //     set_onoff(index+1, false);
+                    // }
                 }
-                
-            #endif  
+
         }
         
         #ifdef USE_RGB_LED
@@ -436,21 +701,21 @@
 
     void set_leds(int i, bool state){
         if(is_init_done){
-            if(i == 0){
-                if(gpio_touch_led_pins[0] == gpio_load_pins[0]){
-                    if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[i].device_level));
-                    else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], 0));
-                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
-                }else{
-                    if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], device_info[i].device_level));
-                    else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
-                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
-                }
-            }else{
-                if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], device_info[i].device_level));
-                else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
-                ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
-            }
+            // if(i == 0){
+            //     if(gpio_touch_led_pins[0] == gpio_load_pins[0]){
+            //         if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[i].device_level));
+            //         else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], 0));
+            //         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
+            //     }else{
+            //         if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], device_info[i].device_level));
+            //         else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
+            //         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
+            //     }
+            // }else{
+            //     if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], device_info[i].device_level));
+            //     else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
+            //     ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
+            // }
         }
     }
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
@@ -460,14 +725,14 @@
             //toggle pins on button press
             set_harware(index, is_toggle);
         }else{
-            if(nuos_check_state_touch_leds()){
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    set_leds(i, device_info[i].device_state);                       
-                }
-            }else{
-                //toggle pins on button press
+            // if(nuos_check_state_touch_leds()){
+            //     for(int i=0; i<TOTAL_LEDS; i++){
+            //         set_leds(i, device_info[i].device_state);                       
+            //     }
+            // }else{
+            //     //toggle pins on button press
                 set_harware(index, is_toggle);               
-            }
+            // }
         }
 
         #ifdef USE_NVS_STORE          
@@ -481,18 +746,18 @@
         }
     }
 
-    bool nuos_check_state_touch_leds(){
-        bool getting_on_state = false;
-        if(touchLedsOffAfter1MinuteEnable){
-            for(int i=0; i<TOTAL_LEDS; i++){
-                if(device_info[i].device_state){
-                    getting_on_state = true;
+    // bool nuos_check_state_touch_leds(){
+    //     bool getting_on_state = false;
+    //     if(touchLedsOffAfter1MinuteEnable){
+    //         for(int i=0; i<TOTAL_LEDS; i++){
+    //             if(device_info[i].device_state){
+    //                 getting_on_state = true;
                     
-                }
-            }
-        }
-        return getting_on_state;
-    }
+    //             }
+    //         }
+    //     }
+    //     return getting_on_state;
+    // }
 
     void nuos_init_hardware_dimming_up_down(uint32_t pin){
         uint8_t index = nuos_get_button_press_index(pin);
@@ -509,28 +774,12 @@
 
     void set_load(uint8_t index, uint8_t value){
         if(is_init_done){
-            ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], value));           
-            ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index])); 
-
-            // ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], value)); 
-            // ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-            uint8_t level_percent = zigbee_level_to_percent(value);
-            if(index == 1){
-            
-            light1.on = true;
-            light1.target_level = level_percent;                
-            }else{
-            
-            light2.on = true;
-            light2.target_level = level_percent;
-
-            }
-
-
+            // set_onoff(index+1, false);
+            set_brightness(index+1, value);
         }
-        #ifdef USE_NVS_STORE 
-        nuos_store_data_to_nvs(index);
-        #endif        
+        // #ifdef USE_NVS_STORE 
+        // nuos_store_data_to_nvs(index);
+        // #endif        
     }
 
     bool nuos_set_hardware_brightness(uint32_t pin){
@@ -558,7 +807,7 @@
                 }
                 if(level_backup[index] != device_info[index].device_level){
                     level_backup[index] = device_info[index].device_level;
-                    printf("Set state:%d, Load:%d\n", device_info[index].device_state, level_backup[index]);
+                    //printf("Set state:%d, Load:%d\n", device_info[index].device_state, level_backup[index]);
                     set_load(index, device_info[index].device_level);
                 }             
             }
@@ -566,4 +815,3 @@
         return false;
     }
 #endif
-

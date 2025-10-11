@@ -66,7 +66,7 @@
     #define TASK_PRIORITY_ATTR                                      18
     #define TASK_PRIORITY_PRIVILEGE                                 21
     #define TASK_PRIORITY_IR_BLASTER_SEND                           21
-    #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           24
+    #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           20
 
     #define TASK_PRIORITY_IDENTIFY                                  22
     #define TASK_PRIORITY_ZB_FIND_NODES                             32
@@ -75,7 +75,7 @@
     #define TASK_PRIORITY_ZB_UNBIND_NODES                           30
 
     // z10. dali6 4 group,cct, rgbcw, //2mode scene
-    #define TASK_STACK_SIZE_ZIGBEE                                  8192
+    #define TASK_STACK_SIZE_ZIGBEE                                  12000//8192
     #define TASK_STACK_SIZE_SWITCH                                  4096
     #define TASK_STACK_SIZE_RGB                                     2048
     #define TASK_STACK_SIZE_WDT                                     2048 
@@ -105,7 +105,7 @@
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT  
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254
-        //#define CHANGE_LOAD_PIN
+        //#define CHANGE_LOAD_PIN                                    /*disable for Triac and enable for Relay*/
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       2
@@ -120,7 +120,7 @@
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254        
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
-        //#define CHANGE_LOAD_PIN
+        #define CHANGE_LOAD_PIN                                   /*disable for Triac and enable for Relay */  
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       4
@@ -152,22 +152,23 @@
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
         #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5 //USE_ESP32H2_MINI1_V5
+        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
             #define USE_WIFI_WEBSERVER
            
-            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //change this value
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    2 //change this value
 
             #define TIME_PERIOD_IN_MS                                   100
             #define TIME_COUNTS_FOR_1_SEC                               (1000/TIME_PERIOD_IN_MS)
 
             #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
-            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        120// 600
             #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
         
             #define ESP_WIFI_SSID      				                    "NUOS CURTAIN CONTROLLER"
             #define ESP_WIFI_PASS      				                    "NUOS1234"
         #endif  
-
+        #endif
         #ifndef DONT_USE_ZIGBEE
         #define USE_RGB_LED
         #endif  

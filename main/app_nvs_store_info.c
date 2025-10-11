@@ -369,8 +369,12 @@ void nuos_write_default_value(){
         device_info[index].device_state = 1;
         device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
         #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+        
+        #else
 		device_info[index].light_color_x = 0x2300;
 		device_info[index].light_color_y = 0x9100;
+        #endif
         device_info[index].dim_up = 1;
         #endif
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
@@ -418,8 +422,11 @@ void write_nvs_configuration(){
         device_info[index].device_state = 1;
         device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
         #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+        #else
 		device_info[index].light_color_x = 0;
 		device_info[index].light_color_y = 0;
+        #endif
         device_info[index].dim_up = 1;
         #endif
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
@@ -614,73 +621,6 @@ void nuos_store_dali_data_to_nvs(uint8_t index){
 #define NVS_KEY_CALIBRATION "calibration_time"
 
 
-// // Function to save settings to NVS
-// esp_err_t save_curtain_settings_to_nvs(uint32_t offset, uint32_t calibration) {
-//     esp_err_t err;
-//     #ifdef USE_NVS_INIT
-//     // Open NVS handle
-//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-//     if (err != ESP_OK) {
-//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-//         return;
-//     }
-//     #endif
-
-//     err = nvs_set_u32(my_handle, NVS_KEY_OFFSET, offset);
-//     if (err != ESP_OK) {
-//         #ifdef USE_NVS_INIT
-//         // Close NVS handle
-//         nvs_close(my_handle);
-//         #endif
-//         return err;
-//     }
-    
-//     err = nvs_set_u32(my_handle, NVS_KEY_CALIBRATION, calibration);
-//     if (err != ESP_OK) {
-//         #ifdef USE_NVS_INIT
-//         // Close NVS handle
-//         nvs_close(my_handle);
-//         #endif
-//         return err;
-//     }
-    
-//     err = nvs_commit(my_handle);
-//     #ifdef USE_NVS_INIT
-//     // Close NVS handle
-//     nvs_close(my_handle);
-//     #endif
-//     return err;
-// }
-
-// // Function to load settings from NVS
-// esp_err_t load_curtain_settings_from_nvs() {
-//     esp_err_t err;
-//     #ifdef USE_NVS_INIT
-//     // Open NVS handle
-//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-//     if (err != ESP_OK) {
-//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-//         return;
-//     }
-//     #endif
-    
-//     err = nvs_get_u32(my_handle, NVS_KEY_OFFSET, &offset_time);
-//     if (err != ESP_OK) {
-//         offset_time = DEFAULT_OFFSET_TIME;
-//     }
-    
-//     err = nvs_get_u32(my_handle, NVS_KEY_CALIBRATION, &curtain_cal_time);
-//     if (err != ESP_OK) {
-//         curtain_cal_time = DEFAULT_CALIBRATION_TIME;
-//     }
-    
-//     #ifdef USE_NVS_INIT
-//     // Close NVS handle
-//     nvs_close(my_handle);
-//     #endif
-//     return ESP_OK;
-// }
-
 #endif
 
 void save_nodes_info_to_nvs(uint8_t index) {
@@ -793,47 +733,6 @@ size_t load_nodes_info_from_nvs(uint8_t index) {
     printf("Loaded scene %u with %u records.\n", index, existing_nodes_info[index].scene_switch_info.total_records);
     return existing_nodes_info[index].scene_switch_info.total_records;
 }
-
-// size_t load_nodes_info_from_nvs12(uint8_t index) {
-//     esp_err_t err;
-//     #ifdef USE_NVS_INIT
-//     // Open NVS handle
-//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READONLY, &my_handle);
-//     if (err != ESP_OK) {
-//         printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-//         return 0;
-//     }
-//     #endif
-//     // Generate unique key based on index
-//     char key[16];
-//     snprintf(key, sizeof(key), "scene_%d", index);
-
-//     size_t required_size = sizeof(stt_scene_switch_t);
-
-//     // Try to get the blob from NVS
-//     err = nvs_get_blob(my_handle, key, &existing_nodes_info[index], &required_size);
-//     if (err == ESP_OK) {
-//         printf("Scene switch %u read from NVS successfully.\n", index);
-//     } else if (err == ESP_ERR_NVS_NOT_FOUND) {
-//         printf("Scene switch %u not found in NVS.\n", index);
-//         #ifdef USE_NVS_INIT
-//         nvs_close(my_handle);
-//         #endif
-//         return 0;  // Key not found, return 0 records
-//     } else {
-//         printf("Error reading scene switch %u from NVS: %s\n", index, esp_err_to_name(err));
-//         #ifdef USE_NVS_INIT
-//         nvs_close(my_handle);
-//         #endif
-//         return 0;
-//     }
-//     #ifdef USE_NVS_INIT
-//     // Close NVS handle
-//     nvs_close(my_handle);
-//     #endif
-//     printf("TOTAL_RECORDS: %d\n", existing_nodes_info[index].scene_switch_info.total_records);
-//     return existing_nodes_info[index].scene_switch_info.total_records;
-// }
 
 
 size_t store_new_nodes(void* n_node, uint8_t index) {
@@ -1236,7 +1135,9 @@ void nuos_get_data_from_nvs() {
                 }
             #endif
         #else
+            #ifdef USE_WIFI_WEBSERVER
             nuos_read_wifi_info_data_from_nvs();
+            #endif
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             dali_on_webpage_commissioning_counts = getNVSDaliNodesCommissioningCounts();
             
@@ -1360,12 +1261,22 @@ void nuos_get_data_from_nvs() {
         printf("fan_speed           : %d\n", device_info[index].fan_speed);
         printf("device_va           : %d\n", device_info[index].device_val);
         #elif (USE_ZIGBE_DEVICE_CATEGORY == CATEGORY_ZIGBEE_CURTAIN) 
-            printf("device_level        : %d\n", device_info[index].device_level);
+            printf("curtain_percentage        : %d\n", device_info[index].device_level);
             if(device_info[index].device_level > 100){
                 device_info[index].device_level = 100;
             }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-            last_cmd_id = device_info[index].fan_speed;
+            printf("curtain_motor_start_offset        : %d\n", device_info[index].curtain_motor_start_offset);
+            if(device_info[index].curtain_motor_start_offset > 1000){
+                device_info[index].curtain_motor_start_offset = 0;
+            }
+            
+            printf("curtain_motor_total_time        : %d\n", device_info[index].curtain_motor_total_time);
+            if(device_info[index].curtain_motor_total_time > 120){
+                device_info[index].curtain_motor_total_time = 0;
+            }      
+            if(device_info[index].curtain_state > 2) {
+                device_info[index].curtain_state = 2; //stop
+            }                
         #elif (USE_ZIGBE_DEVICE_CATEGORY == CATEGORY_ZIGBEE_THERMOSTAT)
         printf("ac_mode             : %d\n", device_info[index].ac_mode);
         printf("ac_decode_type      : %d\n", device_info[index].ac_decode_type);

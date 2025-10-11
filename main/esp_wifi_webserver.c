@@ -473,22 +473,22 @@ void parse_json(const char *json_string) {
                 return;
             } 
             // Convert seconds to milliseconds
-            device_info[0].ac_mode = (uint8_t)(offset_json->valueint/10);
+            device_info[0].curtain_motor_start_offset = (uint8_t)(offset_json->valueint/10);
             
             ESP_LOGI(TAG, "Curtain offset set via JSON: %ds (%.1fms)", 
-                        device_info[0].ac_mode, offset_json->valueint);
+                        device_info[0].curtain_motor_start_offset, offset_json->valueint);
  
             calibration_json = cJSON_GetObjectItem(root, "calibration");
             if (calibration_json == NULL) {
                 printf("Missing JSON keys index\n");
                 cJSON_Delete(root);
                 return;
-            }             
+            }             //12000/100
             // Convert seconds to milliseconds
-            device_info[0].device_val = (uint32_t)(calibration_json->valueint/100);
+            device_info[0].curtain_motor_total_time = (uint32_t)(calibration_json->valueint/1000);
             
             ESP_LOGI(TAG, "Curtain calibration set via JSON: %ds (%dms)", 
-                        device_info[0].device_val, (int)calibration_json->valueint);
+                        device_info[0].curtain_motor_total_time, (int)calibration_json->valueint);
             nuos_store_data_to_nvs(0);            
             break;
 
@@ -939,8 +939,6 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
 }
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-
-
 // Modify your http_get_handler to serve the embedded HTML
 esp_err_t http_get_handler(httpd_req_t *req) {
     // Add these external declarations for the embedded HTML
@@ -949,8 +947,10 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     // Calculate HTML size from embedded binary
     size_t html_size = index_html_end - index_html_start;
     
-    httpd_resp_set_type(req, "text/html");
-    return httpd_resp_send(req, index_html_start, html_size);
+    // Set proper UTF-8 headers
+    httpd_resp_set_type(req, "text/html; charset=utf-8");
+    httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
+    return httpd_resp_send(req,  (const char*)index_html_start, html_size);
 }
 #else
 esp_err_t http_get_handler(httpd_req_t *req) {
@@ -1183,19 +1183,18 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                 }
             }
         }
-
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
-        
         return ESP_OK;
     }
 #endif
+
 // Handler for curtain values API - now using /items endpoint
 esp_err_t curtain_values_get_handler(httpd_req_t *req) {
     char json_response[100];
 
     snprintf(json_response, sizeof(json_response), 
              "{\"offset\":%d,\"calibration\":%d}", 
-             device_info[0].ac_mode*10, device_info[0].device_val*100);
+             device_info[0].curtain_motor_start_offset*10, device_info[0].curtain_motor_total_time*1000);
     
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_send(req, json_response, strlen(json_response));

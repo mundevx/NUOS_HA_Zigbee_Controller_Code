@@ -59,10 +59,17 @@
         bool color_or_fan_state;
         bool dim_up;
         bool level_up; 
+        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+        uint16_t curtain_motor_start_offset;
+        uint16_t curtain_motor_total_time;
+        uint8_t curtain_state;
+        #else
         uint16_t light_color_x;
         uint16_t light_color_y;
-        //ac IR
         uint8_t ac_mode;
+        #endif
+        //ac IR
+        
         int8_t ac_decode_type;
         uint8_t ac_temperature; 
         //fan
@@ -1424,10 +1431,12 @@ extern void xy_to_rgb(unsigned int x, unsigned int y, double *r, double *g, doub
 extern void nuos_set_level_to_rgb(uint8_t index);
 extern void nuos_zb_set_scene_switch_click(uint32_t io_num, uint8_t state);
 extern void nuos_zb_convert_xy_to_rgb(uint8_t index, float red_f, float blue_f, float green_f);
-
+extern void nuos_zb_set_leds_only(uint8_t index, uint8_t is_toggle);
 extern void pause_curtain_timer();
 extern void resume_curtain_timer(uint8_t index);
 extern void curtain_cmd_open(void);
 extern void curtain_cmd_close(void);
 extern void curtain_cmd_stop(void);
 extern int curtain_cmd_goto_pct(uint8_t pct) ;
+extern void set_curtain_percentage(uint8_t value, bool set_hw_flag);
+extern void set_curtain_load(uint8_t cur_mode);

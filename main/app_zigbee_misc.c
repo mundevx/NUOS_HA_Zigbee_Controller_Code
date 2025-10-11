@@ -910,52 +910,6 @@ static void rgb_task(void *pvParameters){
     }   
 }
 
-/////////////////////////////////////////////////
-// typedef struct {
-//     uint32_t toggle_interval_ms;
-// } rgb_task_params_t;
-
-// static void rgb_task(void *pvParameters) {
-//     rgb_task_params_t *params = (rgb_task_params_t *)pvParameters;
-//     bool led_state = false;
-
-//     while (1) {
-//         led_state = !led_state;
-//         light_driver_set_power(led_state ? 1 : 0);
-//         vTaskDelay(pdMS_TO_TICKS(params->toggle_interval_ms));
-//     }
-// }
-
-
-
-/// @brief ////////////////////////////////////////////////////////////////
-
-
-// static void rgb_task(void *pvParameters) {
-//     // Blinking intervals (in milliseconds) for 3 speeds
-    
-//     //rgb_task_params_t *params = (rgb_task_params_t *)pvParameters;                     // Start with first speed
-//     bool led_state = false;
-//     //current_speed_index = *(uint32_t *)pvParameters; 
-//     // Track time for speed switching
-//     //TickType_t last_speed_change_time = xTaskGetTickCount();
-
-//     while (1) {
-
-//         // Check if 1 minute (60,000ms) has passed since last speed change
-//         // if ((xTaskGetTickCount() - last_speed_change_time) * portTICK_PERIOD_MS >= 60000) {
-//         //     current_speed_index = (current_speed_index + 1) % 3; // Cycle through 0,1,2
-//         //     last_speed_change_time = xTaskGetTickCount();         // Reset timer
-//         // }
-//         if(rgb_led_blink_flag){
-//             // Toggle LED and delay with current speed
-//             led_state = !led_state;
-//             light_driver_set_power(led_state ? 1 : 0);
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(blink_intervals[current_speed_index]));
-//     }
-// }
-
 
 void nuos_blink_rgb_led_init_task() {
     rgb_led_blink_flag = false;
@@ -1047,6 +1001,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     button_index = nuos_get_button_press_index(io_num);
     printf("SINGLE CLICK Detected!!: index:%d\n", button_index);
     brightness_control_flag = false;
+    recheckTimer();
     #ifndef DONT_USE_ZIGBEE
     if(!is_my_device_commissionned){
         start_commissioning = true;
@@ -1125,10 +1080,11 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     set_state(3);
                     set_level(3);
                 }
-
-                
                 #endif
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)    
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+                device_info[0].fan_speed = 0xff;
+                nuos_zb_set_hardware(button_index, true); 
             #else
                 nuos_zb_set_hardware(button_index, true);  
             #endif    
@@ -1192,6 +1148,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
 void nuos_switch_long_press_brightness_task(uint32_t io_num){
     //printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
+    recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 
     #ifndef DONT_USE_ZIGBEE 
        if((is_my_device_commissionned == true) && (wifi_webserver_active_flag == false)){
@@ -1483,3 +1440,55 @@ void rgbToHsv(uint8_t r, uint8_t g, uint8_t b, float *h, float *s, float *v) {
     // Calculate Value (V)
     *v = max_val;
 }
+
+#ifdef USE_NEIGHBOUR_SCAN_KEYPRESS
+void start_5sec_timer(){
+    if(!time_5sec_started_flag){
+        time_5sec_started_flag = true;
+        memset(press_count_5s, 0, sizeof(press_count_5s)); // Reset the counts after 5 seconds
+        // Start the 5-second timer
+        if (xTimerStart(press_count_timer_handle, 0) != pdPASS) {
+            ESP_LOGE("Timer", "Failed to start press count timer");
+            return;
+        }
+    }
+}
+
+volatile void stop_5sec_timer(){
+    if(time_5sec_started_flag){
+        time_5sec_started_flag = false;
+        // Start the 5-second timer
+        if(press_count_timer_handle != NULL){
+            if (xTimerStop(press_count_timer_handle, 0) != pdPASS) {
+                ESP_LOGE("Timer", "Failed to start press count timer");
+            }
+        }
+    }
+}
+
+void nuos_start_mode_change_task(){
+    task_sequence_num = TASK_MODE_BLINK_ALL_LEDS;
+    isSceneRemoteBindingStarted = true; 
+    xTaskCreate(mode_change_task, "mode_change_task", 4096, NULL, 22, NULL);
+}
+
+static void press_count_timer_callback(TimerHandle_t xTimer) {
+    uint8_t total_switch_instances_clicked = 0;
+    // Check if any switch has 6 presses within 5 seconds
+    for (int i = 0; i < TOTAL_BUTTONS; i++) {
+        total_switch_instances_clicked += press_count_5s[i];
+        press_count_5s[i] = 0; // Reset the count after taking action
+    }
+    if (total_switch_instances_clicked >= 6) {
+        //if(!isSceneRemoteBindingStarted){
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+                //nuos_start_mode_change_color_temp_task();
+            #else
+                nuos_start_mode_change_task(); 
+            #endif
+       // }
+    }
+    memset(press_count_5s, 0, sizeof(press_count_5s));
+    stop_5sec_timer();   
+}
+#endif

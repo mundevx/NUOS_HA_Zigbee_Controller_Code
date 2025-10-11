@@ -605,7 +605,7 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                 nuos_zb_scenes_add_scene_curtain_request(message->group_id, message->scene_id, 
                                         0, ENDPOINTS_LIST[index], 
                                         esp_zb_get_short_address(),
-                                        device_info[0].fan_speed, device_info[0].ac_mode);
+                                        device_info[0].curtain_state, device_info[0].device_level);
                 #else
                 nuos_zb_scenes_add_scene_request(message->group_id, message->scene_id, 
                         0, ENDPOINTS_LIST[index], 
@@ -686,7 +686,9 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
         if(is_my_device_commissionned){
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                 nuos_set_state_attribute(index_1);
-
+            
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+                
             #else
                 nuos_set_state_attribute(index_1);
             #endif       
@@ -916,10 +918,10 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
     }else if(cluster_id == ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING){
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
             #ifdef TUYA_ATTRIBUTES
-                uint8_t data = *(uint8_t*)value; //percentage value
-                printf("data102:%d\n", data);
-                //nuos_zb_set_hardware(index_1, false);
-                set_curtain_percentage(data);
+                device_info[0].device_level = *(uint8_t*)value; //percentage value
+                device_info[0].fan_speed = 0xff;
+                printf("data102:%d\n", device_info[0].device_level);
+                set_curtain_percentage(device_info[0].device_level, true);
             #endif
         #endif
     }

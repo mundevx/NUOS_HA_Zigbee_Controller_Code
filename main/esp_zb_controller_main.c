@@ -1268,7 +1268,8 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                 if(device_info[0].fan_speed != message->command){
                     device_info[0].fan_speed = message->command;  
                     ESP_LOGI(TAG, "Curtain OPEN : %d", device_info[0].fan_speed);
-                    device_info[0].device_state = 0;   
+                    device_info[0].device_state = 1; 
+                    device_info[0].curtain_state = 0;  
                     device_info[1].device_state = 0; 
                     nuos_zb_set_hardware(0, false);                       
                 }
@@ -1277,7 +1278,8 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                 if(device_info[0].fan_speed != message->command){
                     device_info[0].fan_speed = message->command;  
                     ESP_LOGI(TAG, "Curtain CLOSE : %d", device_info[0].fan_speed);
-                    device_info[1].device_state = 0;
+                    device_info[1].device_state = 1;
+                    device_info[0].curtain_state = 1;
                     device_info[0].device_state = 0;    
                     nuos_zb_set_hardware(1, false);
 
@@ -1287,24 +1289,29 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                 if(device_info[0].fan_speed != message->command){
                     device_info[0].fan_speed = message->command;                  
                     ESP_LOGI("WINDOW", "Curtain STOP\n");  
+                    if(device_info[0].curtain_state == 0){
+                        device_info[0].device_state = 0;
+                        device_info[1].device_state = 0; 
+                    }else if(device_info[0].curtain_state == 1){
+                        device_info[0].device_state = 0;
+                        device_info[1].device_state = 0; 
+                    }
                     curtain_cmd_stop();                   
-                    nuos_zb_set_hardware(2, false);
                 }
                 break;
 
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_GO_TO_LIFT_PERCENTAGE:  
                 ESP_LOGI("WINDOW", "Go To Lift Percentage: %d%%\n", message->payload.percentage_lift_value);
-                int result = fix_percentage(message->payload.percentage_lift_value);
-                //int result = message->payload.percentage_lift_value;
-                printf("Input: %d%%, Nearest: %d%%\n", message->payload.percentage_lift_value, result);
-
-                nuos_report_curtain_blind_state(0, result);    
+                //int result = fix_percentage(message->payload.percentage_lift_value);
+                //printf("Input: %d%%, Nearest: %d%%\n", message->payload.percentage_lift_value, result);
+                set_curtain_percentage(message->payload.percentage_lift_value, true);
+                // nuos_report_curtain_blind_state(0, result);    
                
-                uint8_t state = curtain_cmd_goto_pct(result);
-                if(state == 0) device_info[0].device_state = 1;
-                else if(state == 1) device_info[1].device_state = 1;
-                device_info[0].ac_mode = result;
-                nuos_zb_set_hardware_curtain(0, state);                              
+                // uint8_t state = curtain_cmd_goto_pct(result);
+                // if(state == 0) device_info[0].device_state = 1;
+                // else if(state == 1) device_info[1].device_state = 1;
+                // device_info[0].device_level = result;
+                // nuos_zb_set_hardware_curtain(0, state);                              
                 break;
             default:
                 break;
@@ -1802,7 +1809,7 @@ static void esp_zb_task(void *pvParameters)
     #endif
     printf("---------esp_zb_task End---------\n"); 
     esp_zb_init(&zb_nwk_cfg);
-    ESP_ERROR_CHECK(esp_zb_aps_src_binding_table_size_set(table_size));
+    ESP_ERROR_CHECK(esp_zb_zcl_scenes_table_set_size(table_size));
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM    \
         || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT                              \
         || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)   

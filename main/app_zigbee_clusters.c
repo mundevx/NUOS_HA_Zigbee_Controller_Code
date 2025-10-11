@@ -859,7 +859,7 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
             send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);         
         #endif 
     #else
-        if (esp_zb_bdb_dev_joined()) {
+       if (esp_zb_bdb_dev_joined()) {
             status = esp_zb_zcl_set_attribute_val(
                 ENDPOINTS_LIST[index_1],
                 ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -868,7 +868,6 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                 (uint8_t*)&device_info[index].device_state,
                 false
             );
-        
             send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
         }    
     #endif        
@@ -914,7 +913,7 @@ esp_err_t nuos_set_fan_attribute(uint8_t index){
         );
         //esp_zb_lock_release(); 
         send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);         
-    }
+   }
     #else 
         // #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
         //     uint8_t fan_speed = device_info[index].fan_speed;
@@ -1912,8 +1911,9 @@ esp_err_t nuos_driver_init(void)
             // uint8_t state = curtain_cmd_goto_pct(device_info[0].device_level);
             // printf("device_info[0].device_level:%d\n", device_info[0].device_level);
             // nuos_zb_set_hardware_curtain(0, state); 
-
-            set_curtain_percentage(device_info[0].device_level);
+            printf("===========================\n");
+            printf("dev_val: %d dev_lev: %d\n", device_info[0].device_val, device_info[0].device_level);
+            set_curtain_percentage(device_info[0].device_level, true);
         #else
             for(int i=0; i<TOTAL_ENDPOINTS; i++){
                 nuos_zb_set_hardware_curtain(i, false); 
@@ -2742,13 +2742,13 @@ void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
         printf("Matching Clusters.....\n");
         esp_zb_zdo_match_cluster(&find_req, user_cb, NULL);
     }  
-    
+    ready_commisioning_flag = false;
     start_commissioning = false;
     is_my_device_commissionned = !start_commissioning;
 
     setNVSCommissioningFlag(0);  //stop commissioning flag in NVS
     setNVSStartCommissioningFlag(0);
-    ready_commisioning_flag = false;
+    
 
     // esp_zb_bdb_cancel_formation();
 	// esp_zb_bdb_close_network();
@@ -2795,40 +2795,6 @@ esp_zb_attribute_list_t* get_ota_cluster(){
         ESP_ERROR_CHECK(esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_CLIENT_DATA_ID, (void *)&variable_config));
         ESP_ERROR_CHECK(esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_SERVER_ADDR_ID, (void *)&ota_upgrade_server_addr));
         ESP_ERROR_CHECK(esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_SERVER_ENDPOINT_ID, (void *)&ota_upgrade_server_ep));
-// #else
-
-//     #define ESP_OTA_CLIENT_ENDPOINT             5                                       /* OTA endpoint identifier */
-//     #define OTA_UPGRADE_MANUFACTURER            0x1001                                  /* The attribute indicates the file version of the downloaded image on the device*/
-//     #define OTA_UPGRADE_IMAGE_TYPE              0x1011                                  /* The attribute indicates the value for the manufacturer of the device */
-//     #define OTA_UPGRADE_RUNNING_FILE_VERSION    0x01010101                              /* The attribute indicates the file version of the running firmware image on the device */
-//     #define OTA_UPGRADE_DOWNLOADED_FILE_VERSION 0x01010102                              /* The attribute indicates the file version of the downloaded firmware image on the device */
-//     #define OTA_UPGRADE_HW_VERSION              0x0101                                  /* The parameter indicates the version of hardware */
-//     #define OTA_UPGRADE_MAX_DATA_SIZE           223
-
-// 	static const esp_partition_t *s_ota_partition = NULL;
-// 	static esp_ota_handle_t s_ota_handle = 0;
-    
-//     /** Create ota client cluster with attributes.
-//          *  Manufacturer code, image type and file version should match with configured values for server.
-//          *  If the client values do not match with configured values then it shall discard the command and
-//          *  no further processing shall continue.
-//          */
-//         esp_zb_ota_cluster_cfg_t ota_cluster_cfg = {
-//             .ota_upgrade_file_version = OTA_UPGRADE_RUNNING_FILE_VERSION,
-//             .ota_upgrade_downloaded_file_ver = OTA_UPGRADE_DOWNLOADED_FILE_VERSION,
-//             .ota_upgrade_manufacturer = OTA_UPGRADE_MANUFACTURER,
-//             .ota_upgrade_image_type = OTA_UPGRADE_IMAGE_TYPE,
-//         };
-//         esp_zb_attribute_list_t *esp_zb_ota_client_cluster = esp_zb_ota_cluster_create(&ota_cluster_cfg);
-//         /** add client parameters to ota client cluster */
-//         esp_zb_zcl_ota_upgrade_client_variable_t variable_config = {
-//             .timer_query = ESP_ZB_ZCL_OTA_UPGRADE_QUERY_TIMER_COUNT_DEF,
-//             .hw_version = OTA_UPGRADE_HW_VERSION,
-//             .max_data_size = OTA_UPGRADE_MAX_DATA_SIZE,
-//         };
-//         esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_MANUFACTURE_ID, (void *)&variable_config);
-//         esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_CLIENT_DATA_ID, (void *)&variable_config);
-//     #endif
         return esp_zb_ota_client_cluster;
     }
 #endif
@@ -3031,10 +2997,7 @@ esp_zb_attribute_list_t* nuos_zb_create_scene_cluster(){
 		.scene_valid = ESP_ZB_ZCL_SCENES_SCENE_VALID_DEFAULT_VALUE,
 		.name_support = ESP_ZB_ZCL_SCENES_NAME_SUPPORT_DEFAULT_VALUE,
 	};
-	//esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(&scene_cfg);
-    // #else
     esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(&scene_cfg);
-    //#endif
     return esp_zb_scene_cluster;
 }
 
@@ -4697,54 +4660,54 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                     printf("val2: %d\n", val2);
                 }    
             } else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING) { //window covering
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
                 static uint8_t last_value = 0xFF;
                 if (message->attribute.id == 0xF003 && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16) {
                     // if(*(uint16_t *)message->attribute.data.value != last_value){
                     //     last_value = *(uint16_t *)message->attribute.data.value;
-                        device_info[0].device_val = *(uint16_t *)message->attribute.data.value;
-                        printf("val1: %d\n", device_info[0].device_val);
+                        device_info[0].curtain_motor_total_time = *(uint16_t *)message->attribute.data.value;
+                        printf("val1: %d\n", device_info[0].curtain_motor_total_time);
                         
                         esp_zb_zcl_set_attribute_val(message->info.dst_endpoint,
                             message->info.cluster,
                             ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
                             message->attribute.id,
-                            &device_info[0].device_val,
+                            &device_info[0].curtain_motor_total_time,
                             false);  
+
                             send_report(0, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, 0xF003);    
-                            device_info[0].device_val = device_info[0].device_val/10;             
+                            device_info[0].curtain_motor_total_time = device_info[0].curtain_motor_total_time/10;             
                             nuos_store_data_to_nvs(0);
                     // }
                 }else if (message->attribute.id == 0xF001 && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
-                    uint8_t val2 = *(uint8_t *)message->attribute.data.value;
-                    // if(val2 != last_value){
-                    //     last_value = val2;                    
-                        esp_zb_zcl_set_attribute_val(message->info.dst_endpoint,
-                            message->info.cluster,
-                            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                            message->attribute.id,
-                            &val2,
-                            false); 
-                            send_report(0, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, 0xF001);                      
-                        switch(val2){
-                            case 0:  //cal started
-                            // vTaskMode = TASK_CURTAIN_CAL_START;
-                            // gpio_set_level(gpio_touch_led_pins[0], 0);
-                            // start_time = esp_timer_get_time();
-                            // pause_curtain_timer();
-                            break;
-                            case 1:  //cal finished
-                            // vTaskMode = TASK_CURTAIN_CAL_END;
-                            // // Calculate travel time in ms
-                            // device_info[0].device_val = (esp_timer_get_time() - start_time) / 1000;
-                            // device_info[0].device_val = device_info[0].device_val / 1000;
-                            // nuos_store_data_to_nvs(0);
-                            break;
-                            default: break;
-                        }
-                    // }
+                    uint8_t val2 = *(uint8_t *)message->attribute.data.value;                   
+                    esp_zb_zcl_set_attribute_val(
+                        message->info.dst_endpoint,
+                        message->info.cluster,
+                        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                        message->attribute.id,
+                        &val2,
+                        false); 
+                        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, 0xF001);                      
+                    switch(val2){
+                        case 0:  //cal started
+                        // vTaskMode = TASK_CURTAIN_CAL_START;
+                        // gpio_set_level(gpio_touch_led_pins[0], 0);
+                        // start_time = esp_timer_get_time();
+                        // pause_curtain_timer();
+                        break;
+                        case 1:  //cal finished
+                        // vTaskMode = TASK_CURTAIN_CAL_END;
+                        // // Calculate travel time in ms
+                        // device_info[0].device_val = (esp_timer_get_time() - start_time) / 1000;
+                        // device_info[0].device_val = device_info[0].device_val / 1000;
+                        // nuos_store_data_to_nvs(0);
+                        break;
+                        default: break;
+                    }
                     printf("val2: %d\n", val2);
                 } 
-    
+                #endif 
                                                  
             } else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
                 // ESP_LOGI(TAG, "---------------->ESP_ZB_ZCL_CLUSTER_ID_ON_OFF\n<----------------");
@@ -5391,7 +5354,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                     nuos_set_zigbee_attribute(index); //to fast update switches on app 
                 }
                 #endif
-                
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)    
             }else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT) {
                 //ESP_LOGI(TAG, "---------------->ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT<----------------");
                 #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
@@ -5411,6 +5374,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             message->attribute.id, message->attribute.data.type);
                 }
                 #endif
+        #endif
             }else if(message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_BASIC){
                 if(message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING){
                     if (message->attribute.id == ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID) {
@@ -5449,7 +5413,15 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 set_state(k);
                                 if(device_info[k].device_state)
                                 set_level(k);     
-                                nuos_set_zigbee_attribute(k);                               
+                                nuos_set_zigbee_attribute(k);  
+                            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)          
+                                //set_curtain_percentage(device_info[0].device_level, true);  
+                                if(val==0) {
+                                    nuos_zb_set_leds_only(0, false);  
+                                }else{
+                                    nuos_zb_set_leds_only(0, true);  
+                                }
+                                                 
                             #else
                                 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
                                 if(!device_info[0].device_state) device_info[0].device_state= true;
@@ -5580,7 +5552,7 @@ static void send_active_request_task(void* args){
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
         if(timer_counter++ >= 15000){ //5 minutes or 60 seconds
             timer_counter = 0;
-            // printf("Sending Active request...\n");
+            printf("Sending Active request...\n");
             // Check if the device is joined
             if (esp_zb_bdb_dev_joined()) {
                 // printf("BDB device joined!!\n");
@@ -5611,25 +5583,26 @@ static void send_active_request_task(void* args){
 
 void nuos_start_bootloader() {
     #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)
-    gpio_set_level(GPIO_NUM_9, false);
+    gpio_set_level(GPIO_NUM_9, 0);
     #endif
     xTaskCreate(send_active_request_task, "active_req_task", 4096, NULL, TASK_PRIORITY_BOOT_PIN_TOGGLE, NULL);
 }
 
 bool nuos_init_sequence(){
 
-    
+    nuos_start_bootloader();
+    #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)
+        gpio_set_level(GPIO_NUM_9, 1);
+    #endif  
     #ifndef USE_NVS_INIT
         nuos_init_nvs();
     #endif
-    nuos_start_bootloader();
+    
      //Added by Nuos   
     wifi_webserver_active_flag = getNVSWebServerEnableFlag();
     //Added by Nuos 
     start_commissioning = getNVSCommissioningFlag();
-
     is_my_device_commissionned = !start_commissioning;
-
     ready_commisioning_flag = getNVSStartCommissioningFlag();
     if(ready_commisioning_flag){
         ready_commisioning_flag = false;
@@ -5683,7 +5656,7 @@ bool nuos_init_sequence(){
             
         #endif 
     #endif
-    printf("wifi_webserver_active_flag:%d\n", wifi_webserver_active_flag); //This line, Added by NUOS
+    // printf("wifi_webserver_active_flag:%d\n", wifi_webserver_active_flag); //This line, Added by NUOS
     if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
         setNVSWebServerEnableFlag(0); 
         #ifndef ZB_FACTORY_RESET

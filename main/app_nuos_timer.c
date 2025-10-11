@@ -35,7 +35,8 @@ uint32_t switch_pressed_counts_to_enter_commissioning 	= 0;
 /*Currently Working Roughly on it*/
 uint32_t timer_commissioning_counts 					= 0;
 uint32_t timer_led_blink_counts 						= 0;
-
+uint32_t timer_commissioning_ready_counts 					= 0;
+uint32_t timer_led_blink_ready_counts 						= 0;
 static bool timer_started_flag 							= false;
 
 bool toggle_status_led 									= false;
@@ -43,7 +44,7 @@ static bool led_state 									= false;
 /* This code is used for starting timer 2 when there is clusters are not found and unmatched after restart of MCU */
 esp_timer_handle_t my_timer_handle_2;
 uint32_t timer_counts_enable_webserver 					= 0;
-static int timer_2_counts 								= 0;
+void start_commissioning_timeout_timer();
 
 void init_timer() {
 	#ifndef DONT_USE_ZIGBEE
@@ -69,6 +70,8 @@ void esp_start_timer(){
 	}
     timer_led_blink_counts = 0;
 	timer_commissioning_counts = 0;
+	timer_commissioning_ready_counts = 0;
+	timer_led_blink_ready_counts = 0;
 	#endif
 }
 
@@ -116,7 +119,7 @@ void nuos_stop_commissioning(unsigned char timeout){
 		// #endif
 		// 	printf("------START Timer-------\n");
 
-		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 		// #ifndef ZB_COMMISSIONING_WITHOUT_TIMER
 		init_timer();
 		esp_start_timer();	
@@ -165,9 +168,8 @@ void start_wifi_webserver_timer_task(){
 }
 
 
-
 void start_zb_commissioning_timer_task(){
-	if(start_commissioning > 0){
+	if(start_commissioning > 0 && !ready_commisioning_flag){
 		if(timer_led_blink_counts >= TIMER_COMMISSIONING_LED_BLINK_COUNTS){
 			timer_led_blink_counts = 0;
 			#ifdef USE_RGB_LED
@@ -177,7 +179,7 @@ void start_zb_commissioning_timer_task(){
 			#else
 			    nuos_zb_set_hardware_led_for_zb_commissioning(true);
 			#endif
-			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 				if(wifi_webserver_active_flag  == 0){
 					printf("Commissioning....\n");
 				}else{
@@ -190,8 +192,7 @@ void start_zb_commissioning_timer_task(){
 			if(timer_commissioning_counts >= COMMISSIONING_TIMEOUT){
 				timer_commissioning_counts = 0;
 				
-
-				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 					if(wifi_webserver_active_flag  == 0){
 						nuos_stop_commissioning(1);
 						
@@ -205,6 +206,18 @@ void start_zb_commissioning_timer_task(){
 					#else
 					start_commissioning = false;
 					nuos_stop_commissioning(1);	
+
+
+					if(!ready_commisioning_flag){
+						ready_commisioning_flag = true;
+					}
+					// timer_led_blink_ready_counts = 0;
+					// timer_commissioning_ready_counts = 0;
+					setNVSStartCommissioningFlag(1);
+					setNVSCommissioningFlag(0);
+					// xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL); 
+					// start_commissioning_timeout_timer();
+					  
 					#endif
 					#ifdef USE_RGB_LED
 						light_driver_set_color_RGB(0x00, 0xff, 0x00);
@@ -213,17 +226,54 @@ void start_zb_commissioning_timer_task(){
 						light_driver_deinit_flag = true;
 					#else
 						nuos_set_state_touch_leds(false);
-						
 					#endif
-					
 				#endif
-                //esp_zb_bdb_cancel_steering(); //no need to use this
 			}
 		}else{
 			timer_led_blink_counts++;
             timer_commissioning_counts++;
 		}
 	}
+	
+	// else{
+	// 	if(ready_commisioning_flag){
+	// 		if(timer_led_blink_ready_counts >= TIMER_COMMISSIONING_LED_BLINK_COUNTS){
+	// 			timer_led_blink_ready_counts = 0;
+	// 			#ifdef USE_RGB_LED
+	// 				toggle_status_led = !toggle_status_led;
+	// 				if(toggle_status_led) light_driver_set_color_RGB(0x00, 0xff, 0);  //green
+	// 				light_driver_set_power(toggle_status_led);
+	// 			#else
+	// 				nuos_zb_set_hardware_led_for_zb_commissioning(true);
+	// 			#endif
+	// 			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+
+	// 			#else
+	// 				printf("Zigbee Ready Commissioning...\n");	
+	// 			#endif
+				
+	// 			if(timer_commissioning_ready_counts >= 300){
+	// 				timer_commissioning_ready_counts = 0;
+					
+	// 				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+
+	// 				#else
+	// 					#ifdef USE_RGB_LED
+	// 						light_driver_set_color_RGB(0x00, 0xff, 0x00);
+	// 						light_driver_set_power(0);
+	// 						printf("stop_commissioning\n");
+	// 						light_driver_deinit_flag = true;
+	// 					#else
+
+	// 					#endif
+	// 				#endif
+	// 			}
+	// 		}else{
+	// 			timer_led_blink_ready_counts++;
+	// 			timer_commissioning_ready_counts++;	
+	// 		}
+	// 	}		
+	// }
 }
 
 void start_zb_devices_timer_task(){	
@@ -237,11 +287,11 @@ void start_zb_devices_timer_task(){
 void timer_callback(void* arg) {
     /*START COMMISSIONING TASK*/   
 	#ifndef ZB_COMMISSIONING_WITHOUT_TIMER
-		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 			if(wifi_webserver_active_flag==0){
 		#endif
 			start_zb_commissioning_timer_task(); 
-		 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+		 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 		 	}else{
 		 		start_wifi_webserver_timer_task();
 		 	}
@@ -349,6 +399,7 @@ void commissioning_timeout_handler(TimerHandle_t xTimer)
 {
 	ready_commisioning_flag = false;
 	setNVSStartCommissioningFlag(0);
+	setNVSPanicAttack(0);
 	if (xTimerIsTimerActive(commissioning_timeout_timer) != pdFALSE) {
 		xTimerStop(commissioning_timeout_timer, 0);
 	}
@@ -360,7 +411,7 @@ void start_commissioning_timeout_timer(){
 	commissioning_timeout_timer = xTimerCreate("Comm Timer", pdMS_TO_TICKS(30000), pdFALSE, (void *)0, commissioning_timeout_handler);
 	if(commissioning_timeout_timer != NULL){
 		if (xTimerStart(commissioning_timeout_timer, 0) != pdPASS) {
-			ESP_LOGE("Timer", "Failed to start commissining timer");
+			ESP_LOGE("Timer", "Failed to start commissioning timer!!");
 			return;
 		}
 	}
@@ -430,7 +481,6 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 			}
 			esp_zb_factory_reset();
 		}
-
     #else
 	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 		if(timeout >= LONG_PRESS_SET_COMMISSIONING_TIME_IN_SECS){ 
@@ -444,13 +494,13 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 	    #endif			
 				switch_pressed_counts_to_enter_commissioning = 0;
 				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-		
-				
 					if(first_button_pressed && third_button_pressed){
 						printf("set_commissioning\n");
-						ready_commisioning_flag = true;
-						setNVSStartCommissioningFlag(1);
-						setNVSCommissioningFlag(0);
+						if(!ready_commisioning_flag){
+							ready_commisioning_flag = true;
+							setNVSStartCommissioningFlag(1);
+							setNVSCommissioningFlag(0);
+						} 
 						
 					}else if(second_button_pressed && fourth_button_pressed){
 						#ifdef USE_WIFI_WEBSERVER	
@@ -471,7 +521,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 				#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)					
 				if(first_button_pressed){
 					printf("set_commissioning\n");
-					esp_zb_nvram_erase_at_start(true);
+					//esp_zb_nvram_erase_at_start(true);
 					setNVSCommissioningFlag(1);
 					if (esp_zb_bdb_dev_joined()) {
 						esp_zb_bdb_reset_via_local_action();
@@ -481,11 +531,29 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 				#else
 					if(first_button_pressed && second_button_pressed){
 						printf("set_commissioning\n");
-                        // esp_zb_nvram_erase_at_start(true);
-						ready_commisioning_flag = true;
-						setNVSStartCommissioningFlag(1);
-						setNVSCommissioningFlag(0);
-                        
+						if(!ready_commisioning_flag){
+							ready_commisioning_flag = true;
+							setNVSStartCommissioningFlag(1);
+							setNVSCommissioningFlag(0);
+						}  
+						// if(ready_commisioning_flag){
+						// 	for(int i=0; i<50; i++) {
+						// 		esp_err_t status = esp_zb_zcl_scenes_table_clear_by_index(i);
+						// 		if(status != ESP_OK) break;
+						// 	}
+						// 	setNVSStartCommissioningFlag(1);
+						// 	setNVSCommissioningFlag(1);
+						// 	setNVSPanicAttack(0);
+						// 	//esp_zb_scheduler_alarm_cancel(esp_zb_callback, 0);
+						// 	if (esp_zb_bdb_dev_joined()) {
+						// 		esp_zb_bdb_reset_via_local_action();
+						// 	}
+						// 	vTaskDelay(pdMS_TO_TICKS(100));
+						// 	esp_zb_factory_reset();
+						// }else{
+						
+						// }
+					#if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_1CH_CURTAIN)							
 					}else if(third_button_pressed && fourth_button_pressed){
 						#ifdef USE_WIFI_WEBSERVER	
 							printf("enable_wifi_ap_mode\n");
@@ -498,8 +566,9 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 							setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
 							esp_restart();					
 						#endif
+					#endif
 					}else{
-
+					
 					}
 				#endif
 				if(ready_commisioning_flag){

@@ -28,7 +28,7 @@
     // #define LEDC_FREQUENCY          	                        1000    // Frequency in Hertz. Set frequency at 1 KHz
 
     #define LEDC_FREQUENCY                                      (1000) // Frequency in Hz (5 kHz)
-    #define LEDC_FADE_TIME                                      (500) // Fade time in milliseconds (1 second)
+    #define LEDC_FADE_TIME                                      (800) // Fade time in milliseconds (1 second)
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT)
         uint8_t pwm_channels[TOTAL_ENDPOINTS]                   = { LEDC_CHANNEL_0, LEDC_CHANNEL_1, LEDC_CHANNEL_2, LEDC_CHANNEL_3};
