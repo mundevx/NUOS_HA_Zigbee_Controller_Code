@@ -576,8 +576,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         // Attempt to rejoin the network
         esp_zb_bdb_commissioning_mode_mask_t mode_unavailable = esp_zb_get_bdb_commissioning_mode();
         printf("SIGNAL:UNAVAILABLE = %d\n", mode_unavailable);
-        //if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-        //is_my_device_commissionned = false;        
+        if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+        is_some_device_unavailable = true;        
         break;
     default:
          //ZB_NWK_COMMAND_STATUS_NO_ROUTE_AVAILABLE 

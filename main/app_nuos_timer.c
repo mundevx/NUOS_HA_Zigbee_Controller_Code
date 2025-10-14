@@ -35,8 +35,8 @@ uint32_t switch_pressed_counts_to_enter_commissioning 	= 0;
 /*Currently Working Roughly on it*/
 uint32_t timer_commissioning_counts 					= 0;
 uint32_t timer_led_blink_counts 						= 0;
-uint32_t timer_commissioning_ready_counts 					= 0;
-uint32_t timer_led_blink_ready_counts 						= 0;
+uint32_t timer_commissioning_ready_counts 				= 0;
+uint32_t timer_led_blink_ready_counts 					= 0;
 static bool timer_started_flag 							= false;
 
 bool toggle_status_led 									= false;
@@ -45,6 +45,9 @@ static bool led_state 									= false;
 esp_timer_handle_t my_timer_handle_2;
 uint32_t timer_counts_enable_webserver 					= 0;
 void start_commissioning_timeout_timer();
+esp_timer_handle_t my_timer_handle_3;
+static int timer_3_counts 								= 0;
+bool start_timer3_flag 									= false;
 
 void init_timer() {
 	#ifndef DONT_USE_ZIGBEE
@@ -590,8 +593,6 @@ void send_zb_status_task(void* args) {
     // vTaskDelete(NULL); // Delete the task after executing
 }
 
-esp_timer_handle_t my_timer_handle_3;
-static int timer_3_counts = 0;
 void timer_callback_3(void* arg) {  
 	if(touchLedsOffAfter1MinuteEnable){
 		if(timer_3_counts++ >= TOUCH_LEDS_ALL_OFF_TIMEOUT){   //1 minute count-up
@@ -605,7 +606,7 @@ void timer_callback_3(void* arg) {
 		}
 	}
 }
-bool start_timer3_flag = false;
+
 void init_timer_3() {
 	// if(touchLedsOffAfter1MinuteEnable){
 		// Create a timer
@@ -641,17 +642,16 @@ void esp_stop_timer_3(){
 }
 
 void recheckTimer(){
-	
 	if(!timer3_running_flag){
 		timer3_running_flag = true;
 		if(touchLedsOffAfter1MinuteEnable){
 			esp_start_timer_3();
 		}
 	} 
-	
-	
 }
-/////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 #ifdef USE_CCT_TIME_SYNC
 #define MIN_MIREDS 								(1000000 / MAX_CCT_VALUE)
 #define MAX_MIREDS 								(1000000 / MIN_CCT_VALUE)

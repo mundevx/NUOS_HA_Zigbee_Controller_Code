@@ -166,6 +166,7 @@
     void set_harware(uint8_t index, uint8_t is_toggle){
         if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
         if(is_init_done){
+           // printf("State:%d Level:%d\n", device_info[index].device_state, device_info[index].device_level);
             #ifdef USE_FADING
                 //xTaskCreate(nuos_set_hw_task, "nuos_set_hw_task", 4096, &index, 28, NULL); 
                 if(is_init_done){

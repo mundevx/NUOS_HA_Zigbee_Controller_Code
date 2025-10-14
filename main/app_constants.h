@@ -75,7 +75,7 @@
     #define TASK_PRIORITY_ZB_UNBIND_NODES                           30
 
     // z10. dali6 4 group,cct, rgbcw, //2mode scene
-    #define TASK_STACK_SIZE_ZIGBEE                                  12000//8192
+    #define TASK_STACK_SIZE_ZIGBEE                                  8192
     #define TASK_STACK_SIZE_SWITCH                                  4096
     #define TASK_STACK_SIZE_RGB                                     2048
     #define TASK_STACK_SIZE_WDT                                     2048 
@@ -151,7 +151,7 @@
         #define TOTAL_LOADS                                         2
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5 //USE_ESP32H2_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #ifdef ENABLE_CURTAIN_TIMER_CONTROL
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
             #define USE_WIFI_WEBSERVER
@@ -295,7 +295,7 @@
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT_FAN
-          
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
         #define TOTAL_ENDPOINTS                                     1
         #define TOTAL_BUTTONS                                       1
@@ -325,26 +325,31 @@
         #define MAX_DIM_LEVEL_VALUE                                 254        
         //#define USE_HEATING_PIPES
         //#define USE_TEMPERATURE_MESAUREMENT
-        
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
             #define USE_LOCAL_TEMPERATURE
             #define USE_WEEKLY_TRANSITION
             //#define USE_FAN_CTRL
         #endif             
-        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT                                    
+        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+        #define USE_FAN_SPEED
+        #ifdef USE_FAN_SPEED
+        #define TOTAL_ENDPOINTS                                     2
+        #else
         #define TOTAL_ENDPOINTS                                     1
+        #endif
         #define TOTAL_BUTTONS                                       1
         #define TOTAL_LEDS                                          1
         #define TOTAL_LOADS                                         0
         //#define USE_RGB_LED
         #define USE_IR_UART_WS4_HW
-
+        
         #define USE_ADD_GROUP_SCENE_CLUSTERS
         #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
-        #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
-        #define MAX_DIM_LEVEL_VALUE                                 254      
+        #define MIN_DIM_LEVEL_VALUE                                 25
+        #define MAX_DIM_LEVEL_VALUE                                 254    
         
         #ifndef USE_IR_UART_WS4_HW
             #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)

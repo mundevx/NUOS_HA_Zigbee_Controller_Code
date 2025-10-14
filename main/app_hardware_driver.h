@@ -331,6 +331,7 @@
         bool start_commissioning                                                = false;
         bool ready_commisioning_flag                                            = false;
         bool is_my_device_commissionned                                         = false;
+        bool is_some_device_unavailable                                         = false;
         uint32_t wifi_webserver_active_counts                                   = 0;
         bool find_active_neighbours_task_flag                                   = false;
         uint8_t zb_network_bdb_steering_count                                   = 0;
@@ -653,9 +654,13 @@
 
         /*************IR BLASTER************* */ 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-            const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1};
+            const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2};
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+                #ifdef USE_FAN_SPEED
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                #else
                 const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                #endif
             #else
                 const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID};
             #endif
@@ -699,7 +704,11 @@
             const uint32_t gpio_touch_btn_pins[TOTAL_BUTTONS]                   = { HW_TOUCH_LED_PIN_1 };
             const gpio_num_t gpio_ir_led_pins[TOTAL_LEDS]                       = { HW_TOUCH_LED_PIN_4 };
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+            #ifdef USE_FAN_SPEED
+            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL};
+            #else
             uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL};
+            #endif
             #else
             uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT};
             #endif
@@ -1335,6 +1344,7 @@
         extern bool start_commissioning;
         extern bool ready_commisioning_flag;
         extern bool is_my_device_commissionned;
+        extern bool is_some_device_unavailable;
         extern bool find_active_neighbours_task_flag;
         extern uint8_t zb_network_bdb_steering_count;
 

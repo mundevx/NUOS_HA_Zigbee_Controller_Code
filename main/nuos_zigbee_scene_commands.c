@@ -124,7 +124,7 @@ void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8
         esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
                                             &on_off_extension_field);
 
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
         esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
             .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
             .length = sizeof(uint8_t),
@@ -257,7 +257,7 @@ void nuos_zb_scenes_add_scene_color_request(uint16_t group_id, uint8_t scene_id,
             //esp_zb_lock_acquire(portMAX_DELAY);
             esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
             //esp_zb_lock_release();         
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
         esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
             .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
             .length = sizeof(uint8_t),
@@ -343,7 +343,7 @@ void nuos_zb_scenes_add_scene_request_2(uint16_t group_id, uint8_t scene_id, uin
     //esp_zb_lock_acquire(portMAX_DELAY);
     esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
     //esp_zb_lock_release();         
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
         if(on_off_value == 0) brightness_value = 0;
         if(on_off_value_2 == 0) brightness_value_2 = 0;
         
@@ -420,7 +420,6 @@ void nuos_zb_scene_recall_scene_request(uint16_t group_id, uint8_t scene_id, uin
 
 void nuos_zb_scene_add_scene_to_self_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, 
                                                 uint8_t value_on_off, uint8_t value_level, uint16_t colorx, uint16_t colory){
-
     nuos_zb_scenes_add_scene_request(group_id, scene_id, src_ep, dst_ep, esp_zb_get_short_address(), value_on_off, value_level, colorx, colory);
 }
 
@@ -435,8 +434,6 @@ void nuos_zb_scene_add_scene_groupcast_request(uint16_t group_id, uint8_t scene_
     // nuos_zb_scenes_add_scene_request(group_id, scene_id, 0, dst_ep, group_id, value_on_off, value_level); //groupcast not working
 }
 
-
-
 void nuos_zb_scene_remove_scene_unicast_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short){
         nuos_zb_scenes_remove_scene_request(group_id, scene_id, src_ep, dst_ep, dst_addr_short,  ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT);
 }
@@ -447,7 +444,6 @@ void nuos_zb_scene_remove_scene_groupcast_request(uint16_t group_id, uint8_t sce
     	nuos_zb_scenes_remove_scene_request(group_id, scene_id, 0, dst_ep, group_id, ESP_ZB_APS_ADDR_MODE_16_GROUP_ENDP_NOT_PRESENT); //groupcast not working
 }
 
-
 void nuos_zb_scene_store_scene_unicast_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short){
         nuos_zb_scenes_store_scene_request(group_id, scene_id, src_ep, dst_ep, dst_addr_short);
 }
@@ -457,7 +453,6 @@ void nuos_zb_scene_store_scene_broadcast_request(uint16_t group_id, uint8_t scen
 void nuos_zb_scene_store_scene_groupcast_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep){
     	nuos_zb_scenes_store_scene_request(group_id, scene_id, 0, dst_ep, group_id);    //groupcast not working
 }
-
 
 void nuos_zb_scene_recall_scene_unicast_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short){
     nuos_zb_scene_recall_scene_request(group_id, scene_id, src_ep, dst_ep, dst_addr_short, ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT);
@@ -536,7 +531,7 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
     uint8_t device_state_1=255, device_state_2=255;
     scene_counts = 0;
 
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
        
         if(ep_cnts<=TOTAL_ENDPOINTS){
             total_cnts = ep_cnts;

@@ -88,6 +88,10 @@ bool is_1212                                    = false;
 bool is_2121                                    = false;
 bool is_122112                                  = false;
 bool is_211221                                  = false;
+
+bool is_11221122                                = false;
+bool is_22112211                                = false;
+
 static bool toggle_status_led_long_press        = false;
 
 static void IRAM_ATTR gpio_isr_handler(void *arg)
@@ -152,14 +156,16 @@ void button_click_handler(TimerHandle_t xTimer)
     if (local_clicks > CLICK_ARRAY_SIZE) local_clicks = CLICK_ARRAY_SIZE;
     click_count = 0;
 #ifdef USE_TRIPLE_CLICK
-    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || \
-         USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || \
-         (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
+    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM ||  \
+         (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH ||  \
+         USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX ||  \
+         USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
         // No triple click action for these devices.
     #else
+        printf("click_count:%d\n", local_clicks);
         if (local_clicks == MAX_COUNTS_FOR_TRIPLE_CLICK) {
             // Check if all presses were on the same button
-            printf("click_count:%d\n", local_clicks);
+            
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             is_1212 = 
                 (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
@@ -265,15 +271,57 @@ void button_click_handler(TimerHandle_t xTimer)
                     #endif 
                 }               
             }
-        }else if (local_clicks == 10) {
-            bool same_bt_pressed = true;
-            for (int p = 0; p < local_clicks; p++) {   //switch_num_pressed
-                if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
-                    same_bt_pressed = false;
-                    break;
-                }
-            }
-            if(same_bt_pressed){
+        }else if (local_clicks == 8) {
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            is_11221122 = 
+                (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[6] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[7] == gpio_touch_btn_pins[2]);    
+            is_22112211 = 
+                (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[5] == gpio_touch_btn_pins[2]) &&
+                (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[7] == gpio_touch_btn_pins[0]);                   
+            #else
+            is_11221122 = 
+                (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[3] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[6] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[7] == gpio_touch_btn_pins[1]);    
+            is_22112211 = 
+                (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[4] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[5] == gpio_touch_btn_pins[1]) &&
+                (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
+                (switch_num_pressed[7] == gpio_touch_btn_pins[0]);
+
+            #endif
+            
+            // bool same_bt_pressed = true;
+            // for (int p = 0; p < local_clicks; p++) {   //switch_num_pressed
+            //     if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
+            //         same_bt_pressed = false;
+            //         break;
+            //     }
+            // }
+            if(is_11221122 || is_22112211){
+                //printf("mode ok!!\n");
                 touchLedsOffAfter1MinuteEnable = !touchLedsOffAfter1MinuteEnable;
                 setNVSAllLedsOff(touchLedsOffAfter1MinuteEnable);
                 #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
@@ -285,7 +333,7 @@ void button_click_handler(TimerHandle_t xTimer)
                         }
                         vTaskDelay(pdMS_TO_TICKS(100));
                     }
-                    for (int i = 0; i < TOTAL_BUTTONS; i++) {
+                    for (int i = 0; i < TOTAL_ENDPOINTS; i++) {
                         nuos_zb_set_hardware(i, false); 
                         vTaskDelay(pdMS_TO_TICKS(50));
                     } 
@@ -386,22 +434,21 @@ void check_long_press_tasks(const uint16_t compare_time_in_secs){
                     light_driver_set_power(false);
                 #endif 
                 xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
-            }else if(total_press_in_secs > compare_time_in_secs){                                            
+            }else if(total_press_in_secs > compare_time_in_secs){  
+
             }else{
                 ready_commisioning_flag = true;
                 #ifdef USE_RGB_LED
                     toggle_status_led_long_press = !toggle_status_led_long_press;
                     if(toggle_status_led_long_press) light_driver_set_color_RGB(0, 0, 0xff);  //red
                     light_driver_set_power(toggle_status_led_long_press);
-                #endif 
-
-                
+                #endif  
             }
         }                          
     }
 }
 
-void brightness_control_tasks(){
+void brightness_control_tasks(uint32_t io_num){
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
         #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
@@ -421,18 +468,10 @@ void brightness_control_tasks(){
                 }
             }
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
-            // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
-            
-            //     if (!dimming_active) {
-            //         start_dimming_timer(io_num);
-            //         dimming_active = true;
-            //     }
-            // #else
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
                     is_long_press_brightness = true;
                     nuos_set_hardware_brightness(io_num);
                 }
-            // #endif
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH) 
             // if(brightness_count % 200 == 0){
             //     is_long_press_brightness = true;
@@ -486,7 +525,6 @@ static void switch_driver_button_detected(void *arg) {
     bool two_switch_pressed_flag = false;
     bool switch_keep_pressed_once_flag = true;
     TickType_t last_click_time = 0;
-    // static bool set_touchlink_on = false;
     
     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
         if (click_timer == NULL) {
@@ -527,10 +565,6 @@ static void switch_driver_button_detected(void *arg) {
                nuos_init_hardware_dimming_up_down(io_num);
             #endif
             esp_start_timer_3();
-
-            // #ifdef USE_NEIGHBOUR_SCAN_KEYPRESS
-            //     start_5sec_timer();
-            // #endif
 
             #ifndef USE_DOUBLE_PRESS
                 button_func_pair.keypressed = SINGLE_PRESS;
@@ -577,7 +611,7 @@ static void switch_driver_button_detected(void *arg) {
                                 #else
                                     button_func_pair.keypressed = LONG_PRESS_INC_DEC_LEVEL;                      
                                 #endif
-                                brightness_control_tasks();
+                                brightness_control_tasks(io_num);
                                 if (!two_switch_pressed_flag) {
                                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || \
                                         (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
@@ -598,7 +632,7 @@ static void switch_driver_button_detected(void *arg) {
                                     longpress_detected = true;
                                     total_press_in_secs++;
                                     ESP_LOGI(TAG, "total_press_in_secs_1:%d\n", total_press_in_secs);
-                                    check_long_press_tasks(10);
+                                    check_long_press_tasks(SETUP_LONG_PRESS_TIME_IN_SECS);
                                 }
                             }
                         }
@@ -615,7 +649,7 @@ static void switch_driver_button_detected(void *arg) {
                     switch_state = SWITCH_IDLE;
                     reduced_bounce_time = 10;
                     if (two_switch_pressed_flag) {
-                        if(total_press_in_secs < 10){                                            
+                        if(total_press_in_secs < 10 || total_press_in_secs > 18){                                            
                             ready_commisioning_flag = false;
                         }
                     }
@@ -638,14 +672,6 @@ static void switch_driver_button_detected(void *arg) {
                             ESP_LOGW(TAG, "click_timer is NULL when trying to start it");
                         }
                     #endif
-                    // #ifdef USE_NEIGHBOUR_SCAN_KEYPRESS
-                    //     int index = nuos_get_button_press_index(io_num);
-                    //     if (index != 0xff) {
-                    //         press_count_5s[index]++;
-                    //         printf("Switch %d pressed. Count: %d\n", io_num, press_count_5s[index]);
-                    //     }
-                    //     save_pressed_button_index = index;
-                    // #endif
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
                         vTaskDelay(pdMS_TO_TICKS(20));
                         nuos_zb_set_scene_switch_click(io_num, 0);

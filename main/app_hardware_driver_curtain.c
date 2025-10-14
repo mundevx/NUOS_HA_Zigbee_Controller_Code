@@ -341,6 +341,7 @@ void pause_curtain_timer()
                 device_info[0].curtain_state = 1;
                 value = 100;
             }
+            device_info[0].device_level = value;
             if(wifi_webserver_active_flag == 0){
                 nuos_report_curtain_blind_state(0, value);    
             }
