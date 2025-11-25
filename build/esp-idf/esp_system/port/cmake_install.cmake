@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/esp_system/port
+# Install script for directory: C:/Users/procu/esp/v5.5/esp-idf/components/esp_system/port
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,6 +39,6 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_system/port/soc/esp32h2/cmake_install.cmake")
+  include("C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/esp-idf/esp_system/port/soc/esp32c6/cmake_install.cmake")
 endif()
 

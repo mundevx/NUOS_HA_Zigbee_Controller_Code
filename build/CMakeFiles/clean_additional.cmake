@@ -19,7 +19,7 @@ if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "")
   "ldgen_libraries.in"
   "on_off_light_bulb.bin"
   "on_off_light_bulb.map"
-  "project_elf_src_esp32h2.c"
+  "project_elf_src_esp32c6.c"
   "x509_crt_bundle.S"
   )
 endif()

@@ -26,6 +26,7 @@
 
 // I2C_eeprom eeprom(DEVICEADDRESS, EE24LC01MAXBYTES);
 static const char *TAG = "ESP_ZB_NVS_STORE";
+static const char *TAG_NVS = "TAG_NVS"; 
 
 extern wifi_info_handle_t wifi_info;
 
@@ -35,6 +36,8 @@ extern uint32_t pir_motion_disable_timeout_value;
 extern uint8_t last_cmd_id;
 nvs_handle_t my_handle;
 const char* nvram_struct_device_overall_keys = "ep_overall";
+
+const char* nvram_struct_scene_sw_key = "scene_sw";
 // const char* nvram_struct_keys[5] = {"ep1", "ep2", "ep3", "ep4", "all"};
 // const char* nvram_struct_dali_keys[4] = {"dali1", "dali2", "dali3", "dali4"};
 
@@ -70,6 +73,7 @@ const char* nvram_sensor_commissioning_keys = "sen_com_key";
 const char* nvram_wifi_info_keys = "wifi_info";
 const char* nvram_struct_existing_info_key = "e_info_key";
 const char* nvram_dali_commissioning_key = "dali_commiss";
+const char* nvram_dali_start_addr_key = "dali_start";
 const char* nvram_all_leds_off_keys = "leds_off_key";
 const char* nvram_ip_addr_keys = "ip_key";
 const char* nvram_scene_err_keys = "err_key";
@@ -92,6 +96,10 @@ extern void init_arduino_eeprom(uint8_t log_index, uint16_t restart_reason);
 #endif
 
 #define ZIGBEE_NVS_PARTITION "storage"
+void get_nvs_dali_scene_switch_webpage_data();
+esp_err_t clear_all_groups_and_scenes_in_nvs(void);
+void nuos_read_dali_scene_switch_data_to_nvs(void* str_data, size_t* length);
+
 
 void nuos_init_nvs(){
     esp_err_t err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
@@ -602,9 +610,18 @@ void readUartStruct(uint8_t index, void* my_data, size_t* length){
 void setNVSDaliNodesCommissioningCounts(uint8_t value){
 	writeKeyValueToNVRAM(nvram_dali_commissioning_key, value);
 }
-
 uint8_t getNVSDaliNodesCommissioningCounts(){
 	uint8_t comm_counts = (uint8_t)readKeyValueFromNVRAM(nvram_dali_commissioning_key);
+    printf("comm_counts:%d", comm_counts);
+	return comm_counts;
+}
+
+
+void setNVSDaliNodesStartAddrCounts(uint8_t value){
+	writeKeyValueToNVRAM(nvram_dali_start_addr_key, value);
+}
+uint8_t getNVSDaliNodesStartAddrCounts(){
+	uint8_t comm_counts = (uint8_t)readKeyValueFromNVRAM(nvram_dali_start_addr_key);
     printf("comm_counts:%d", comm_counts);
 	return comm_counts;
 }
@@ -1140,7 +1157,7 @@ void nuos_get_data_from_nvs() {
             #endif
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             dali_on_webpage_commissioning_counts = getNVSDaliNodesCommissioningCounts();
-            
+            // dali_on_webpage_commissioning_counts = getNVSDaliNodesStartAddrCounts();
             #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             int index=0;    
             #else
@@ -1243,7 +1260,13 @@ void nuos_get_data_from_nvs() {
             printf("Reset reason        : Unknown\n");
             break;
     }  
-    ///////////////////////////////////////////////////////////////////////////////////    
+
+
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)  
+        //clear_all_groups_and_scenes_in_nvs();
+        get_nvs_dali_scene_switch_webpage_data();
+    #endif
+    
     printf("------------>READ NVS DATA<---------------\n");
     for(int index=0; index<nvs_store_max; index++){
         size_t required_length = sizeof(led_indicator_handle_t);
@@ -1329,6 +1352,17 @@ void nuos_get_data_from_nvs() {
     }
 }
 
+void get_nvs_dali_scene_switch_webpage_data(){
+    size_t required_length = sizeof(scene_switch_s);
+    nuos_read_dali_scene_switch_data_to_nvs((scene_switch_s*)&scene_group_switch_info, &required_length);
+    // if(err == ESP_OK){
+    //     printf("dali_scene_switch_webpage_data.read_successful\n");
+    //     printf("dali_scene_switch_webpage_data.dali_scene_switch_commissioning_counts:%d\n", dali_scene_switch_webpage_data.dali_scene_switch_commissioning_counts);
+    // }else{
+    //     printf("dali_scene_switch_webpage_data.read_failed:%s\n", esp_err_to_name(err));
+    //     memset(&dali_scene_switch_webpage_data, 0, sizeof(scene_switch_s));
+    // }
+}
 
 void init_nvs_for_zb_devices(){
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
@@ -1350,4 +1384,755 @@ void init_nvs_for_zb_devices(){
         }
     }        
 #endif 
+}
+
+void nuos_store_dali_scene_switch_data_to_nvs(void* str_data){
+    esp_err_t err;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) return;
+    #endif
+    nvs_set_blob(my_handle, nvram_struct_scene_sw_key, (scene_switch_s*)str_data, sizeof(scene_switch_s));
+    ESP_ERROR_CHECK(nvs_commit(my_handle));
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+}
+
+void nuos_read_dali_scene_switch_data_to_nvs(void* str_data, size_t* length){
+    // ESP_ERROR_CHECK(nvs_open_from_partition("nvs", ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
+    esp_err_t err;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) return;
+    #endif
+    err = nvs_get_blob(my_handle, nvram_struct_scene_sw_key, str_data, length);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+}
+
+
+
+
+
+
+
+
+
+
+// Store scene membership as JSON string in NVS key "scene_<group_id>"
+void nuos_store_scene_membership_to_nvs(int group_id, int *ids, int count)
+{
+    if (count <= 0) {
+        ESP_LOGI(TAG_NVS, "nuos_store_scene_membership_to_nvs: nothing to store for group %d", group_id);
+        // Still write an empty array to NVS (optional)
+    }
+
+    cJSON *arr = cJSON_CreateArray();
+    if (!arr) {
+        ESP_LOGE(TAG_NVS, "cJSON_CreateArray failed");
+        return;
+    }
+
+    for (int i = 0; i < count; ++i) {
+        cJSON_AddItemToArray(arr, cJSON_CreateNumber(ids[i]));
+    }
+
+    char *buf = cJSON_PrintUnformatted(arr);
+    cJSON_Delete(arr);
+
+    if (!buf) {
+        ESP_LOGE(TAG_NVS, "cJSON_PrintUnformatted failed");
+        return;
+    }
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        free(buf);
+    }
+    #endif
+
+    char key[32];
+    snprintf(key, sizeof(key), "scene_%d", group_id);
+    err = nvs_set_str(my_handle, key, buf);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_set_str(%s) failed: %s", key, esp_err_to_name(err));
+    } else {
+        err = nvs_commit(my_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_NVS, "nvs_commit failed: %s", esp_err_to_name(err));
+        } else {
+            ESP_LOGI(TAG_NVS, "Saved scene membership for group %d (count=%d)", group_id, count);
+        }
+    }
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    free(buf);
+}
+
+// Read scene membership from NVS key "scene_<scene_index>".
+// Returns 1 on success (and sets *out_count), 0 on not-found or error.
+int nuos_read_scene_membership_from_nvs(int scene_index, int *out_ids, int *out_count)
+{
+    if (!out_ids || !out_count) return 0;
+
+    char key[32];
+    snprintf(key, sizeof(key), "scene_%d", scene_index);
+
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG_NVS, "nvs_open readonly failed for key %s: %s", key, esp_err_to_name(err));
+        *out_count = 0;
+        return 0;
+    }
+    #endif
+    size_t required = 0;
+    err = nvs_get_str(my_handle, key, NULL, &required);
+    if (err != ESP_OK || required == 0) {
+        // no data
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        *out_count = 0;
+        return 0;
+    }
+
+    char *buf = malloc(required);
+    if (!buf) {
+        ESP_LOGE(TAG_NVS, "malloc failed");
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        *out_count = 0;
+        return 0;
+    }
+
+    err = nvs_get_str(my_handle, key, buf, &required);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_get_str failed: %s", esp_err_to_name(err));
+        free(buf);
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        *out_count = 0;
+        return 0;
+    }
+
+    cJSON *arr = cJSON_Parse(buf);
+    free(buf);
+    if (!arr || !cJSON_IsArray(arr)) {
+        ESP_LOGW(TAG_NVS, "no valid JSON array stored for key %s", key);
+        if (arr) cJSON_Delete(arr);
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        *out_count = 0;
+        return 0;
+    }
+
+    int len = cJSON_GetArraySize(arr);
+    int idx = 0;
+    for (int i = 0; i < len; ++i) {
+        cJSON *item = cJSON_GetArrayItem(arr, i);
+        if (cJSON_IsNumber(item)) {
+            out_ids[idx++] = item->valueint;
+        }
+        // ignore non-number items
+    }
+    *out_count = idx;
+
+    cJSON_Delete(arr);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    ESP_LOGI(TAG_NVS, "Loaded scene membership scene_index=%d count=%d", scene_index, *out_count);
+    return 1;
+}
+
+// Toggle / add / remove a temporary selection list for a group: key "tmp_grp_<group_id>".
+// state: 2 => toggle (add if not present, remove if present)
+//        1 => add (ensure present)
+//        0 => remove (ensure absent)
+void nuos_toggle_tmp_selection(int dali_id, int group_id, int state)
+{
+    
+    char key[32];
+    snprintf(key, sizeof(key), "tmp_grp_%d", group_id);
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return;
+    }
+    #endif
+    // Read existing JSON string
+    size_t required = 0;
+    err = nvs_get_str(my_handle, key, NULL, &required);
+    char *buf = NULL;
+    cJSON *arr = NULL;
+
+    if (err == ESP_OK && required > 0) {
+        buf = malloc(required);
+        if (buf) {
+            if (nvs_get_str(my_handle, key, buf, &required) == ESP_OK) {
+                arr = cJSON_Parse(buf);
+            }
+            free(buf);
+        }
+    }
+
+    if (!arr) {
+        // create empty array if none existed
+        arr = cJSON_CreateArray();
+        if (!arr) {
+            ESP_LOGE(TAG_NVS, "cJSON_CreateArray failed");
+            #ifdef USE_NVS_INIT
+            nvs_close(my_handle);
+            #endif
+            return;
+        }
+    }
+
+    // Build current list into a C array for easier manipulation
+    int len = cJSON_GetArraySize(arr);
+    int *tmp = malloc(sizeof(int) * (len + 8)); // allow some extra
+    if (!tmp) {
+        ESP_LOGE(TAG_NVS, "malloc tmp failed");
+        cJSON_Delete(arr);
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        return;
+    }
+
+    int count = 0;
+    for (int i = 0; i < len; ++i) {
+        cJSON *it = cJSON_GetArrayItem(arr, i);
+        if (cJSON_IsNumber(it)) tmp[count++] = it->valueint;
+    }
+
+    // Helper to find index
+    int found_index = -1;
+    for (int i = 0; i < count; ++i) {
+        if (tmp[i] == dali_id) { found_index = i; break; }
+    }
+
+    if (state == 2) { // toggle
+        if (found_index >= 0) {
+            // remove
+            for (int i = found_index; i < count - 1; ++i) tmp[i] = tmp[i+1];
+            count--;
+        } else {
+            // add
+            tmp[count++] = dali_id;
+        }
+    } else if (state == 1) { // ensure present
+        if (found_index < 0) tmp[count++] = dali_id;
+    } else { // state == 0 ensure absent
+        if (found_index >= 0) {
+            for (int i = found_index; i < count - 1; ++i) tmp[i] = tmp[i+1];
+            count--;
+        }
+    }
+
+    // Recreate cJSON array
+    cJSON_Delete(arr);
+    arr = cJSON_CreateArray();
+    if (!arr) {
+        ESP_LOGE(TAG_NVS, "cJSON_CreateArray failed (2)");
+        free(tmp);
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        return;
+    }
+
+    for (int i = 0; i < count; ++i) {
+        cJSON_AddItemToArray(arr, cJSON_CreateNumber(tmp[i]));
+    }
+    free(tmp);
+
+    char *out = cJSON_PrintUnformatted(arr);
+    cJSON_Delete(arr);
+    if (!out) {
+        ESP_LOGE(TAG_NVS, "cJSON_PrintUnformatted failed");
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        return;
+    }
+
+    err = nvs_set_str(my_handle, key, out);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_set_str(%s) failed: %s", key, esp_err_to_name(err));
+    } else {
+        err = nvs_commit(my_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG_NVS, "nvs_commit failed: %s", esp_err_to_name(err));
+        } else {
+            ESP_LOGI(TAG_NVS, "tmp selection updated for group %d (count=%d)", group_id, (int)strlen(out)); // count is not exact here, just log
+        }
+    }
+
+    free(out);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+}
+
+
+
+
+// Helper: key names
+void group_key_name(int group_id, char *out, size_t outlen) {
+    snprintf(out, outlen, "group_%d", group_id);
+}
+void scene_key_name(int group_id, char *out, size_t outlen) {
+    snprintf(out, outlen, "scene_%d", group_id);
+}
+
+// Read group blob (64 bytes)
+esp_err_t read_group_blob(int group_id, uint8_t buffer[DALI_ADDR_COUNT]) {
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+    char key[32];
+    group_key_name(group_id, key, sizeof(key));
+    size_t required = DALI_ADDR_COUNT;
+    err = nvs_get_blob(my_handle, key, buffer, &required);
+    if (err == ESP_OK && required != DALI_ADDR_COUNT) {
+        err = ESP_ERR_INVALID_SIZE;
+    }
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+// Write group blob
+esp_err_t write_group_blob(int group_id, uint8_t buffer[DALI_ADDR_COUNT]) {
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+    char key[32];
+    group_key_name(group_id, key, sizeof(key));
+    err = nvs_set_blob(my_handle, key, buffer, DALI_ADDR_COUNT);
+    if (err == ESP_OK) nvs_commit(my_handle);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+// Read scene blob (16 bytes)
+esp_err_t read_scene_blob(int group_id, uint8_t buffer[SCENE_COUNT]) {
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+    char key[32];
+    scene_key_name(group_id, key, sizeof(key));
+    size_t required = SCENE_COUNT;
+    err = nvs_get_blob(my_handle, key, buffer, &required);
+    if (err == ESP_OK && required != SCENE_COUNT) {
+        err = ESP_ERR_INVALID_SIZE;
+    }
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+// Write scene blob
+esp_err_t write_scene_blob(int group_id, uint8_t buffer[SCENE_COUNT]) {
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+    char key[32];
+    scene_key_name(group_id, key, sizeof(key));
+    err = nvs_set_blob(my_handle, key, buffer, SCENE_COUNT);
+    if (err == ESP_OK) nvs_commit(my_handle);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+
+
+/* ========== NVS CLEAR HELPERS ========== */
+/* Place near other NVS helpers in webserver.c (or app_nvs_store_info.c) */
+
+
+/* GROUP_COUNT should be defined in your project (16 normally) */
+/* SCENE_COUNT likewise if you need per-scene clearing; we only use GROUP_COUNT here */
+
+esp_err_t clear_group_in_nvs(int group_id)
+{
+    if (group_id < 0 || group_id >= GROUP_COUNT) return ESP_ERR_INVALID_ARG;
+
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+
+    char key[32];
+    snprintf(key, sizeof(key), "group_%d", group_id);
+
+    err = nvs_erase_key(my_handle, key);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "clear_group_in_nvs: key %s not found (ok)", key);
+        err = ESP_OK;
+    } else if (err != ESP_OK) {
+        ESP_LOGE(TAG, "clear_group_in_nvs: nvs_erase_key(%s) failed: %s", key, esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "clear_group_in_nvs: erased %s", key);
+    }
+
+    if (err == ESP_OK) {
+        err = nvs_commit(my_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "clear_group_in_nvs: nvs_commit failed: %s", esp_err_to_name(err));
+        }
+    }
+
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+esp_err_t clear_scene_in_nvs(int group_id)
+{
+    if (group_id < 0 || group_id >= GROUP_COUNT) return ESP_ERR_INVALID_ARG;
+
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+
+    char key[32];
+    snprintf(key, sizeof(key), "scene_%d", group_id);
+
+    err = nvs_erase_key(my_handle, key);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "clear_scene_in_nvs: key %s not found (ok)", key);
+        err = ESP_OK;
+    } else if (err != ESP_OK) {
+        ESP_LOGE(TAG, "clear_scene_in_nvs: nvs_erase_key(%s) failed: %s", key, esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "clear_scene_in_nvs: erased %s", key);
+    }
+
+    if (err == ESP_OK) {
+        err = nvs_commit(my_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "clear_scene_in_nvs: nvs_commit failed: %s", esp_err_to_name(err));
+        }
+    }
+
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+/**
+ * Clears all group_<n> and scene_<n> keys in NVS namespace NVS_NAMESPACE_DALI
+ * for n = 0 .. GROUP_COUNT-1.
+ *
+ * Returns ESP_OK on success (all keys erased or not found).
+ */
+esp_err_t clear_all_groups_and_scenes_in_nvs(void)
+{
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+
+    esp_err_t last_err = ESP_OK;
+    for (int i = 0; i < GROUP_COUNT; ++i) {
+        char gkey[32];
+        snprintf(gkey, sizeof(gkey), "group_%d", i);
+        err = nvs_erase_key(my_handle, gkey);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Cleared NVS key: %s", gkey);
+        } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+            // not an error — treat as success
+            err = ESP_OK;
+        } else {
+            ESP_LOGE(TAG, "Failed erase %s: %s", gkey, esp_err_to_name(err));
+            last_err = err;
+        }
+
+        char skey[32];
+        snprintf(skey, sizeof(skey), "scene_%d", i);
+        err = nvs_erase_key(my_handle, skey);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Cleared NVS key: %s", skey);
+        } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+            err = ESP_OK;
+        } else {
+            ESP_LOGE(TAG, "Failed erase %s: %s", skey, esp_err_to_name(err));
+            last_err = err;
+        }
+    }
+
+    // Commit changes (if any)
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "clear_all_groups_and_scenes_in_nvs: nvs_commit failed: %s", esp_err_to_name(err));
+        last_err = err;
+    } else {
+        ESP_LOGI(TAG, "clear_all_groups_and_scenes_in_nvs: commit OK");
+    }
+
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return last_err;
+}
+
+
+
+/* Global in-memory store (loaded at boot) */
+device_scene_t *g_device_scene_store = NULL;
+size_t g_device_scene_count = 0;
+
+/* NVS namespace & key */
+#define NVS_KEY_STORE "device_store"
+
+// Write an array of device_scene_t to NVS as a blob
+esp_err_t save_device_scene_store(const device_scene_t *arr, size_t count)
+{
+    if (!arr || count == 0) {
+        return ESP_FAIL;
+    }
+
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+    size_t blob_size = count * sizeof(device_scene_t);
+    err = nvs_set_blob(my_handle, NVS_KEY_STORE, arr, blob_size);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "save_device_scene_store: nvs_set_blob failed: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "save_device_scene_store: nvs_commit failed: %s", esp_err_to_name(err));
+    }
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    ESP_LOGI(TAG, "Saved %d device_scene entries to NVS (size=%u bytes)", (int)count, (unsigned)blob_size);
+    return err;
+}
+
+// Load device store from NVS into a newly allocated buffer (caller should free via free())
+esp_err_t load_device_scene_store(device_scene_t **out_arr, size_t *out_count)
+{
+    if (!out_arr || !out_count) return ESP_ERR_INVALID_ARG;
+    *out_arr = NULL;
+    *out_count = 0;
+
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "nvs_open failed: %s", esp_err_to_name(err));
+        return ESP_FAIL;
+    }
+    #endif
+
+    // Query required size
+    size_t required = 0;
+    err = nvs_get_blob(my_handle, NVS_KEY_STORE, NULL, &required);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        // not stored yet
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        ESP_LOGI(TAG, "No device scene store (key not present)");
+        return ESP_OK;
+    }
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "load_device_scene_store: nvs_get_blob(size) failed: %s", esp_err_to_name(err));
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        return err;
+    }
+
+    if (required % sizeof(device_scene_t) != 0) {
+        ESP_LOGW(TAG, "load_device_scene_store: blob size %u not multiple of entry size", (unsigned)required);
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    device_scene_t *buf = malloc(required);
+    if (!buf) {
+        #ifdef USE_NVS_INIT
+        nvs_close(my_handle);
+        #endif
+        ESP_LOGE(TAG, "load_device_scene_store: malloc failed");
+        return ESP_ERR_NO_MEM;
+    }
+
+    size_t read = required;
+    err = nvs_get_blob(my_handle, NVS_KEY_STORE, buf, &read);
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "load_device_scene_store: nvs_get_blob(read) failed: %s", esp_err_to_name(err));
+        free(buf);
+        return err;
+    }
+
+    size_t count = read / sizeof(device_scene_t);
+    *out_arr = buf;
+    *out_count = count;
+    ESP_LOGI(TAG, "Loaded %u device_scene entries from NVS", (unsigned)count);
+    return ESP_OK;
+}
+
+
+
+// Convert cJSON array "devices" into device_scene_t array and save.
+// Returns ESP_OK on success.
+esp_err_t persist_devices_from_cjson_array(cJSON *devices, int scene_id, const char *action)
+{
+    if (!devices || !cJSON_IsArray(devices)) return ESP_ERR_INVALID_ARG;
+
+    // Build a temporary list (we don't want duplicates; you can choose policy)
+    device_scene_t *arr = malloc(64 * sizeof(device_scene_t)); // worst-case upper bound
+    if (!arr) return ESP_ERR_NO_MEM;
+    size_t count = 0;
+
+    cJSON *dev = NULL;
+    cJSON_ArrayForEach(dev, devices) {
+        if (!cJSON_IsObject(dev)) continue;
+        cJSON *j_dali = cJSON_GetObjectItem(dev, "dali_id");
+        if (!j_dali || !cJSON_IsNumber(j_dali)) continue;
+        int did = j_dali->valueint;
+        if (did < 0 || did >= 64) continue;
+
+        // optional: read fields if present
+        int power = 0, brightness = 50, cct = 3500;
+        cJSON *j_power = cJSON_GetObjectItem(dev, "power");
+        if (j_power && cJSON_IsNumber(j_power)) power = j_power->valueint;
+        cJSON *j_brightness = cJSON_GetObjectItem(dev, "brightness");
+        if (j_brightness && cJSON_IsNumber(j_brightness)) brightness = j_brightness->valueint;
+        cJSON *j_cct = cJSON_GetObjectItem(dev, "cct");
+        if (j_cct && cJSON_IsNumber(j_cct)) cct = j_cct->valueint;
+
+        // If action == "add", set included=1, scene_id=provided scene
+        // If action == "remove", set included=0 (and you may choose to keep scene_id field)
+        uint8_t included_flag = 1;
+        uint8_t sid = (uint8_t) scene_id;
+        if (action && strcmp(action, "remove") == 0) {
+            included_flag = 0;
+        }
+
+        arr[count].dali_id = (uint8_t) did;
+        arr[count].scene_id = sid;
+        arr[count].included = included_flag;
+        arr[count].power = (uint8_t)(power ? 1 : 0);
+        arr[count].brightness = (uint8_t)((brightness < 0) ? 0 : (brightness > 100 ? 100 : brightness));
+        arr[count].cct = (uint16_t)cct;
+        count++;
+        if (count >= 64) break;
+    }
+
+    // If you want to merge with existing store (update existing entries) rather than replace,
+    // you'd load existing store and update matching dali_id entries. For now this function replaces.
+    esp_err_t err = save_device_scene_store(arr, count);
+    free(arr);
+    return err;
+}
+
+void nuos_store_group_membership_to_nvs(int group_id, int *ids, int count) {
+    esp_err_t err = ESP_OK;
+    cJSON *arr = cJSON_CreateIntArray(ids, count);
+    char *s = cJSON_PrintUnformatted(arr);
+    cJSON_Delete(arr);
+
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) return;
+    else {
+    #endif  
+        char key[16]; 
+        snprintf(key, sizeof(key), "grp_%d", group_id);
+        nvs_set_str(my_handle, key, s);
+        nvs_commit(my_handle);
+        
+    #ifdef USE_NVS_INIT    
+    }
+    nvs_close(my_handle);
+    #endif
+    free(s);
+}
+
+int nuos_read_selected_dali_address_from_nvs(void) {
+    int32_t val = -1;
+    esp_err_t err = ESP_OK;
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) return val;
+    #endif
+        nvs_get_i32(my_handle, "dali_sel", &val);
+
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return val;
 }

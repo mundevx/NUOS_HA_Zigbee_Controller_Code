@@ -312,7 +312,6 @@ void button_click_handler(TimerHandle_t xTimer)
                 (switch_num_pressed[7] == gpio_touch_btn_pins[0]);
 
             #endif
-            
             // bool same_bt_pressed = true;
             // for (int p = 0; p < local_clicks; p++) {   //switch_num_pressed
             //     if (switch_num_pressed[p] != gpio_touch_btn_pins[TOTAL_BUTTONS-1]) {
@@ -340,6 +339,7 @@ void button_click_handler(TimerHandle_t xTimer)
                 #endif  
             }
         } else if (local_clicks == 2) {
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             // Double click: check if any button was pressed twice
             for (int i = 0; i < TOTAL_BUTTONS; i++) {
                 for (int p = 0; p < local_clicks; p++) {
@@ -350,6 +350,7 @@ void button_click_handler(TimerHandle_t xTimer)
                     }
                 }
             }
+            #endif
         }
     #endif
 #endif // USE_TRIPLE_CLICK
@@ -455,6 +456,18 @@ void brightness_control_tasks(uint32_t io_num){
                 is_long_press_brightness = true;
                 nuos_set_hardware_brightness(io_num);
             }
+        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            if(change_cw_ww_color_flag){
+                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                } 
+            }else{
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }                                                
+            }            
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             if(io_num == gpio_touch_btn_pins[0]){
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
@@ -477,6 +490,7 @@ void brightness_control_tasks(uint32_t io_num){
             //     is_long_press_brightness = true;
             //     nuos_set_hardware_brightness(io_num);
             // }   
+
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
             #ifdef TUYA_ATTRIBUTES
 
@@ -523,6 +537,7 @@ static void switch_driver_button_detected(void *arg) {
     static switch_state_t switch_state = SWITCH_IDLE;
     bool evt_flag = false;
     bool two_switch_pressed_flag = false;
+    bool instant_two_switch_pressed_flag = false;
     bool switch_keep_pressed_once_flag = true;
     TickType_t last_click_time = 0;
     
@@ -559,7 +574,8 @@ static void switch_driver_button_detected(void *arg) {
             evt_flag = true;
             longpress_detected = false;
             total_press_in_secs = 0;
-            two_switch_pressed_flag = false;
+            two_switch_pressed_flag = false; 
+            instant_two_switch_pressed_flag = false;
             initTwoSwitchPressedPins();
             #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                nuos_init_hardware_dimming_up_down(io_num);
@@ -636,6 +652,14 @@ static void switch_driver_button_detected(void *arg) {
                                 }
                             }
                         }
+                    }else{
+                        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                        if (IdentifyTwoSwitchPressed() >= 2) {
+                            instant_two_switch_pressed_flag = true;
+                            
+                            printf("2 switch pressed!!\n");
+                        }
+                        #endif
                     }
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
                         if (switch_keep_pressed_once_flag) {
@@ -653,6 +677,12 @@ static void switch_driver_button_detected(void *arg) {
                             ready_commisioning_flag = false;
                         }
                     }
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                    if(instant_two_switch_pressed_flag){
+                        instant_two_switch_pressed_flag = false;
+                        change_cw_ww_color_flag = !change_cw_ww_color_flag;
+                    }
+                    #endif
                     /* ... inside SWITCH_RELEASE_DETECTED ... */
                     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
                         if (click_count < CLICK_ARRAY_SIZE) {
@@ -723,7 +753,7 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
         pin_bit_mask |= (1ULL << (button_func_pair + i)->pin);
     }
     /* interrupt of falling edge */
-    io_conf.intr_type = GPIO_INTR_LOW_LEVEL; //GPIO_INTR_NEGEDGE
+    io_conf.intr_type = GPIO_INTR_NEGEDGE; //GPIO_INTR_LOW_LEVEL; //
     io_conf.pin_bit_mask = pin_bit_mask;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_down_en = 0;

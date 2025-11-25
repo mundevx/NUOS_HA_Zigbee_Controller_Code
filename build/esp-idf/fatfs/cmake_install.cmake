@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/fatfs
+# Install script for directory: C:/Users/procu/esp/v5.5/esp-idf/components/fatfs
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

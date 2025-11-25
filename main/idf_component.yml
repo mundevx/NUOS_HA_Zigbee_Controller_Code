@@ -1,6 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  espressif/esp-zboss-lib:
+  espressif/esp-zboss-lib: #~1.6.4
     version: 1.*
     override_path: ../../../../../esp-idf/components/espressif__esp-zboss-lib
   espressif/esp-zigbee-lib: ~1.6.7

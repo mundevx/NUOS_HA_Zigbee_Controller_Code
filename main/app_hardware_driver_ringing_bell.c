@@ -54,14 +54,13 @@
         #endif 
     }
 
-    void nuos_zb_set_scene_switch_click(uint32_t io_num, uint8_t state){
+    void nuos_zb_set_scene_switch_click(uint32_t io_num, uint8_t _state){
         int index = nuos_get_button_press_index(io_num);
         //set touch led pins
-        // printf("Switch index:%d  state:%d\n", index, state);
-        gpio_set_level(gpio_touch_led_pins[index], state);
-        gpio_set_level(gpio_load_pins[index], state);
+        gpio_set_level(gpio_touch_led_pins[index], _state);
+        gpio_set_level(gpio_load_pins[index], _state);
         if(is_my_device_commissionned){
-            nuos_set_sensor_motion_attribute(state);  //to fast update switches on app
+            nuos_set_sensor_motion_attribute(_state);  //to fast update switches on app
         }        
     }
 

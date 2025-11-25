@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/esp_driver_twai
+# Install script for directory: C:/Users/procu/esp/v5.5/esp-idf/components/esp_driver_twai
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -32,9 +32,11 @@ idf_component_register(
     "nuos_zigbee_group_commands.c" 
     "nuos_zigbee_scene_commands.c" 
     "zigbee_2_uart.c"
-
+    "DALI.cpp"
+    "DaliCommands.cpp"
+    "app_hardware_driver_dali_scene_switch.cpp"
     SRC_DIRS "." "../../../common/zcl_utility/src"
     INCLUDE_DIRS "." "../../../common/zcl_utility/include" 
-    EMBED_FILES "web_files/index.html"
+    EMBED_FILES "index.html"
     REQUIRES light_driver espressif__esp-zboss-lib mbedtls nvs_flash esp_timer app_update esp_http_server cjson esp_wifi
 )

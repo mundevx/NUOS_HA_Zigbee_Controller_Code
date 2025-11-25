@@ -165,6 +165,7 @@
         uint8_t command;
     }identify_response_commands_t;
 
+    #define MAX_DALI_ADDRESSES    64
     typedef struct {
         uint8_t group_id;
         uint8_t scene_id[6];
@@ -183,11 +184,18 @@
     } zb_binding_data_t;
 
     typedef struct {
-        uint8_t selected_switch;
+        // uint8_t selected_switch;
+        // uint8_t group_id;
+        // uint8_t scene_ids[4];
+        // uint8_t control_type;
+        // uint8_t scn_ctrl_type;
+        uint8_t selected_id;
         uint8_t group_id;
         uint8_t scene_ids[4];
         uint8_t control_type;
         uint8_t scn_ctrl_type;
+        uint8_t total_ids[4];
+        uint16_t device_ids[4][64];
     } scene_switch_s;
 
 
@@ -272,14 +280,17 @@
         bool set_cct_time_sync_request_flag                                     = false;
         #endif
         bool is_reporting[MAX_DST_EP][MAX_NODES];
-        scene_switch_s scene_switch_t[4];
+        const char* switch_ctrl_type[4] = { "Individual Control", "Group Control", "Scene Control", "Broadcast Control" }; 
+        const char* scene_ctrl_type[3] = { "Broadcast Control", "Group Control", "Individual Control"};     
+        //scene_switch_s scene_switch_t[4];
+        scene_switch_s scene_group_switch_info;
         uint16_t global_group_id[4]                                             = { 0x1, 0x2, 0x3, 0x4 };
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         uint16_t global_dali_id[4]                                              = { 11, 12, 13, 14}; 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         uint16_t global_dali_id[4]                                              = { 10, 11, 12, 13 }; 
         #else
-        uint16_t global_dali_id[32]                                             = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        uint8_t global_dali_id[]                                                = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                                                                                     11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                                                                                     21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 
                                                                                     31, 32};  
@@ -287,9 +298,7 @@
         uint8_t global_scene_id[4]                                              = { 0x1, 0x2, 0x3, 0x4 };
         dali_device_ids_t dali_nvs_stt[4];
 
- 
         dst_node_info_t dst_node_info[MAX_BINDINGS];
-        //zb_binding_data_t bindings[MAX_BINDINGS];
         int binding_count = 0;
 
         bool change_cw_ww_color_flag                                            = false;
@@ -674,8 +683,12 @@
                         ////char manufname[]                                      = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', '5', '6', 'l', 'f', 'h', 'v', 'v', 'n'};
                         //jl268nxf   -->working with issues
                         //char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'j', 'l', '2', '6', '8', 'n', 'x', 'f'};
+                        #ifdef USE_FAN_SPEED
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'b', 'z', 'c', 'v', '6', 'p', 's', 'l'}; 
+                        #else
                         //cftyjrak   -->working with no issue
                         char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'c', 'f', 't', 'y', 'j', 'r', 'a', 'k'};
+                        #endif
                         const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'};
                     #else
                         //tzzpjnbr
@@ -686,7 +699,10 @@
 
                         // //n4qc9fg7
                         // char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'n', '4', 'q', 'c', '9', 'f', 'g', '7'};//dev_id=smartplug
+                        
+                       
                         char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'n', '4', 'q', 'c', '9', 'f', 'g', '7'}; //dev_id=thermopstat
+                      
                         const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};    
                         //TS0308
                         //const char modelid[]                                    = {6, 'T', 'S', '0', '3', '0', '8'};
@@ -1090,6 +1106,34 @@
             const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
             const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
             const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+        
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+
+            #ifdef USE_HOME_ASSISTANT
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
+                                                                                        ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
+            #else //if tuya
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
+                                                                                    ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
+            #endif
+                                                                     
+            #ifdef USE_HOME_ASSISTANT
+                char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
+                char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', 'S', 'c', 'e', 'n', 'e'};
+            #else
+                #ifdef USE_TUYA_BRDIGE 
+                    //ydfvmon7   latest
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'y', 'd', 'f', 'v', 'm', 'o', 'n', '7'};
+                    char modelid[]                                              = {6,'T', 'S', '0', '0', '1', '4'};
+                #endif
+            #endif
+
+            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
+            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
+            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+
 
         /***********RGB DALI************* */  
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
@@ -1201,6 +1245,9 @@
         uint64_t start_time = 0;
         uint64_t end_time = 0;
         uint8_t vTaskMode = 0;
+        bool start_dali_led_commissioning_task_flag = false;
+
+        
 
     #else
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
@@ -1259,13 +1306,13 @@
         extern bool brightness_control_flag ;
         extern int node_counts;
         extern uint16_t global_group_id[4];
-        extern scene_switch_s scene_switch_t[4];
+        extern scene_switch_s scene_group_switch_info;
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         extern uint16_t global_dali_id[4]; 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         extern uint16_t global_dali_id[4]; 
         #else
-        extern uint16_t global_dali_id[32]; 
+        extern uint8_t global_dali_id[]; 
         #endif
         extern uint8_t global_scene_id[4];  
         extern bool change_cw_ww_color_flag;     
@@ -1291,6 +1338,9 @@
         extern bool set_cct_time_sync_request_flag;
         #endif
         extern bool is_reporting[MAX_DST_EP][MAX_NODES];
+
+        extern const char* switch_ctrl_type[4]; 
+        extern const char* scene_ctrl_type[3];
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
@@ -1352,6 +1402,7 @@
         extern uint64_t start_time;
         extern uint64_t end_time;
         extern uint8_t vTaskMode;
+        extern bool start_dali_led_commissioning_task_flag;
 
     #endif     
 //app_hardware_driver_on_off.c  
@@ -1397,10 +1448,11 @@ extern "C" {
     extern bool nuos_set_hardware_brightness(uint32_t pin);
     extern void nuos_init_hardware_dimming_up_down(uint32_t pin);
     extern void init_dali_hw();
+    
     extern void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_remove_light_from_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_toggle_group(uint8_t group_id, uint8_t index, bool toggle_state, uint8_t brightness);
-    extern void start_dali_addressing(int numAddresses);
+    extern void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
     extern void nuos_dali_set_color_temperate(uint8_t index);
     extern void nuos_dali_set_group_color_temperature(uint8_t group_id, uint8_t index, uint16_t value);
     extern void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value);
@@ -1417,7 +1469,18 @@ extern "C" {
     extern void init_sensor_commissioning_task();
     extern bool nuos_set_hardware_brightness_2(uint8_t index);
     extern void dali_set_mode(uint8_t mode);
+    extern void nuos_dali_set_state_group(uint8_t group_id, bool _state);
+    extern void nuos_dali_set_state(uint8_t dali_id, uint8_t state);
+    extern void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level);
+    extern void nuos_dali_set_cct_color(uint8_t did, uint16_t value);
 
+    extern void start_dali_led_blink_task();
+ 
+    extern void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp);
+    extern void nuos_dali_remove_device_from_scene(uint8_t device_id, uint8_t scene_id);
+
+    extern void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id);
+    extern int get_all_dali_addresses(uint8_t *foundAddresses); 
 #ifdef __cplusplus
 }
 #endif 

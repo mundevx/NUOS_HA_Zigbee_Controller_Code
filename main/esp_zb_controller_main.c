@@ -449,7 +449,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         ESP_LOGI(TAG, "Initialize Zigbee stack");
         // stack_initialised = true;
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-        //esp_zb_nwk_set_link_status_period(300); 
+        esp_zb_nwk_set_link_status_period(15);  //forcefully 
         network_steering_mode_flag = false;
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
@@ -459,6 +459,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             ESP_LOGI(TAG, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
             if (esp_zb_bdb_is_factory_new()) {
                 ESP_LOGI(TAG, "Start network steering...\n");
+                // store "sig"=sig_type of "err"= "Steering" here in nvs
                 #ifdef USE_RGB_LED
                     light_driver_set_power(false);
                     if(start_commissioning>0){
@@ -466,7 +467,6 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                         //nuos_start_rgb_led_blink_task(0);
                     }                   
                 #endif
- 
                     if(getNVSPanicAttack() > 0){
                         setNVSPanicAttack(0);
                         ready_commisioning_flag = false;
@@ -478,27 +478,30 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                             esp_zb_factory_reset();
                         }                   
                     }else{
+                        setNVSPanicAttack(0);
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
                         network_steering_mode_flag = true;  
                     }
+                    
             } else {
                 ESP_LOGI(TAG, "Device rebooted");
                 ESP_LOGI(TAG, "My Short Address : 0x%x", esp_zb_get_short_address());
                 network_steering_mode_flag = false;
 
                
-                if(getNVSPanicAttack() > 0){
+                if(getNVSPanicAttack() > 5){
                     setNVSPanicAttack(0);
                     setNVSCommissioningFlag(1);
-                    
+                    // store "sig"=sig_type of "err"= "Panic Attack" here in nvs
                     is_my_device_commissionned = !start_commissioning;
                     if(!start_commissioning){
                         start_commissioning = true;
                         setNVSStartCommissioningFlag(0); 
-                        //nvs_flash_erase(); 
-                        esp_zb_factory_reset();
+                        
+                        //esp_zb_factory_reset();
                     }           
                 }else{
+                    setNVSPanicAttack(0);
                     nuos_zb_find_clusters(user_find_cb);
                     if (!esp_zb_bdb_dev_joined()) {
                         printf("BDB not joined!!.....\n");
@@ -556,6 +559,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         if(mode_leave == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING); 
         leave_params = (esp_zb_zdo_signal_leave_params_t *)esp_zb_app_signal_get_params(p_sg_p);
         //log_v("Signal to leave the network, leave type: %d", leave_params);
+        // store "sig"=sig_type of "err"= leave_params->leave_type here in nvs
         if (leave_params->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET) {  // Leave without rejoin -> Factory reset
             printf("Leave without rejoin, factory reset the device\n");
             if(is_my_device_commissionned){
@@ -563,7 +567,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ready_commisioning_flag = true;
                 setNVSStartCommissioningFlag(0);
                 setNVSCommissioningFlag(1);          
-                esp_zb_factory_reset();
+                //esp_zb_factory_reset();
             }
         } else {  // Leave with rejoin -> Rejoin the network, only reboot the device
           printf("Leave with rejoin, only reboot the device\n");
@@ -573,6 +577,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         break;
          
     case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
+        // store "sig"=sig_type of "err"= "unavailable" here in nvs
         // Attempt to rejoin the network
         esp_zb_bdb_commissioning_mode_mask_t mode_unavailable = esp_zb_get_bdb_commissioning_mode();
         printf("SIGNAL:UNAVAILABLE = %d\n", mode_unavailable);
@@ -591,11 +596,10 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     }
 }
 
-// uint16_t cb1_counts = 0;
-// extern void send_report(int index, uint16_t cluster_id, uint16_t attr_id);
 static esp_err_t zb_write_attribute_handler(const esp_zb_zcl_cmd_write_attr_resp_message_t *message)
 {
     esp_err_t ret = ESP_OK;
+
     ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
     ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status(%d)",
                         message->info.status);
@@ -634,8 +638,8 @@ static esp_err_t zb_basic_reset_factory_handler(const esp_zb_zcl_basic_reset_fac
                   
    // ESP_LOGI(TAG, "Received message: status_code(0x%x), resp_to_cmd(0x%x)", message->status_code, message->resp_to_cmd);
     ESP_LOGI(TAG, "cluster(0x%x), dst_ep(%d)", message->info.cluster, message->info.dst_endpoint);  
-    esp_zb_bdb_reset_via_local_action();  
-    esp_zb_factory_reset();
+    // esp_zb_bdb_reset_via_local_action();  
+    //esp_zb_factory_reset();
    // ESP_LOGI(TAG, "dst_address(%d), src_endpoint(%d)", message->info.dst_endpoint, message->info.src_endpoint); 
    return ret;
 }
@@ -691,11 +695,13 @@ static esp_err_t zb_cmd_privilege_command_handler(const esp_zb_zcl_custom_cluste
                         message->info.status);
    
     ESP_LOGI(TAG, "cluster(0x%x), command(0x%x), dst_ep(%d)", message->info.cluster, message->info.command.id, message->info.dst_endpoint);
-    ESP_LOGI(TAG, "count(%ld)", count++);
-    //data is coming 3 times, so avoid it.
+    // ESP_LOGI(TAG, "count(%ld)", count++);
+    // data is coming 3 times, so avoid it.
     // if((last_cmd_id != message->info.command.id || message->info.command.id == 0xe1)){
     //     last_cmd_id =  message->info.command.id;
-        //nuos_set_privilege_command_attribute(message); 
+    const esp_zb_zcl_privilege_command_message_t *priv_msg = (const esp_zb_zcl_privilege_command_message_t *)message;
+
+    nuos_set_privilege_command_attribute(priv_msg); 
     // }
     return ret;
 }
@@ -1585,7 +1591,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             ret = zb_cmd_default_handler((esp_zb_zcl_cmd_default_resp_message_t *)message);
             break; 
         case ESP_ZB_CORE_BASIC_RESET_TO_FACTORY_RESET_CB_ID:
-            ret = zb_basic_reset_factory_handler((esp_zb_zcl_basic_reset_factory_default_message_t *)message); 
+            //ret = zb_basic_reset_factory_handler((esp_zb_zcl_basic_reset_factory_default_message_t *)message); 
         case ESP_ZB_CORE_IAS_ZONE_ENROLL_RESPONSE_VALUE_CB_ID:
             //Added by Nuos 
             ret = zb_cmd_ias_zone_handler((esp_zb_zcl_ias_zone_enroll_response_message_t *)message);
@@ -1595,7 +1601,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             ret = zb_cmd_identify_effect_handler((esp_zb_zcl_identify_effect_message_t *)message);
             break; 
         case ESP_ZB_CORE_CMD_PRIVILEGE_COMMAND_REQ_CB_ID:
-           // ret = zb_cmd_privilege_command_handler((esp_zb_zcl_privilege_command_message_t *)message);
+            ret = zb_cmd_privilege_command_handler(message);
             break;  
         case ESP_ZB_CORE_CMD_REPORT_CONFIG_RESP_CB_ID:
             ret = zb_configure_report_resp_handler((esp_zb_zcl_cmd_config_report_resp_message_t *)message);   
@@ -1842,6 +1848,22 @@ static void esp_zb_task(void *pvParameters)
 void app_main(void) {
     //Init GPIOs pin
     nuos_zb_init_hardware();
+
+    gpio_config_t io_conf = {};
+    uint64_t pin_bit_mask = 0;
+    /* set up button func pair pin mask */
+    for (int i = 0; i < TOTAL_BUTTONS; ++i) {
+        pin_bit_mask |= (1ULL << gpio_touch_btn_pins[i]);
+    }
+    /* interrupt of falling edge */
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    io_conf.pin_bit_mask = pin_bit_mask;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_down_en = 0;
+    io_conf.pull_up_en = 1;
+    /* configure GPIO with the given settings */
+    gpio_config(&io_conf);
+
     #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)
         gpio_reset_pin(GPIO_NUM_9);
         gpio_set_direction(GPIO_NUM_9, GPIO_MODE_OUTPUT);
@@ -1873,4 +1895,11 @@ void app_main(void) {
     }else{
         ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "Failed" : "Successful");
     }
+
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    while(1){
+        vTaskDelay(pdMS_TO_TICKS(100));
+        start_dali_led_blink_task();
+    }
+    #endif
 }

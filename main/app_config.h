@@ -32,9 +32,9 @@
     #define DEVICE_1CH_CURTAIN_SWITCH 					            22
 
     #define DEVICE_WIRELESS_GROUP_SWITCH                            23 //Currently Running Remote Switch
-
-    //TS004F (instead of TS0044) buttons has only single tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_2T_ANALOG_DIMMABLE_LIGHT //DEVICE_WIRELESS_GROUP_SWITCH //DEVICE_CCT_DALI_CUSTOM //DEVICE_GROUP_DALI
+    #define DEVICE_SCENE_DALI                                       24 //SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
+    // TS004F (instead of TS0044) buttons has only Single Tap
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_SCENE_DALI //DEVICE_WIRELESS_GROUP_SWITCH //DEVICE_CCT_DALI_CUSTOM //DEVICE_GROUP_DALI
 
     // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
     // #else
@@ -42,9 +42,10 @@
     //     //#define USE_SCENE_RECALL_QUEUE
     //     //#define USE_SCENE_STORE_QUEUE
     // #endif
+
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
     //#define USE_NVS_INIT
-    //#define DONT_USE_ZIGBEE                                       // For expo or demo only
+    //#define DONT_USE_ZIGBEE                                       // For expo or demo only    
     #define NEW_SDK_6
     #define USE_OTA
 

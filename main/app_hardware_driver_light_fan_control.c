@@ -153,11 +153,11 @@ void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
 			gpio_set_level(gpio_touch_led_pins[1], 1);  //fan on-off led
 			//Set GPIOs
 			if(device_info[index].fan_speed == 0){
-				gpio_set_level(gpio_load_pins[1], 1);
+				gpio_set_level(gpio_load_pins[1], 0); //1
 				gpio_set_level(gpio_load_pins[2], 0);
 				gpio_set_level(gpio_load_pins[3], 0);
 				//LEDs
-				gpio_set_level(gpio_touch_led_pins[2], 1);
+				gpio_set_level(gpio_touch_led_pins[2], 0); //1
 				gpio_set_level(gpio_touch_led_pins[3], 0);			
 			}else if(device_info[index].fan_speed == 1){
 				gpio_set_level(gpio_load_pins[1], 1);

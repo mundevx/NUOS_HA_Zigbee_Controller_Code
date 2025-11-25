@@ -90,6 +90,8 @@
     #define TASK_STACK_SIZE_BIND_NODES                              8192
     #define TASK_STACK_SIZE_UNBIND_NODES                            8192
 
+    #define DALI_INVALID_ADDRESS                                    0xFF
+    
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     4
         #define TOTAL_BUTTONS                                       4
@@ -334,7 +336,7 @@
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT
 
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-        #define USE_FAN_SPEED
+        //#define USE_FAN_SPEED
         #ifdef USE_FAN_SPEED
         #define TOTAL_ENDPOINTS                                     2
         #else
@@ -392,6 +394,8 @@
         #define TOTAL_LEDS                                          2 
         #define TOTAL_LOADS                                         1 
         #define IS_REPORT_BATTERY_STATUS
+        #define MIN_DIM_LEVEL_VALUE                                 10
+        #define MAX_DIM_LEVEL_VALUE                                 254
         //#define USE_ADD_GROUP_SCENE_CLUSTERS
         #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
@@ -488,7 +492,7 @@
         #define TOTAL_LEDS                                          2 
         #define TOTAL_LOADS                                         1   
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1
         //#define USE_RGB_LED
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
         #define IS_BATTERY_POWERED
@@ -563,7 +567,7 @@
         #define TOTAL_LEDS                                          4
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4      
-        #define CHIP_INFO                                           USE_ESP32H2_MINI1
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #define FAN_INDEX                                           1 
         #define ENABLE_PWM_DIMMING
         #define USE_RGB_LED
@@ -584,7 +588,7 @@
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE   
              
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                       20 
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                       3 
         #define DIMMING_STEPS                                       2 
 
         #define COLOR_SET_CHECKER_COUNTS                            20 
@@ -599,11 +603,11 @@
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
         #endif
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
-            #define TOTAL_ENDPOINTS                                 10
-            #define TOTAL_BUTTONS                                   1
-            #define TOTAL_LEDS                                      1
+            #define TOTAL_ENDPOINTS                                 MAX_DALI_ADDRESSES
+            #define TOTAL_BUTTONS                                   2
+            #define TOTAL_LEDS                                      2
         #else
             #define TOTAL_ENDPOINTS                                 4
             #define TOTAL_BUTTONS                                   4
@@ -611,20 +615,33 @@
         #endif
 
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx 
-        
-        #define USE_RGB_LED
+        //#define USE_RGB_LED
+
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
         #endif
-        #define LONG_PRESS_BRIGHTNESS_ENABLE
+
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+            #define LONG_PRESS_BRIGHTNESS_ENABLE
+            #define DIMMING_STEPS                                       2
+            #define BRIGHTNESS_SET_CHECKER_COUNTS                       20
+        #else
+            #define LONG_PRESS_BRIGHTNESS_ENABLE
+            #define DIMMING_STEPS                                       10
+            #define BRIGHTNESS_SET_CHECKER_COUNTS                       15
+
+            #define COLOR_CHANGE_STEPS                                  500
+            #define COLOR_SET_CHECKER_COUNTS                            20
+
+            #define MIN_CCT_VALUE                                       2000
+            #define MAX_CCT_VALUE                                       6500
+        #endif
         
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
-        #define MIN_DIM_LEVEL_VALUE                                 20 // (0 to 255)
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
+        #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254   
         
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                       20
-        #define DIMMING_STEPS                                       1
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
 
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
@@ -635,7 +652,7 @@
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
             
 
-            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //Change this value
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
 
             #define TIME_PERIOD_IN_MS                                   100
             #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
@@ -643,10 +660,13 @@
             #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
             #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
             
-        
-            #define ESP_WIFI_SSID      				                    "NUOS DALI GROUP LIGHT"
-            #define ESP_WIFI_PASS      				                    "NUOS1234"
-        #endif
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #define ESP_WIFI_SSID                                       "NUOS DALI SCENE SWITCH"
+            #else
+            #define ESP_WIFI_SSID                                       "NUOS DALI GROUP LIGHT"
+            #endif
+            #define ESP_WIFI_PASS                                       "NUOS1234"
+        #endif        
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
         #define TOTAL_ENDPOINTS                                     3
         #define TOTAL_BUTTONS                                       4

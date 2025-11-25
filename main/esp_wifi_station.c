@@ -479,31 +479,35 @@ void wifi_scan() {
 }
 
 void wifi_pause(){
-	if (xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT) {
-        esp_wifi_stop();
+	
+    esp_wifi_stop();
+	if (xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT) {	
         vTaskDelay(pdMS_TO_TICKS(50)); // Allow radio to stabilize
     }
 }
 void wifi_restart(){
-    if (xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT) {
-        esp_wifi_start();
-        xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(5000));
-    }
+    
+    esp_wifi_start();
+	if (s_wifi_event_group != NULL) {
+        EventBits_t bits = xEventGroupWaitBits(
+            s_wifi_event_group,
+            WIFI_CONNECTED_BIT,
+            pdFALSE,
+            pdFALSE,
+            pdMS_TO_TICKS(10000)  // 10 second timeout
+        );
+        
+        if (bits & WIFI_CONNECTED_BIT) {
+            ESP_LOGI("WIFI", "WiFi reconnected successfully");
+        } else {
+            ESP_LOGW("WIFI", "WiFi connection timeout");
+        }
+    }	
+	// if (xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT) {	
+    //     xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdFALSE, pdMS_TO_TICKS(5000));
+    // }
 }
-// void wifi_restart() {
-// 	// Restart Wi-Fi
-// 	esp_wifi_start();
 
-// 	// Wait for Wi-Fi to reconnect
-// 	EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT,
-// 		pdFALSE, pdFALSE, pdMS_TO_TICKS(5000));
-
-// 	if (bits & WIFI_CONNECTED_BIT) {
-// 		ESP_LOGI("WiFi", "Reconnected successfully");
-// 	} else {
-// 		ESP_LOGE("WiFi", "Failed to reconnect!");
-// 	}
-// }
 
 void start_wifi_scanning(){
 

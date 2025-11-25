@@ -142,10 +142,8 @@
             // Create object
             JSON_Value *root_value = json_value_init_object();
             JSON_Object *root_object = json_value_get_object(root_value);
-
             // Add key: power=state
             json_object_set_number(root_object, "power", state);
-
             // Add key: temp=device_info[0].ac_temperature
             json_object_set_number(root_object, "temp", device_info[0].ac_temperature);
 

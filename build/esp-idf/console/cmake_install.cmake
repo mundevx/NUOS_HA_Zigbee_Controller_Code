@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/console
+# Install script for directory: C:/Users/procu/esp/v5.5/esp-idf/components/console
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

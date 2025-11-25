@@ -1,0 +1,1498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DALI Control — Group Membership with CCT Slider + Per-Device Scene Settings</title>
+
+<style>
+/* ---------- blended styles (kept the working look you provided) ---------- */
+body { 
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  min-height:100vh;margin:0;padding-top:20px;font-family:Arial, sans-serif;background:#f5f5f5;
+}
+.tabs{ display:flex;background:#2193b0;border-radius:8px 8px 0 0;overflow:hidden;width:90%;max-width:1100px; }
+.tab-btn{ flex:1;padding:12px;text-align:center;cursor:pointer;color:#fff;background:#2193b0;border:none;font-weight:bold;transition:background .25s; }
+.tab-btn.active{ background:#6dd5ed;color:#000; }
+.tab-content{ display:none;padding:20px;width:90%;max-width:1100px;background:#fff;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.1); }
+.tab-content.active{ display:block; }
+.card{ background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.1);padding:20px;margin:20px 0; }
+label{ font-weight:bold;display:block;margin-bottom:5px;color:#2193b0; }
+select,input[type="number"]{ padding:10px;margin:8px 0;width:100%;border:1px solid #ccc;border-radius:4px;box-sizing:border-box; }
+.stylish-button{ background:#2196F3;border:none;color:#fff;padding:12px 20px;font-size:16px;border-radius:4px;cursor:pointer;transition:background .25s;width:100%;margin-top:15px; }
+.stylish-button:hover{ background:#1976D2; }
+.toggle-btn{ width:40px;height:40px;margin:2px;cursor:pointer;border:1px solid #ccc;background:#f0f0f0;border-radius:4px; display:inline-flex; align-items:center; justify-content:center; user-select:none; }
+.toggle-btn.selected{ background:#4CAF50;color:#fff;border-color:#388E3C; }
+h2{ color:#2193b0;text-align:center;margin-top:0; }
+h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:25px; }
+.toggle-grid{ display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:15px 0;max-height:300px;overflow-y:auto;padding:10px;background:#f9f9f9;border-radius:8px; }
+.two-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* device control layout (per-device area) */
+.device-controls{ display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
+.toggle-onoff{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.toggle-onoff .toggle{ width:64px; height:36px; border-radius:20px; background:#ddd; position:relative; cursor:pointer; transition:background .18s; border:1px solid rgba(0,0,0,0.06); }
+.toggle-onoff .toggle.on{ background:#4CAF50; }
+.toggle-onoff .toggle .knob{ position:absolute; top:4px; left:4px; width:28px; height:28px; border-radius:50%; background:#fff; transition:left .18s; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+.toggle-onoff .toggle.on .knob{ left:32px; }
+
+.control-row{ display:flex; align-items:center; gap:8px; }
+.control-row input[type="range"]{ flex:1; }
+.value-label{ min-width:64px; text-align:right; font-weight:bold; color:#333; }
+.inline-send{ padding:8px 12px; border-radius:6px; background:#2196F3; color:#fff; border:none; cursor:pointer; margin-left:8px; }
+.small-note{ font-size:13px; color:#666; margin-top:6px; }
+.cct-preview{ width:120px; height:44px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.08); border:1px solid rgba(0,0,0,0.06); }
+.cct-slider{ -webkit-appearance:none; appearance:none; width:100%; height:28px; margin:0; border-radius:14px; outline:none; background:linear-gradient(90deg,#ff8a00 0%,#ffcf33 20%,#ffffff 50%,#cfe9ff 80%,#2fa8ff 100%); }
+.cct-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid rgba(0,0,0,0.12); box-shadow:0 4px 10px rgba(0,0,0,0.12); margin-top:-6px; cursor:pointer; }
+.cct-ticks{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; font-size:12px; color:#333; user-select:none; }
+
+@media (max-width: 680px){ .tabs{ flex-direction:column; } .toggle-grid{ grid-template-columns:repeat(4,1fr); } }
+
+/* Simple modal for scene mode choice */
+#sceneModeModal{ position:fixed; left:0; top:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); z-index:9999; }
+#sceneModeModal .modal-card{ width:340px; background:#fff; border-radius:8px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.25); }
+#sceneModeModal .modal-card h3{ margin-top:0; }
+#sceneModeModal .modal-actions{ display:flex; gap:8px; margin-top:12px; }
+#sceneModeModal .modal-actions button{ flex:1; }
+</style>
+</head>
+<body>
+
+<!-- TAB BUTTONS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="sceneControl">Scene Control</button>
+  <button class="tab-btn" data-tab="daliAddressing">DALI Addressing</button>
+  <button class="tab-btn" data-tab="groupMembership">Group Membership</button>
+  <button class="tab-btn" data-tab="sceneManagement">Scenes</button>
+</div>
+
+<!-- ---------------- TAB 1: Scene Control (from your working upload) ---------------- -->
+<div id="sceneControl" class="tab-content active">
+  <div class="card">
+    <h2>DALI Scene Control Switch</h2>
+    <p>Set Group, Scene IDs (0–15) or DALI IDs (0–63).</p>
+    <form id="sceneForm" autocomplete="off">
+      <label for="control_type">Switch Control Type:</label>
+      <select id="control_type" required>
+        <option>Individual Control</option>
+        <option>Group Control</option>
+        <option>Scene Control</option>
+      </select>
+
+      <div id="sceneControlDiv" style="display:block;margin-top:1em;">
+        <label for="control_type1">Scene Control Type:</label>
+        <select id="control_type1" required>
+          <option>Broadcast Control</option>
+          <option>Group Control</option>
+          <option>Individual Control</option>
+        </select>
+      </div>
+
+      <label for="group_id" id="groupIdLabel" style="display:none;">Group ID (0–15):</label>
+      <input type="number" id="group_id" min="0" max="15" value="0" style="display:none;">
+
+      <p>Long Press each ID fields to set DALI Ids</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label id="scene1Label">Scene ID 1:</label><input type="number" id="scene1" min="0" max="15" required></div>
+        <div><label id="scene2Label">Scene ID 2:</label><input type="number" id="scene2" min="0" max="15" required></div>
+        <div><label id="scene3Label">Scene ID 3:</label><input type="number" id="scene3" min="0" max="15" required></div>
+        <div><label id="scene4Label">Scene ID 4:</label><input type="number" id="scene4" min="0" max="15" required></div>
+      </div>
+      <button class="stylish-button" type="submit">Save Changes</button>
+    </form>
+    <pre id="result"></pre>
+  </div>
+</div>
+
+<!-- ---------------- TAB 2: DALI Addressing (from your working upload) ---------------- -->
+<div id="daliAddressing" class="tab-content">
+  <div class="card">
+    <h2>DALI Addressing</h2>
+    <!-- <label for="daliAddress">Select DALI Address (0–63):</label>
+    <select id="daliAddress"></select> -->
+  <div style="display: flex; gap: 2em; margin-bottom: 1em;">
+    <div>
+      <label for="daliStartAddress">Start Address</label>
+      <select id="daliStartAddress"></select>
+    </div>
+    <div>
+      <label for="daliNumAddresses">Number Of Addresses</label>
+      <select id="daliNumAddresses"></select>
+    </div>
+  </div>
+    <button class="stylish-button" id="sendDaliAddress">Send Address</button>
+  </div>
+
+  <!-- Confirmation Popup (initially hidden) -->
+  <div id="daliConfirmPopup" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.45);justify-content:center;align-items:center;">
+    <div style="background:white;padding:2em;border-radius:10px;box-shadow:0 0 20px #333;min-width:350px;text-align:center;">
+      <div style="font-size:1.15em;color:#2193b0;margin-bottom:1em;">
+        Are you sure you want to start DALI devices addressing? 
+        You will be unable to control the devices until the process is complete.
+      </div>
+      <button id="daliPopupOk" class="stylish-button" style="margin-right:15px;">OK</button>
+      <button id="daliPopupCancel" class="stylish-button" style="background:#bbb;color:#222;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Info Popup (initially hidden) -->
+  <div id="daliInfoPopup" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.45);justify-content:center;align-items:center;">
+    <div style="background:white;padding:2em;border-radius:10px;box-shadow:0 0 20px #333;min-width:350px;text-align:center;">
+      <div style="font-size:1.15em;color:#2193b0;margin-bottom:1em;">
+        Kindly allow the process to finish, then reconnect to the webpage.
+      </div>
+      <!-- <button id="daliInfoOk" class="stylish-button">OK</button> -->
+    </div>
+  </div>
+</div>
+
+<!-- ---------------- TAB 3: Group Membership (kept your preferred implementation) ---------------- -->
+<div id="groupMembership" class="tab-content">
+  <div class="card">
+    <h2>DALI Group Membership</h2>
+    <label for="groupSelect">Select Group (0–15):</label>
+    <select id="groupSelect"></select>
+
+    <h3>Group Controls</h3>
+    <div class="device-controls">
+      <div class="toggle-onoff">
+        <div>
+          <div style="font-weight:bold;color:#2193b0;">Group Power</div>
+          <div class="small-note">Toggle ON or OFF for the selected group (sends fxn/val).</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div id="groupPowerToggle" class="toggle" tabindex="0" role="switch" aria-checked="false" title="Toggle group ON/OFF">
+            <div class="knob"></div>
+          </div>
+          <div id="groupPowerStateLabel" style="font-weight:bold;">OFF</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:bold;color:#2193b0;">Brightness</div>
+          <div class="value-label" id="brightnessValue">50%</div>
+        </div>
+        <div class="control-row" style="margin-top:6px;">
+          <input id="brightnessSlider" type="range" min="0" max="100" value="50" />
+          <button id="sendBrightness" class="inline-send">Send</button>
+        </div>
+        <div class="small-note">Set brightness for the selected group. (Sends fxn/val = 0..100)</div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:bold;color:#2193b0;">Color Temperature (CCT)</div>
+          <div class="value-label" id="cctValue">3500K</div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:14px; align-items:center;">
+          <div style="flex:1;">
+            <input id="cctSlider" class="cct-slider" type="range" min="2000" max="6500" step="50" value="3500" />
+            <div class="cct-ticks" aria-hidden="true">
+              <div class="tick"><div class="tick-label">2000K</div></div>
+              <div class="tick"><div class="tick-label">3000K</div></div>
+              <div class="tick"><div class="tick-label">4000K</div></div>
+              <div class="tick"><div class="tick-label">5000K</div></div>
+              <div class="tick"><div class="tick-label">6000K</div></div>
+              <div class="tick"><div class="tick-label">6500K</div></div>
+            </div>
+          </div>
+          <div style="width:130px;">
+            <div id="cctPreview" class="cct-preview" aria-hidden="true"></div>
+            <div style="text-align:center;font-size:12px;margin-top:8px;color:#666;">Preview</div>
+          </div>
+          <button id="sendCCT" class="inline-send">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:18px;">Select DALI addresses to include in this group:</p>
+    <div class="toggle-grid" id="groupIdGrid"></div>
+
+    <div class="two-buttons" style="margin-top:12px;">
+      <button class="stylish-button" id="addToGroup">Add To Group</button>
+      <button class="stylish-button" id="removeFromGroup">Remove From Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------------- TAB 4: Scenes (per-device) ---------------- -->
+<div id="sceneManagement" class="tab-content">
+  <div class="card">
+    <h2>DALI Scene Management (Per-device)</h2>
+
+    <label for="sceneGroupSelect">Select Scene (0–15):</label>
+    <select id="sceneGroupSelect"></select>
+
+    <!-- NEW: Select Group Id to include in Add To Scene payload -->
+    <label for="sceneGroupIdSelect" id="sceneGroupIdLabel">Select Group Id (0–15) for this Scene</label>
+    <select id="sceneGroupIdSelect"></select>
+
+    <label for="sceneDeviceSelect" id="sceneDeviceSelectLabel">Select Device ID (0–63):</label>
+    <select id="sceneDeviceSelect"></select>
+
+    <h3>Device Settings for Selected Scene</h3>
+    <div class="device-controls">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <label style="margin:0;">Include in Add/Clear</label>
+        <input type="checkbox" id="deviceIncluded" />
+      </div>
+
+      <div class="toggle-onoff" style="margin-top:6px;">
+        <div style="font-weight:bold;color:#2193b0;">Device ON/OFF</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div id="devicePowerToggle" class="toggle" tabindex="0" role="switch" aria-checked="false">
+            <div class="knob"></div>
+          </div>
+          <div id="devicePowerLabel" style="font-weight:bold;">OFF</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:bold;color:#2193b0;">Device Brightness</div>
+          <div class="value-label" id="deviceBrightnessValue">50%</div>
+        </div>
+        <div class="control-row" style="margin-top:6px;">
+          <input id="deviceBrightnessSlider" type="range" min="0" max="100" value="50" />
+          <button id="sendDeviceBrightness" class="inline-send">Send</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:bold;color:#2193b0;">Device Color Temperature (CCT)</div>
+          <div class="value-label" id="deviceCctValue">3500K</div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:14px; align-items:center;">
+          <div style="flex:1;">
+            <input id="deviceCctSlider" class="cct-slider" type="range" min="2000" max="6500" step="50" value="3500" />
+            <div class="cct-ticks" aria-hidden="true">
+              <div class="tick"><div class="tick-label">2000K</div></div>
+              <div class="tick"><div class="tick-label">3000K</div></div>
+              <div class="tick"><div class="tick-label">4000K</div></div>
+              <div class="tick"><div class="tick-label">5000K</div></div>
+              <div class="tick"><div class="tick-label">6000K</div></div>
+              <div class="tick"><div class="tick-label">6500K</div></div>
+            </div>
+          </div>
+          <div style="width:130px;">
+            <div id="deviceCctPreview" class="cct-preview" aria-hidden="true"></div>
+            <div style="text-align:center;font-size:12px;margin-top:8px;color:#666;">Preview</div>
+          </div>
+          <button id="sendDeviceCct" class="inline-send">Send</button>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <button id="saveDevice" class="stylish-button">Add To Scene (Save)</button>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button id="removeDevice" class="stylish-button" style="flex:1;">Clear Device from Scene</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- modal: ask user how to set scene -->
+<div id="sceneModeModal" aria-hidden="true">
+  <div class="modal-card">
+    <h3>How to set scene via?</h3>
+    <p style="margin:6px 0 10px 0;color:#444;">Choose whether this scene will be set using a Group ID or individual Device IDs.</p>
+    <div style="display:flex;gap:8px;">
+      <button id="chooseGroupMode" class="stylish-button">Group ID</button>
+      <button id="chooseDeviceMode" class="stylish-button">Device IDs</button>
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="rememberSceneMode" /> <label for="rememberSceneMode" style="margin:0;font-weight:normal;color:#666;">Remember choice for this scene</label>
+    </div>
+  </div>
+</div>
+
+<!-- popup overlay (legacy) -->
+<div id="overlay" style="display:none;"></div>
+<div id="popup" aria-hidden="true" style="display:none;">
+  <h3 style="margin-top:0;">Select IDs</h3>
+  <div id="toggleGrid"></div>
+  <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+    <button onclick="submitSelection()" style="padding:10px 16px;">Submit</button>
+    <button onclick="closePopup()" style="padding:10px 16px;">Cancel</button>
+  </div>
+</div>
+
+<!-- ---------------- JavaScript ---------------- -->
+<script>
+/* ---------- constants ---------- */
+const FXN_POWER = 301, FXN_BRIGHT = 302, FXN_CCT = 303;
+const FXN_SAVE_SCENE = 202;
+const FXN_CLEAR_SCENE = 202;
+
+/* ---------- helper: CCT -> RGB ---------- */
+function cctToRgb(kelvin){
+  let temp = kelvin / 100;
+  let r,g,b;
+  if (temp <= 66) r = 255; else r = 329.698727446 * Math.pow(temp - 60, -0.1332047592);
+  if (temp <= 66) g = 99.4708025861 * Math.log(temp) - 161.1195681661; else g = 288.1221695283 * Math.pow(temp - 60, -0.0755148492);
+  if (temp >= 66) b = 255; else if (temp <= 19) b = 0; else b = 138.5177312231 * Math.log(temp - 10) - 305.0447927307;
+  r = Math.min(Math.max(Math.round(r),0),255); g = Math.min(Math.max(Math.round(g),0),255); b = Math.min(Math.max(Math.round(b),0),255);
+  return { r,g,b };
+}
+
+/* ---------- helper: post JSON ---------- */
+async function postJson(url, body){
+  try {
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    return res;
+  } catch (e) { console.error('postJson error', e); throw e; }
+}
+
+/* ---------- small POST /action helper used in Scene Control and elsewhere ---------- */
+async function postAction(payload){
+  try {
+    const res = await fetch('/action',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    return res;
+  } catch(e){ console.error('postAction', e); return null; }
+}
+
+/* ---------- helper to populate dropdowns ---------- */
+function populateDropdown(selectElement, max){
+  if (!selectElement) return;
+  selectElement.innerHTML = '';
+  for (let i=0;i<=max;i++){
+    const o = document.createElement('option'); o.value = i; o.textContent = i; selectElement.appendChild(o);
+  }
+}
+
+/* ---------- initialize common dropdowns early (so Scene Control / DALI Addressing use them) ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+  // populateDropdown(document.getElementById('daliAddress'),63);
+  populateDropdown(document.getElementById('groupSelect'),15);
+  populateDropdown(document.getElementById('sceneGroupSelect'),15);
+  populateDropdown(document.getElementById('sceneDeviceSelect'),63);
+  populateDropdown(document.getElementById('sceneGroupIdSelect'),15);
+});
+
+/* ---------- Scene Control (first tab) wiring - preserved from working upload ---------- */
+var savedGroupId = 0;
+var savedSceneIds = [0,0,0,0];
+var savedControlType = 'Individual Control';
+var savedControlType1 = 'Broadcast Control';
+let currentInput = null;
+let popupSelections = [[],[],[],[]];
+
+function setInputRange(min,max){
+  const inputs = ['scene1','scene2','scene3','scene4'].map(id=>document.getElementById(id));
+  inputs.forEach(el=>{ if(el){ el.min = min; el.max = max; }});
+}
+function updateGroupIdVisibility(show){
+  const groupIdLabel = document.getElementById('groupIdLabel');
+  const groupIdInput = document.getElementById('group_id');
+  if(groupIdLabel) groupIdLabel.style.display = show ? '' : 'none';
+  if(groupIdInput) groupIdInput.style.display = show ? '' : 'none';
+}
+
+document.getElementById('control_type').addEventListener('change', function() {
+  var val = this.value; var groupIdLabel = document.getElementById('groupIdLabel');
+  var groupIdInput = document.getElementById('group_id');
+  var sceneLabels = [ document.getElementById('scene1Label'), document.getElementById('scene2Label'), document.getElementById('scene3Label'), document.getElementById('scene4Label') ];
+
+  if (val === 'Individual Control') {
+    groupIdLabel.style.display = 'none';
+    groupIdInput.style.display = 'none';
+    sceneLabels.forEach((el,i)=>el && (el.innerText = `Dali ID ${i+1}:`));
+    setInputRange(0,63);
+  } else if (val === 'Group Control' || val === 'Broadcast Control') {
+    groupIdLabel.style.display = 'none';
+    groupIdInput.style.display = 'none';
+    sceneLabels.forEach((el,i)=>el && (el.innerText = `Group ID ${i+1}:`));
+    setInputRange(0,15);
+  } else if (val === 'Scene Control') {
+    groupIdLabel.style.display = '';
+    groupIdInput.style.display = '';
+    sceneLabels.forEach((el,i)=>el && (el.innerText = `Scene ID ${i+1}:`));
+    setInputRange(0,15);
+  }
+
+  var sceneDiv = document.getElementById('sceneControlDiv');
+  if (this.value === 'Scene Control') {
+    sceneDiv.style.display = 'block';
+    var val2 = document.getElementById('control_type1').value;
+    if (val2 === 'Broadcast Control') { updateGroupIdVisibility(false); setInputRange(0,15); }
+    else if (val2 === 'Individual Control') { updateGroupIdVisibility(false); setInputRange(0,63); }
+    else if (val2 === 'Group Control') { updateGroupIdVisibility(true); setInputRange(0,15); }
+  } else { sceneDiv.style.display = 'none'; }
+});
+
+document.getElementById('control_type1').addEventListener('change', function(){
+  var val = this.value;
+  if (document.getElementById('sceneControlDiv').style.display !== 'none') {
+    if (val === 'Broadcast Control' || val === 'Individual Control') updateGroupIdVisibility(false);
+    else if (val === 'Group Control') updateGroupIdVisibility(true);
+  }
+});
+
+document.getElementById('sceneForm').onsubmit = async function(e){
+  e.preventDefault();
+  const data = {
+    fxn: '40',
+    group_id: parseInt(document.getElementById('group_id').value || 0),
+    scene_ids: [
+      parseInt(document.getElementById('scene1').value || 0),
+      parseInt(document.getElementById('scene2').value || 0),
+      parseInt(document.getElementById('scene3').value || 0),
+      parseInt(document.getElementById('scene4').value || 0)
+    ],
+    control_type: document.getElementById('control_type').selectedIndex,
+    scn_ctrl_type: document.getElementById('control_type1').selectedIndex
+  };
+  await postAction(data);
+  alert('Scene control saved/sent');
+};
+
+/* load scene control saved values if MCU provides them */
+document.addEventListener('DOMContentLoaded', function(){
+  fetch('/items?fxn=15').then(r=>r.json()).then(data=>{
+    if (!data) return;
+    if (data.group_id !== undefined) document.getElementById('group_id').value = data.group_id;
+    if (Array.isArray(data.scene_ids)) {
+      document.getElementById('scene1').value = data.scene_ids[0] ?? 0;
+      document.getElementById('scene2').value = data.scene_ids[1] ?? 0;
+      document.getElementById('scene3').value = data.scene_ids[2] ?? 0;
+      document.getElementById('scene4').value = data.scene_ids[3] ?? 0;
+    }
+    if (data.control_type !== undefined) document.getElementById('control_type').value = data.control_type;
+    if (data.scn_ctrl_type !== undefined) document.getElementById('control_type1').value = data.scn_ctrl_type;
+  }).catch(()=>{});
+});
+
+/* popup large picker (legacy) - create 0..63 grid inside toggleGrid */
+(function initPopupGrid(){
+  const tg = document.getElementById('toggleGrid');
+  if(!tg) return;
+  let html = '';
+  for (let i=0;i<64;i++){
+    html += `<button class="toggle-btn" id="btn${i}" onclick="toggleBtn(${i})">${i}</button>`;
+    if ((i+1)%8===0) html += '<br>';
+  }
+  tg.innerHTML = html;
+})();
+
+/* popup helpers */
+function toggleBtn(id){
+  if (currentInput === null) return;
+  let arr = popupSelections[currentInput] || [];
+  const idx = arr.indexOf(id);
+  if (idx === -1) arr.push(id); else arr.splice(idx,1);
+  popupSelections[currentInput] = arr;
+  const b = document.getElementById('btn'+id);
+  if (b) b.classList.toggle('selected');
+}
+function openPopup(inputIdx){
+  currentInput = inputIdx;
+  const selected = popupSelections[inputIdx] || [];
+  for (let i=0;i<64;i++){
+    const b = document.getElementById('btn'+i);
+    if(!b) continue;
+    if (selected.includes(i)) b.classList.add('selected'); else b.classList.remove('selected');
+  }
+  document.getElementById('popup').style.display='block';
+  document.getElementById('overlay').style.display='block';
+  document.getElementById('popup').setAttribute('aria-hidden','false');
+}
+function closePopup(){ document.getElementById('popup').style.display='none'; document.getElementById('overlay').style.display='none'; document.getElementById('popup').setAttribute('aria-hidden','true'); }
+async function submitSelection(){
+  if (currentInput === null) return;
+  const selected = (popupSelections[currentInput] || []).slice().sort((a,b)=>a-b);
+  await postAction({ fxn: '41', input_id: currentInput, selected_ids: selected });
+  closePopup();
+}
+
+/* ---------- small grid for group membership and scene grid (from your working upload) ---------- */
+function createToggleGrid(container, count){
+  if(!container) return;
+  container.innerHTML = '';
+  for(let i=0;i<count;i++){
+    const btn = document.createElement('button');
+    btn.type='button'; btn.className='toggle-btn'; btn.textContent = i; btn.id = 'btn'+i;
+    btn.addEventListener('click', ()=> btn.classList.toggle('selected'));
+    container.appendChild(btn);
+    if ((i+1)%8===0) container.appendChild(document.createElement('br'));
+  }
+}
+/* create required grids */
+document.addEventListener('DOMContentLoaded', ()=> {
+  createToggleGrid(document.getElementById('groupIdGrid'), 64);
+  // keep legacy sceneGrid creation safe (if used elsewhere it won't break)
+  const sceneGridEl = document.getElementById('sceneGrid');
+  if (sceneGridEl) createToggleGrid(sceneGridEl, 16);
+});
+
+/* ---------- Group Membership wiring ---------- */
+document.getElementById('addToGroup').addEventListener('click', ()=> {
+  const group = document.getElementById('groupSelect').value;
+  const selectedButtons = document.querySelectorAll('#groupIdGrid .selected');
+  const selectedIds = Array.from(selectedButtons).map(btn => parseInt(btn.textContent));
+  postAction({ fxn: '51', action:'add', group_id: parseInt(group,10), dali_ids: selectedIds });
+  alert(`Group ${group} add ${selectedIds.length} ids`);
+});
+document.getElementById('removeFromGroup').addEventListener('click', ()=> {
+  const group = document.getElementById('groupSelect').value;
+  const selectedButtons = document.querySelectorAll('#groupIdGrid .selected');
+  const selectedIds = Array.from(selectedButtons).map(btn => parseInt(btn.textContent));
+  postAction({ fxn: '51', action:'remove', group_id: parseInt(group,10), dali_ids: selectedIds });
+  alert(`Group ${group} remove ${selectedIds.length} ids`);
+});
+
+/* ---------- DALI Addressing button ---------- */
+// document.getElementById('sendDaliAddress').addEventListener('click', ()=> {
+//   const address = parseInt(document.getElementById('daliAddress').value || 0,10);
+//   postAction({ fxn: '60', selected_address: address });
+//   alert('DALI Address sent');
+// });
+
+
+
+// You can make both "dropdown" inputs editable by switching them to <input type="number"> elements.
+// For now, the above code makes them as dropdowns (select).
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+  // Elements
+  const sendBtn = document.getElementById("sendDaliAddress");
+  const confirmPopup = document.getElementById("daliConfirmPopup");
+  const infoPopup = document.getElementById("daliInfoPopup");
+  const okBtn = document.getElementById("daliPopupOk");
+  const cancelBtn = document.getElementById("daliPopupCancel");
+  // const infoOkBtn = document.getElementById("daliInfoOk");
+
+  // Show confirmation popup when Send Address is clicked
+  sendBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    confirmPopup.style.display = "flex"; // only visible now
+  });
+
+  // Cancel closes the confirmation popup
+  cancelBtn.addEventListener("click", function () {
+    confirmPopup.style.display = "none";
+  });
+
+  // OK sends JSON and shows info popup
+  okBtn.addEventListener("click", async function () {
+    confirmPopup.style.display = "none";
+    // Prepare and send your JSON
+    // const address = document.getElementById("daliAddress").value;
+    // const payload = { fxn: 12, maxaddr: address };
+    try {
+      // await fetch("action", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(payload),
+      // });
+// On confirm (your okBtn logic):
+      const start = parseInt(document.getElementById("daliStartAddress").value, 10);
+      const num = parseInt(document.getElementById("daliNumAddresses").value, 10);
+      const payload = { fxn: 12, start_addr: start, max_addr: num };
+      await fetch("action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });      
+    } catch (err) {
+      console.warn("Could not send DALI addressing command:", err);
+    }
+    infoPopup.style.display = "flex"; // only visible after OK
+  });
+
+  // Final OK closes info popup
+  // infoOkBtn.addEventListener("click", function () {
+  //   infoPopup.style.display = "none";
+  // });
+});
+
+/* ---------- Group-level controls wiring (power/brightness/cct) ---------- */
+let groupPowerState = 0;
+const groupPowerToggle = document.getElementById('groupPowerToggle');
+const groupPowerLabel = document.getElementById('groupPowerStateLabel');
+if (groupPowerToggle) {
+  groupPowerToggle.addEventListener('click', ()=> {
+    groupPowerState = groupPowerState ? 0 : 1;
+    groupPowerToggle.classList.toggle('on', !!groupPowerState);
+    if(groupPowerLabel) groupPowerLabel.textContent = groupPowerState ? 'ON' : 'OFF';
+    const group = parseInt(document.getElementById('groupSelect').value || 0,10);
+    postJson('/action',{ fxn: FXN_POWER, group_id: group, val: groupPowerState });
+  });
+}
+const brightnessSlider = document.getElementById('brightnessSlider');
+const brightnessValue = document.getElementById('brightnessValue');
+const sendBrightnessBtn = document.getElementById('sendBrightness');
+if (brightnessSlider && brightnessValue) brightnessSlider.addEventListener('input', ()=> brightnessValue.textContent = brightnessSlider.value + '%');
+if (sendBrightnessBtn) sendBrightnessBtn.addEventListener('click', async ()=> {
+  const val = parseInt(brightnessSlider?.value || 50,10);
+  const group = parseInt(document.getElementById('groupSelect')?.value || 0,10);
+  await postJson('/action',{ fxn: FXN_BRIGHT, group_id: group, val });
+  alert('Group brightness sent');
+});
+const cctSlider = document.getElementById('cctSlider');
+const cctValueLabel = document.getElementById('cctValue');
+const cctPreview = document.getElementById('cctPreview');
+const sendCCTBtn = document.getElementById('sendCCT');
+function updateGroupCCTUI(v){ if (cctValueLabel) cctValueLabel.textContent = v + 'K'; if (cctPreview){ const col = cctToRgb(Number(v)); cctPreview.style.background = `rgb(${col.r},${col.g},${col.b})`; } }
+if (cctSlider) cctSlider.addEventListener('input', (e)=> updateGroupCCTUI(e.target.value));
+if (sendCCTBtn) sendCCTBtn.addEventListener('click', async ()=> {
+  const val = parseInt(cctSlider?.value || 3500,10);
+  const group = parseInt(document.getElementById('groupSelect')?.value || 0,10);
+  await postJson('/action',{ fxn: FXN_CCT, group_id: group, val });
+  alert('Group CCT sent');
+});
+
+/* ---------- Scenes (per-device) logic (MODIFIED: support Group-mode vs Device-mode) ---------- */
+const CACHE_KEY = 'sceneDeviceCache_v1';
+const MODE_KEY = 'sceneModeMap_v1';
+let sceneDeviceCache = {}; // { sceneId: { deviceId: { included, power, brightness, cct } } };
+let sceneModeMap = {}; // { sceneId: 'device' | 'group' }
+
+function loadCache(){ try{ const raw = localStorage.getItem(CACHE_KEY); if(raw) sceneDeviceCache = JSON.parse(raw); }catch(e){} }
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(sceneDeviceCache)); }catch(e){} }
+function loadModeMap(){ try{ const raw = localStorage.getItem(MODE_KEY); if(raw) sceneModeMap = JSON.parse(raw); }catch(e){} }
+function saveModeMap(){ try{ localStorage.setItem(MODE_KEY, JSON.stringify(sceneModeMap)); }catch(e){} }
+function getCache(sceneId, deviceId){ sceneDeviceCache[sceneId] = sceneDeviceCache[sceneId] || {}; return sceneDeviceCache[sceneId][deviceId] || null; }
+function setCache(sceneId, deviceId, data){ sceneDeviceCache[sceneId] = sceneDeviceCache[sceneId] || {}; sceneDeviceCache[sceneId][deviceId] = Object.assign({}, data); saveCache(); }
+
+document.addEventListener('DOMContentLoaded', ()=> {
+  loadCache();
+  loadModeMap();
+
+  const sceneSelector = document.getElementById('sceneGroupSelect');
+  const deviceSelector = document.getElementById('sceneDeviceSelect');
+  const sceneGroupIdSelect = document.getElementById('sceneGroupIdSelect'); // NEW
+  const deviceIncluded = document.getElementById('deviceIncluded');
+  const devicePowerToggle = document.getElementById('devicePowerToggle');
+  const devicePowerLabel = document.getElementById('devicePowerLabel');
+  const deviceBrightnessSlider = document.getElementById('deviceBrightnessSlider');
+  const deviceBrightnessValue = document.getElementById('deviceBrightnessValue');
+  const sendDeviceBrightness = document.getElementById('sendDeviceBrightness');
+  const deviceCctSlider = document.getElementById('deviceCctSlider');
+  const deviceCctValue = document.getElementById('deviceCctValue');
+  const deviceCctPreview = document.getElementById('deviceCctPreview');
+  const sendDeviceCct = document.getElementById('sendDeviceCct');
+  const saveDeviceBtn = document.getElementById('saveDevice');
+  const removeDeviceBtn = document.getElementById('removeDevice');
+
+  const sceneModeModal = document.getElementById('sceneModeModal');
+  const chooseGroupMode = document.getElementById('chooseGroupMode');
+  const chooseDeviceMode = document.getElementById('chooseDeviceMode');
+  const rememberSceneMode = document.getElementById('rememberSceneMode');
+
+  function setDevicePowerUI(on){
+    const bool = !!on;
+    if (devicePowerToggle) devicePowerToggle.classList.toggle('on', bool);
+    if (devicePowerLabel) devicePowerLabel.textContent = bool ? 'ON' : 'OFF';
+    if (devicePowerToggle) devicePowerToggle.setAttribute('aria-checked', bool ? 'true':'false');
+  }
+  function updateDeviceCCTPreview(val){ if (!deviceCctPreview) return; const col = cctToRgb(Number(val)); deviceCctPreview.style.background = `rgb(${col.r},${col.g},${col.b})`; }
+
+  function populateDeviceUIFromData(data){
+    if (!data) { if (deviceIncluded) deviceIncluded.checked = false; setDevicePowerUI(false); if (deviceBrightnessSlider) { deviceBrightnessSlider.value = 50; deviceBrightnessValue.textContent = '50%'; } if (deviceCctSlider) { deviceCctSlider.value = 3500; deviceCctValue.textContent='3500K'; updateDeviceCCTPreview(3500); } return; }
+    if (deviceIncluded) deviceIncluded.checked = !!data.included;
+    setDevicePowerUI(Boolean(data.power));
+    if (deviceBrightnessSlider) { deviceBrightnessSlider.value = (data.brightness !== undefined ? data.brightness : 50); deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%'; }
+    if (deviceCctSlider) { deviceCctSlider.value = (data.cct !== undefined ? data.cct : 3500); deviceCctValue.textContent = deviceCctSlider.value + 'K'; updateDeviceCCTPreview(deviceCctSlider.value); }
+  }
+
+  function cacheCurrentUI(){
+    const sid = String(parseInt(sceneSelector.value || 0,10));
+    const did = String(parseInt(deviceSelector.value || 0,10));
+    const entry = {
+      included: !!(deviceIncluded && deviceIncluded.checked),
+      power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+      brightness: parseInt(deviceBrightnessSlider?.value || 50,10),
+      cct: parseInt(deviceCctSlider?.value || 3500,10)
+    };
+    setCache(sid, did, entry);
+  }
+
+  if (deviceIncluded) deviceIncluded.addEventListener('change', ()=> cacheCurrentUI());
+  if (deviceBrightnessSlider) deviceBrightnessSlider.addEventListener('input', ()=>{ deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%'; cacheCurrentUI(); });
+  if (deviceCctSlider) deviceCctSlider.addEventListener('input', ()=>{ deviceCctValue.textContent = deviceCctSlider.value + 'K'; updateDeviceCCTPreview(deviceCctSlider.value); cacheCurrentUI(); });
+
+  if (devicePowerToggle) {
+    devicePowerToggle.addEventListener('click', async ()=> {
+      const newOn = !devicePowerToggle.classList.contains('on');
+      setDevicePowerUI(newOn);
+      cacheCurrentUI();
+      const sid = parseInt(sceneSelector.value || 0,10);
+      const did = parseInt(deviceSelector.value || 0,10);
+      // Use scene mode to decide payload
+      const mode = sceneModeMap[String(sid)] || 'device';
+      const payload = { fxn: FXN_POWER, val: newOn ? 1 : 0, scene_id: sid };
+      if (mode === 'group') payload.group_id = parseInt(sceneGroupIdSelect.value || 0,10);
+      else payload.dali_id = did;
+      try { const res = await postJson('/action', payload); if (!res.ok) console.error('device power send failed', await res.text()); } catch(e){ console.error(e); }
+    });
+  }
+
+  async function restoreUIFor(sceneId, deviceId){
+    const sid = String(parseInt(sceneId || 0,10));
+    const did = String(parseInt(deviceId || 0,10));
+    const cached = getCache(sid, did);
+    if (cached) { populateDeviceUIFromData(cached); return; }
+
+    // Determine mode for this scene (default device)
+    const mode = sceneModeMap[sid] || 'device';
+    try {
+      let url;
+      if (mode === 'group') {
+        // if group mode ask server for scene+group state
+        const gid = parseInt(sceneGroupIdSelect.value || 0,10);
+        url = '/action?scene_id=' + encodeURIComponent(sid) + '&group_id=' + encodeURIComponent(gid);
+      } else {
+        url = '/action?scene_id=' + encodeURIComponent(sid) + '&dali_id=' + encodeURIComponent(did);
+      }
+      const r = await fetch(url);
+      if (!r.ok) { populateDeviceUIFromData(null); return; }
+      const data = await r.json();
+      populateDeviceUIFromData(data);
+      setCache(sid, did, { included: !!data.included, power: data.power ? 1 : 0, brightness: data.brightness ?? 50, cct: data.cct ?? 3500 });
+    } catch(e){ console.error('restoreUIFor', e); populateDeviceUIFromData(null); }
+  }
+
+  // Show modal when scene selection changes so user chooses how to set this scene (group or device)
+  sceneSelector.addEventListener('change', async ()=> {
+    const sid = String(parseInt(sceneSelector.value || 0,10));
+    // If map has a remembered choice, apply it immediately
+    const remembered = sceneModeMap[sid];
+    if (remembered) {
+      applySceneMode(remembered, sid);
+      // After applying mode restore UI
+      await restoreUIFor(sid, deviceSelector.value);
+      return;
+    }
+    // show modal to ask
+    showSceneModeModal(sid);
+  });
+
+  // when device select changes, just restore UI (mode determines how)
+  deviceSelector.addEventListener('change', ()=> restoreUIFor(sceneSelector.value, deviceSelector.value));
+
+  function showSceneModeModal(sceneId){
+    sceneModeModal.style.display = 'flex';
+    sceneModeModal.setAttribute('aria-hidden','false');
+
+    const onChoose = async (mode) => {
+      const remember = rememberSceneMode.checked;
+      if (remember) { sceneModeMap[String(sceneId)] = mode; saveModeMap(); }
+      applySceneMode(mode, sceneId);
+      sceneModeModal.style.display = 'none';
+      sceneModeModal.setAttribute('aria-hidden','true');
+      // restore UI now that mode is chosen
+      await restoreUIFor(sceneId, deviceSelector.value);
+      // reset checkbox
+      rememberSceneMode.checked = false;
+    };
+
+    chooseGroupMode.onclick = ()=> onChoose('group');
+    chooseDeviceMode.onclick = ()=> onChoose('device');
+  }
+
+  function applySceneMode(mode, sceneId){
+    const sid = String(parseInt(sceneId || 0,10));
+    // store mode in map (even if not remembered) so payload decisions use it immediately
+    sceneModeMap[sid] = mode;
+    // UI visibility changes
+    if (mode === 'group') {
+      // show group select, hide device select
+      document.getElementById('sceneGroupIdLabel').style.display = '';
+      document.getElementById('sceneGroupIdSelect').style.display = '';
+      document.getElementById('sceneDeviceSelectLabel').style.display = 'none';
+      document.getElementById('sceneDeviceSelect').style.display = 'none';
+    } else {
+      document.getElementById('sceneGroupIdLabel').style.display = 'none';
+      document.getElementById('sceneGroupIdSelect').style.display = 'none';
+      document.getElementById('sceneDeviceSelectLabel').style.display = '';
+      document.getElementById('sceneDeviceSelect').style.display = '';
+    }
+  }
+
+  // Save device (Add To Scene) -> include sceneGroupIdSelect selected group if mode=group
+// === REPLACE THE EXISTING saveDeviceBtn listener WITH THIS ===
+// === saveDeviceBtn handler: primary = all cached included:true (0..63), fallback = grid selected, final fallback = dropdown ===
+// === REPLACEMENT saveDeviceBtn handler: send wrapped payload { fxn, scene_id, devices: [...] } ===
+if (saveDeviceBtn) {
+  saveDeviceBtn.addEventListener('click', async () => {
+    try {
+      const sid = parseInt(sceneSelector.value || 0, 10);
+      const sidStr = String(sid);
+      const did = parseInt(deviceSelector.value || 0, 10);
+      const mode = sceneModeMap[String(sid)] || 'device';
+
+      // helper: read grid selection (local)
+      const getSelectedSceneDevices_local = () => {
+        const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
+        return btns.map(b => {
+          const dv = b.dataset && b.dataset.val;
+          return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
+        }).filter(n => !Number.isNaN(n));
+      };
+
+      // GROUP mode: keep previous behavior
+      if (mode === 'group') {
+        const payload = {
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          
+          included: !!(deviceIncluded && deviceIncluded.checked),
+          power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+          brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+          cct: parseInt(deviceCctSlider?.value || 3500, 10),
+          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+        };
+        console.log('[group-mode] payload ->', payload);
+        const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        console.log('[group-mode] response status', rGroup.status);
+        if (rGroup.ok) alert('Scene saved (group)');
+        else alert('Failed saving scene (group) - check server logs / response');
+        return;
+      }
+
+      // DEVICE mode:
+      const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
+      const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
+      const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
+      const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
+
+      // PRIMARY: gather from cache across all 0..63 devices where included === true
+      const cachedIncludedDevices = [];
+      for (let id = 0; id < 64; id++) {
+        const c = getCache(sidStr, String(id));
+        if (c && c.included === true) {
+          const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+          const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+          const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+          cachedIncludedDevices.push({
+            // keep internal full object so we can map below
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            included: true,
+            power: power,
+            brightness: brightness,
+            cct: cct,
+            dali_id: id
+          });
+        }
+      }
+
+      // convert an array of internal device objects -> wrapped payload exactly as requested
+      function makeWrappedFromDeviceObjects(arr) {
+        const devices = arr.map(d => ({
+          power: Number(d.power) || 0,
+          brightness: Number(d.brightness) || 0,
+          cct: Number(d.cct) || 0,
+          dali_id: Number(d.dali_id)
+        }));
+        return {
+          fxn: (typeof FXN_SAVE_SCENE !== 'undefined' ? FXN_SAVE_SCENE : (arr[0] && arr[0].fxn) || 202),
+          scene_id: sid,
+          action: "add",
+          devices: devices
+        };
+      }
+
+      if (cachedIncludedDevices.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+        console.log('Primary -> sending cachedIncludedDevices wrapped payload:', wrapped);
+        const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+        const text = await resp.text().catch(()=>null);
+        console.log('[primary try] status:', resp.status, 'responseText:', text);
+        if (resp.ok) {
+          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
+          alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene (from cached included:true)');
+          return;
+        } else {
+          console.warn('[primary try] server rejected cached-wrapped payload; falling back');
+        }
+      }
+
+      // FALLBACK: use grid-selected devices (but only include those with included true in cache or uiIncluded)
+      const selectedIds = getSelectedSceneDevices_local();
+      console.log('No cached included devices found; grid selected IDs:', selectedIds);
+
+      const selectedDevicesFiltered = [];
+      for (const id of selectedIds) {
+        const c = getCache(sidStr, String(id));
+        const includedPerCache = c && c.included === true;
+        const includedFinal = includedPerCache || uiIncluded; // prefer cache, else global checkbox
+        if (!includedFinal) continue;
+        const power = (c && typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+        const brightness = (c && typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+        const cct = (c && typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+        selectedDevicesFiltered.push({
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          included: true,
+          power: power,
+          brightness: brightness,
+          cct: cct,
+          dali_id: id
+        });
+      }
+
+      if (selectedDevicesFiltered.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(selectedDevicesFiltered);
+        console.log('Fallback -> sending selectedDevicesFiltered wrapped payload:', wrapped);
+        const resp2 = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+        const text2 = await resp2.text().catch(()=>null);
+        console.log('[fallback try] status:', resp2.status, 'responseText:', text2);
+        if (resp2.ok) {
+          selectedDevicesFiltered.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
+          alert('Saved ' + selectedDevicesFiltered.length + ' device(s) to scene (from selected grid)');
+          return;
+        } else {
+          console.warn('[fallback try] server rejected selected-wrapped payload; will try final fallback');
+        }
+      }
+
+      // FINAL fallback: single dropdown device (legacy)
+      console.warn('No cached-included devices or selected included devices; using dropdown fallback (did=' + did + ')');
+      const payload = {
+        fxn: FXN_SAVE_SCENE,
+        scene_id: sid,
+        device_id: did,
+        included: !!(deviceIncluded && deviceIncluded.checked),
+        power: uiPower,
+        brightness: uiBrightness,
+        cct: uiCct
+      };
+      console.log('[final fallback] payload ->', payload);
+      const rSingle = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (rSingle.ok) {
+        setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
+        alert('Saved single device to scene (final fallback)');
+      } else {
+        alert('Failed to save (final fallback) - check server logs/response');
+      }
+
+    } catch (err) {
+      console.error('saveDevice primary/cached handler error:', err);
+      alert('Error saving devices — check console for details.');
+    }
+  });
+}
+
+
+if (removeDeviceBtn) {
+  removeDeviceBtn.addEventListener('click', async () => {
+    try {
+      const sid = parseInt(sceneSelector.value || 0, 10);
+      const sidStr = String(sid);
+      const did = parseInt(deviceSelector.value || 0, 10);
+      const mode = sceneModeMap[String(sid)] || 'device';
+
+      // helper: read grid selection (local)
+      const getSelectedSceneDevices_local = () => {
+        const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
+        return btns.map(b => {
+          const dv = b.dataset && b.dataset.val;
+          return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
+        }).filter(n => !Number.isNaN(n));
+      };
+
+      // GROUP mode: keep previous behavior
+      if (mode === 'group') {
+        const payload = {
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          
+          included: !!(deviceIncluded && deviceIncluded.checked),
+          power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+          brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+          cct: parseInt(deviceCctSlider?.value || 3500, 10),
+          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+        };
+        console.log('[group-mode] payload ->', payload);
+        const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        console.log('[group-mode] response status', rGroup.status);
+        if (rGroup.ok) alert('Scene saved (group)');
+        else alert('Failed saving scene (group) - check server logs / response');
+        return;
+      }
+
+      // DEVICE mode:
+      const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
+      const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
+      const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
+      const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
+
+      // PRIMARY: gather from cache across all 0..63 devices where included === true
+      const cachedIncludedDevices = [];
+      for (let id = 0; id < 64; id++) {
+        const c = getCache(sidStr, String(id));
+        if (c && c.included === true) {
+          const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+          const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+          const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+          cachedIncludedDevices.push({
+            // keep internal full object so we can map below
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            included: true,
+            power: power,
+            brightness: brightness,
+            cct: cct,
+            dali_id: id
+          });
+        }
+      }
+
+      // convert an array of internal device objects -> wrapped payload exactly as requested
+      function makeWrappedFromDeviceObjects(arr) {
+        const devices = arr.map(d => ({
+          power: Number(d.power) || 0,
+          brightness: Number(d.brightness) || 0,
+          cct: Number(d.cct) || 0,
+          dali_id: Number(d.dali_id)
+        }));
+        return {
+          fxn: (typeof FXN_SAVE_SCENE !== 'undefined' ? FXN_SAVE_SCENE : (arr[0] && arr[0].fxn) || 202),
+          scene_id: sid,
+          action: "remove",
+          devices: devices
+        };
+      }
+
+      if (cachedIncludedDevices.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+        console.log('Primary -> sending cachedIncludedDevices wrapped payload:', wrapped);
+        const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+        const text = await resp.text().catch(()=>null);
+        console.log('[primary try] status:', resp.status, 'responseText:', text);
+        if (resp.ok) {
+          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
+          alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene (from cached included:true)');
+          return;
+        } else {
+          console.warn('[primary try] server rejected cached-wrapped payload; falling back');
+        }
+      }
+
+      // FALLBACK: use grid-selected devices (but only include those with included true in cache or uiIncluded)
+      const selectedIds = getSelectedSceneDevices_local();
+      console.log('No cached included devices found; grid selected IDs:', selectedIds);
+
+      const selectedDevicesFiltered = [];
+      for (const id of selectedIds) {
+        const c = getCache(sidStr, String(id));
+        const includedPerCache = c && c.included === true;
+        const includedFinal = includedPerCache || uiIncluded; // prefer cache, else global checkbox
+        if (!includedFinal) continue;
+        const power = (c && typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+        const brightness = (c && typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+        const cct = (c && typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+        selectedDevicesFiltered.push({
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          included: true,
+          power: power,
+          brightness: brightness,
+          cct: cct,
+          dali_id: id
+        });
+      }
+
+      if (selectedDevicesFiltered.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(selectedDevicesFiltered);
+        console.log('Fallback -> sending selectedDevicesFiltered wrapped payload:', wrapped);
+        const resp2 = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+        const text2 = await resp2.text().catch(()=>null);
+        console.log('[fallback try] status:', resp2.status, 'responseText:', text2);
+        if (resp2.ok) {
+          selectedDevicesFiltered.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
+          alert('Saved ' + selectedDevicesFiltered.length + ' device(s) to scene (from selected grid)');
+          return;
+        } else {
+          console.warn('[fallback try] server rejected selected-wrapped payload; will try final fallback');
+        }
+      }
+
+      // FINAL fallback: single dropdown device (legacy)
+      console.warn('No cached-included devices or selected included devices; using dropdown fallback (did=' + did + ')');
+      const payload = {
+        fxn: FXN_SAVE_SCENE,
+        scene_id: sid,
+        device_id: did,
+        included: !!(deviceIncluded && deviceIncluded.checked),
+        power: uiPower,
+        brightness: uiBrightness,
+        cct: uiCct
+      };
+      console.log('[final fallback] payload ->', payload);
+      const rSingle = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (rSingle.ok) {
+        setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
+        alert('Saved single device to scene (final fallback)');
+      } else {
+        alert('Failed to save (final fallback) - check server logs/response');
+      }
+
+    } catch (err) {
+      console.error('saveDevice primary/cached handler error:', err);
+      alert('Error saving devices — check console for details.');
+    }
+  });
+}
+
+  // if (removeDeviceBtn) removeDeviceBtn.addEventListener('click', async ()=> {
+  //   const sid = parseInt(sceneSelector.value || 0,10);
+  //   const did = parseInt(deviceSelector.value || 0,10);
+  //   if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
+  //   const mode = sceneModeMap[String(sid)] || 'device';
+  //   try {
+  //     const body = { 
+  //       fxn: FXN_CLEAR_SCENE, 
+  //       scene_id: sid, 
+  //       action: "remove",
+  //       };
+  //     if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+  //     else body.devices = devices; 
+  //     const res = await postJson('/action', body);
+  //     if (res.ok) {
+  //       setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500 });
+  //       populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500 });
+  //       alert('Device cleared from scene');
+  //     } else {
+  //       alert('Failed to clear device');
+  //       console.error('clearDevice failed', await res.text());
+  //     }
+  //   } catch(e){ alert('Failed to clear device'); console.error(e); }
+  // });
+
+  if (sendDeviceBrightness) sendDeviceBrightness.addEventListener('click', async ()=> {
+    const sid = parseInt(sceneSelector.value || 0,10);
+    const did = parseInt(deviceSelector.value || 0,10);
+    const val = parseInt(deviceBrightnessSlider?.value || 50,10);
+    const mode = sceneModeMap[String(sid)] || 'device';
+    try {
+      const body = { fxn: FXN_BRIGHT, val, scene_id: sid };
+      if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+      else body.dali_id = did;
+      const res = await postJson('/action', body);
+      if (!res.ok) { alert('Failed to send device brightness'); console.error(await res.text()); }
+      else {
+        const cached = getCache(String(sid), String(did)) || {}; cached.brightness = val; setCache(String(sid), String(did), cached); alert('Device brightness sent');
+      }
+    } catch(e){ alert('Failed to send device brightness'); console.error(e); }
+  });
+
+  if (sendDeviceCct) sendDeviceCct.addEventListener('click', async ()=> {
+    const sid = parseInt(sceneSelector.value || 0,10);
+    const did = parseInt(deviceSelector.value || 0,10);
+    const val = parseInt(deviceCctSlider?.value || 3500,10);
+    const mode = sceneModeMap[String(sid)] || 'device';
+    try {
+      const body = { fxn: FXN_CCT, val, scene_id: sid };
+      if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+      else body.dali_id = did;
+      const res = await postJson('/action', body);
+      if (!res.ok) { alert('Failed to send device CCT'); console.error(await res.text()); }
+      else {
+        const cached = getCache(String(sid), String(did)) || {}; cached.cct = val; setCache(String(sid), String(did), cached); alert('Device CCT sent');
+      }
+    } catch(e){ alert('Failed to send device CCT'); console.error(e); }
+  });
+
+  // initial restore for the selected entries
+  // apply default UI mode for first scene (device unless remembered)
+  (function initialSceneSetup(){
+    const sid = String(parseInt(sceneSelector.value || 0,10));
+    const remembered = sceneModeMap[sid] || 'device';
+    applySceneMode(remembered, sid);
+    restoreUIFor(sceneSelector.value, sceneSelector.value ? document.getElementById('sceneDeviceSelect').value : 0);
+  })();
+});
+
+/* ---------- Tab switching (keeps working behavior from your upload) ---------- */
+document.addEventListener('DOMContentLoaded', function() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  function switchTab(tabName) {
+    tabContents.forEach(tab => tab.classList.remove('active'));
+    const el = document.getElementById(tabName);
+    if (el) el.classList.add('active');
+
+    tabButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if(btn.dataset.tab === tabName) btn.classList.add('active');
+    });
+  }
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', ()=> switchTab(button.dataset.tab));
+  });
+
+  // Start on Scene Control
+  switchTab('sceneControl');
+});
+
+/* ---------- initial load of saved tab data (keeps your fetch logic) ---------- */
+document.addEventListener('DOMContentLoaded', function loadSavedTabData() {
+  // Tab2 saved DALI address / selection (fxn=20)
+    fetch('/items?fxn=20').then(r => r.json()).then(data => {
+        // expected data example: { selected_address: 12, max_addr: 32 }
+        if (data && data.selected_address !== undefined) {
+            const sel = data.selected_address;
+            const dselBtn = document.getElementById('btn' + sel);
+            if (dselBtn) dselBtn.classList.add('selected');
+            // set select box if needed
+            if (document.getElementById('daliAddress')) document.getElementById('daliAddress').value = data.selected_address;
+        }
+    }).catch(console.error);
+
+    // Tab3 Group membership saved (fxn=21) -> returns { group_id: N, selected_ids: [1,2,3] }
+    fetch('/items?fxn=21').then(r => r.json()).then(data => {
+        if (data && data.selected_ids && Array.isArray(data.selected_ids)) {
+            // mark selected ids in group grid
+            data.selected_ids.forEach(id => {
+                const b = document.getElementById('btn' + id);
+                if (b) b.classList.add('selected'); // green = selected membership
+            });
+            if (data.group_id !== undefined) document.getElementById('groupSelect').value = data.group_id;
+        }
+    }).catch(console.error);
+
+    // Tab4 Scene membership saved (fxn=22) -> returns { group_id: N, scene_selections: [[..], ..] } or { selected_scenes: [..] }
+    fetch('/items?fxn=22').then(r => r.json()).then(data => {
+        if (data && Array.isArray(data)) {
+            // if it returns list of 4 arrays for scene selections
+            // data = [[1,2],[3],[],[4]]
+            data.forEach((arr, idx) => {
+                if (Array.isArray(arr)) {
+                    arr.forEach(id => {
+                        const b = document.getElementById('btn' + id);
+                        if (b) b.classList.add('selected');
+                    });
+                }
+            });
+        } else if (data && data.selected_scenes) {
+            data.selected_scenes.forEach(id => {
+                const b = document.getElementById('btn' + id);
+                if (b) b.classList.add('selected');
+            });
+        }
+    }).catch(console.error);
+});
+
+
+
+async function refreshGroupGridFor(groupId){
+  try {
+    // Try scoped fetch first
+    const resp = await fetch('/items?fxn=21&group_id=' + encodeURIComponent(groupId));
+    if (!resp.ok) {
+      console.warn('refreshGroupGridFor: /items?fxn=21 returned non-ok, trying fallback');
+      throw new Error('non-ok');
+    }
+    const data = await resp.json();
+    // data.expected: { group_id: N, selected_ids: [..] } or { selected_ids: [...] }
+    const sel = Array.isArray(data.selected_ids) ? data.selected_ids : (Array.isArray(data) ? data : []);
+    // clear existing selections
+    document.querySelectorAll('#groupIdGrid .toggle-btn').forEach(b => b.classList.remove('selected'));
+    sel.forEach(id => {
+      const btn = document.getElementById('gridbtn' + id) || document.getElementById('btn' + id);
+      if (btn) btn.classList.add('selected');
+    });
+    return sel;
+  } catch (err) {
+    // fallback single-call without group_id param
+    try {
+      const resp2 = await fetch('/items?fxn=21');
+      if (!resp2.ok) throw new Error('fallback non-ok');
+      const data2 = await resp2.json();
+      const sel = Array.isArray(data2.selected_ids) ? data2.selected_ids : (Array.isArray(data2) ? data2 : []);
+      document.querySelectorAll('#groupIdGrid .toggle-btn').forEach(b => b.classList.remove('selected'));
+      sel.forEach(id => {
+        const btn = document.getElementById('gridbtn' + id) || document.getElementById('btn' + id);
+        if (btn) btn.classList.add('selected');
+      });
+      return sel;
+    } catch(e){
+      console.error('refreshGroupGridFor failed', e);
+      return [];
+    }
+  }
+}
+
+// Handler to send group change to server and refresh grid
+const groupSelectEl = document.getElementById('groupSelect');
+if (groupSelectEl) {
+  groupSelectEl.addEventListener('change', async () => {
+    const gid = parseInt(groupSelectEl.value || 0, 10);
+    // immediately inform server of group selection (fxn 21)
+    try {
+      const res = await postJson('/action', { fxn: 21, group_id: gid });
+      if (!res || !res.ok) {
+        console.warn('Group-change /action post returned non-ok or null', res);
+      } else {
+        console.log('Group-change posted', gid);
+      }
+    } catch (err) {
+      console.error('Error posting group change', err);
+    }
+
+    // Now refresh authoritative membership for this group and update UI
+    const selected = await refreshGroupGridFor(gid);
+    console.log('Refreshed group grid for', gid, selected);
+  });
+
+  // Optionally: trigger initial load for default value on page load
+  // (This will fire once automatically when DOMContentLoaded completes)
+  (async function initialGroupLoad(){
+    try {
+      const initialG = parseInt(groupSelectEl.value || 0, 10);
+      await refreshGroupGridFor(initialG);
+    } catch(e){ console.error(e); }
+  })();
+}
+
+/* ---------- Scenes: build devices array using per-device cache (fixed) ---------- */
+(async function upgradeMultiDeviceBehavior(){
+  try {
+    // ensure helper exists (safe re-definition)
+    function getSelectedSceneDevices_fixed(){
+      const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
+      return btns.map(b => {
+        const dv = b.dataset && b.dataset.val;
+        return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
+      }).filter(n => !Number.isNaN(n));
+    }
+
+    // scene id (must be read inside the handler so it reflects current selection)
+    const sid = parseInt(document.getElementById('sceneGroupSelect')?.value || 0, 10);
+
+    // gather selected ids
+    const selectedIds = getSelectedSceneDevices_fixed();
+    console.log('upgradeMultiDeviceBehavior_fixed - sid:', sid, 'selectedIds:', selectedIds);
+
+    // fallback single device behavior if none selected
+    if (!selectedIds.length) {
+      const did = parseInt(document.getElementById('sceneDeviceSelect')?.value || 0,10);
+      const payload = {
+        fxn: FXN_SAVE_SCENE,
+        scene_id: sid,
+        device_id: did,
+        included: !!(document.getElementById('deviceIncluded')?.checked),
+        power: document.getElementById('devicePowerToggle')?.classList.contains('on') ? 1 : 0,
+        brightness: parseInt(document.getElementById('deviceBrightnessSlider')?.value || 50,10),
+        cct: parseInt(document.getElementById('deviceCctSlider')?.value || 3500,10)
+      };
+      console.log('Fallback single device save payload:', payload);
+      try {
+        const r = await postJson('/action', payload);
+        if (r && r.ok) {
+          setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
+          alert('Saved single device to scene');
+        } else {
+          alert('Failed to save single device');
+          console.error('fallback single save failed: ', r && await r.text());
+        }
+      } catch(e){
+        alert('Failed to save single device');
+        console.error('fallback single save error: ', e);
+      }
+      return;
+    }
+
+    // Build array where each element matches required format
+    const uiIncluded = !!(document.getElementById('deviceIncluded')?.checked);
+    const uiPower = document.getElementById('devicePowerToggle')?.classList.contains('on') ? 1 : 0;
+    const uiBrightness = parseInt(document.getElementById('deviceBrightnessSlider')?.value || 50,10);
+    const uiCct = parseInt(document.getElementById('deviceCctSlider')?.value || 3500,10);
+
+    const devicesArray = selectedIds.map(id => {
+      const cache = getCache(String(sid), String(id));
+      const included = (cache && typeof cache.included !== 'undefined') ? !!cache.included : uiIncluded;
+      const power = (cache && typeof cache.power !== 'undefined') ? cache.power : uiPower;
+      const brightness = (cache && typeof cache.brightness !== 'undefined') ? cache.brightness : uiBrightness;
+      const cct = (cache && typeof cache.cct !== 'undefined') ? cache.cct : uiCct;
+
+      return {
+        fxn: FXN_SAVE_SCENE,
+        scene_id: sid,
+        included: included,
+        power: power,
+        brightness: brightness,
+        cct: cct,
+        dali_id: id
+      };
+    });
+
+    console.log('Final multi-save devicesArray (will be sent as JSON array):', devicesArray);
+
+    // send the array itself
+    try {
+      const res = await postJson('/action', devicesArray);
+      if (res && res.ok) {
+        devicesArray.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
+        alert('Saved ' + devicesArray.length + ' device(s) to scene (multi)');
+      } else {
+        alert('Failed to save devices to scene');
+        console.error('multi-save failed', res && await res.text());
+      }
+    } catch(e) {
+      alert('Failed to save devices to scene');
+      console.error('multi-save error', e);
+    }
+
+  } catch (err) {
+    console.error('upgradeMultiDeviceBehavior_fixed outer error:', err);
+    alert('An error occurred in upgradeMultiDeviceBehavior_fixed — check console.');
+  }
+})();
+
+
+function populateDropdown_2(select, min, max, defaultVal) {
+  select.innerHTML = "";
+  let found = false;
+  for (let i = min; i <= max; i++) {
+    let opt = document.createElement("option");
+    opt.value = String(i);
+    opt.text = i;
+    select.appendChild(opt);
+    if (i === defaultVal) { found = true; }
+  }
+  // Set the value for the dropdown; default or maximum if default not available
+  select.value = found ? String(defaultVal) : String(max);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  var startSelect = document.getElementById("daliStartAddress");
+  var numSelect = document.getElementById("daliNumAddresses");
+  if (!startSelect || !numSelect) return;
+
+function updateNumAddresses(startAddr) {
+  var newDefault = startAddr + 15;
+  var maxNum = 63;
+
+  var currentValue = parseInt(numSelect.value) || 1;
+  //var newDefault = currentValue <= maxNum ? currentValue : maxNum;
+  console.log(startAddr); console.log(maxNum); console.log(newDefault);
+  populateDropdown_2(numSelect, startAddr, maxNum, newDefault);
+}
+
+  // Populate Start Address [0,63] and initial Number Of Addresses
+  populateDropdown_2(startSelect, 0, 63, 0);
+  updateNumAddresses(0);
+
+  startSelect.addEventListener("change", function () {
+    var start = parseInt(startSelect.value, 10);
+    updateNumAddresses(start);
+  });
+});
+
+
+
+</script>
+
+</body>
+</html>

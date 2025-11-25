@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NUOS DALI Control</title>
+<style>
+    body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; margin: 0; padding-top: 20px; } 
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); padding: 20px; max-width: 500px; margin: auto; }
+    label { font-weight: bold; }
+    select, input[type="number"] { padding: 5px; margin: 5px 0; width: 100%; }
+    .stylish-button { background-color: #2196F3; border: none; color: white; padding: 10px; font-size: 16px; border-radius: 4px; cursor: pointer; }
+    .stylish-button:hover { background: #1976D2; }
+    .toggle-btn { width: 40px; height: 40px; margin: 2px; cursor: pointer; }
+    .selected { background: #4CAF50; color: white; }
+
+
+
+
+.h2 { background: linear-gradient(to right, #6dd5ed, #2193b0); color: white; padding: 10px 10px; border-radius: 8px 8px 0 0; text-align: center; margin: -20px -20px 20px -20px; } 
+label { display: block; margin-bottom: 5px; } .stylish-button { background-color: #2196F3; border: none; color: white; padding: 12px 0; text-align: center; text-decoration: none; display: block; font-size: 16px; margin: 4px 0; cursor: pointer; border-radius: 4px; transition-duration: 0.4s; width: 100%; box-sizing: border-box; }.form { display: flex; flex-direction: column; } .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1); padding: 2.5em 2em 2em 2em; max-width: 410px; width: 100; margin: 2em; display: flex; flex-direction: column; align-items: center; } p { color: #64748b; font-size: 1em; margin-bottom: 0.1em; text-align: center; } input[type="number"] { width: 100%; padding: 10px 15px; margin: 8px 0; box-sizing: border-box; border: 2px solid #FF3D00; border-radius: 4px; background-color: #FAFAFA; transition: border-color 0.3s, box-shadow 0.3s; box-shadow: 0 0px 2px rgba(0, 50, 0, 0.6); } input[type="number"], select { width: 100%; padding: 0.7em 0.8em; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f1f5f9; font-size: 1.08em; margin-top: 0.15em; transition: border-color 0.2s; outline: none; } input[type="number"]:focus, select:focus { border-color: #3b82f6; background: #e0e7ff; } .row { display: flex; gap: 1em; } .row > div { flex: 1; } button:hover { background: linear-gradient(90deg, #6366f1 0, #3b82f6 100); transform: translateY(-2px) scale(1.02); } #result { margin-top: 1.5em; background: #f1f5f9; color: #475569; padding: 1em; border-radius: 8px; min-height: 1.5em; font-size: 0.98em; word-break: break-all; width: 100; text-align: left; box-sizing: border-box; display: none; } @media (max-width: 500px) { .card { padding: 1.2em 0.5em 1.2em 0.5em; max-width: 98vw; } }.popup { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border: 1px solid #888; z-index: 100; padding: 20px; max-width: 90vw; overflow-y: auto; } .overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); z-index: 99; } .toggle-btn { width: 40px; height: 40px; margin: 2px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; background: #f0f0f0; } .selected { background: #4CAF50; color: #fff; border-color: #388E3C; } #toggleGrid { max-height: 60vh; overflow-y: auto; }
+.toast {
+  visibility: hidden;
+  min-width: 300px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 12px;
+  padding: 18px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  z-index: 9999;
+  opacity: 0;
+  font-size: 18px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.4s ease, transform 0.3s ease;
+}
+
+.toast.show {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.toast.success {
+  background-color: #28a745;
+}
+
+.toast.error {
+  background-color: #dc3545;
+}
+
+.toast.info {
+  background-color: #007bff;
+}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div class="card">
+<h2 id="mainHeader">DALI Scene Control Switch</h2> 
+<p>Set Group, Scene IDs (0–15) or Dali IDs (0–63).</p>
+<p>Choose Switch Control Type, and submit to your device.</p><br> 
+<form id="sceneForm" autocomplete="off"> <label for="control_type" style="color: #3b82f6;">Switch Control Type:</label> 
+<select id="control_type" required=""> 
+<option>Individual Control</option> 
+<option>Group Control</option> 
+<option>Scene Control</option> 
+</select> <div id="sceneControlDiv" style="display: block; margin-top: 1em; color: rgb(59, 130, 246);"> <label for="control_type1">Scene Control Type:</label>
+<select id="control_type1" required=""> 
+<option>Broadcast Control</option> 
+<option>Group Control</option> 
+<option>Individual Control</option> 
+</select> 
+</div> 
+<br> <br> <br> 
+<label for="group_id" id="groupIdLabel" style="color: rgb(59, 130, 246); display: none;">Group ID (0–15):</label> 
+<input type="number" id="group_id" min="0" max="15" value="0" style="display: none;"> 
+<p>Long Press each ID fileds to set DALI Ids</p> <br> 
+<div class="row"> <div> <label for="scene1" id="scene1Label" style="color: #3b82f6;">Scene ID 1:</label> 
+<input type="number" id="scene1" min="0" max="15" required=""> </div> 
+<div> <label for="scene2" id="scene2Label" style="color: #3b82f6;">Scene ID 2:</label> 
+<input type="number" id="scene2" min="0" max="15" required=""> 
+</div> 
+</div> 
+<div class="row"> <div> <label for="scene3" id="scene3Label" style="color: #3b82f6;">Scene ID 3:</label> <input type="number" id="scene3" min="0" max="15" required=""> </div> <div> <label for="scene4" id="scene4Label" style="color: #3b82f6;">Scene ID 4:</label> <input type="number" id="scene4" min="0" max="15" required=""> </div> </div> <br> <button class="stylish-button" type="submit">Save Changes</button> </form> <pre id="result"></pre> </div><div class="overlay" id="overlay" style="display: none;"></div> <div class="popup" id="popup" style="display: none;"> <h3>Select IDs</h3> <div id="toggleGrid"><button class="toggle-btn" id="btn0" onclick="toggleBtn(0)">0</button><br><button class="toggle-btn selected" id="btn1" onclick="toggleBtn(1)">1</button><button class="toggle-btn selected" id="btn2" onclick="toggleBtn(2)">2</button><button class="toggle-btn selected" id="btn3" onclick="toggleBtn(3)">3</button><button class="toggle-btn" id="btn4" onclick="toggleBtn(4)">4</button><button class="toggle-btn" id="btn5" onclick="toggleBtn(5)">5</button><button class="toggle-btn" id="btn6" onclick="toggleBtn(6)">6</button><button class="toggle-btn" id="btn7" onclick="toggleBtn(7)">7</button><button class="toggle-btn" id="btn8" onclick="toggleBtn(8)">8</button><br><button class="toggle-btn" id="btn9" onclick="toggleBtn(9)">9</button><button class="toggle-btn" id="btn10" onclick="toggleBtn(10)">10</button><button class="toggle-btn" id="btn11" onclick="toggleBtn(11)">11</button><button class="toggle-btn" id="btn12" onclick="toggleBtn(12)">12</button><button class="toggle-btn" id="btn13" onclick="toggleBtn(13)">13</button><button class="toggle-btn" id="btn14" onclick="toggleBtn(14)">14</button><button class="toggle-btn" id="btn15" onclick="toggleBtn(15)">15</button><button class="toggle-btn" id="btn16" onclick="toggleBtn(16)">16</button><br><button class="toggle-btn" id="btn17" onclick="toggleBtn(17)">17</button><button class="toggle-btn" id="btn18" onclick="toggleBtn(18)">18</button><button class="toggle-btn" id="btn19" onclick="toggleBtn(19)">19</button><button class="toggle-btn" id="btn20" onclick="toggleBtn(20)">20</button><button class="toggle-btn" id="btn21" onclick="toggleBtn(21)">21</button><button class="toggle-btn" id="btn22" onclick="toggleBtn(22)">22</button><button class="toggle-btn" id="btn23" onclick="toggleBtn(23)">23</button><button class="toggle-btn" id="btn24" onclick="toggleBtn(24)">24</button><br><button class="toggle-btn" id="btn25" onclick="toggleBtn(25)">25</button><button class="toggle-btn" id="btn26" onclick="toggleBtn(26)">26</button><button class="toggle-btn" id="btn27" onclick="toggleBtn(27)">27</button><button class="toggle-btn" id="btn28" onclick="toggleBtn(28)">28</button><button class="toggle-btn" id="btn29" onclick="toggleBtn(29)">29</button><button class="toggle-btn" id="btn30" onclick="toggleBtn(30)">30</button><button class="toggle-btn" id="btn31" onclick="toggleBtn(31)">31</button><button class="toggle-btn" id="btn32" onclick="toggleBtn(32)">32</button><br><button class="toggle-btn" id="btn33" onclick="toggleBtn(33)">33</button><button class="toggle-btn" id="btn34" onclick="toggleBtn(34)">34</button><button class="toggle-btn" id="btn35" onclick="toggleBtn(35)">35</button><button class="toggle-btn" id="btn36" onclick="toggleBtn(36)">36</button><button class="toggle-btn" id="btn37" onclick="toggleBtn(37)">37</button><button class="toggle-btn" id="btn38" onclick="toggleBtn(38)">38</button><button class="toggle-btn" id="btn39" onclick="toggleBtn(39)">39</button><button class="toggle-btn" id="btn40" onclick="toggleBtn(40)">40</button><br><button class="toggle-btn" id="btn41" onclick="toggleBtn(41)">41</button><button class="toggle-btn" id="btn42" onclick="toggleBtn(42)">42</button><button class="toggle-btn" id="btn43" onclick="toggleBtn(43)">43</button><button class="toggle-btn" id="btn44" onclick="toggleBtn(44)">44</button><button class="toggle-btn" id="btn45" onclick="toggleBtn(45)">45</button><button class="toggle-btn" id="btn46" onclick="toggleBtn(46)">46</button><button class="toggle-btn" id="btn47" onclick="toggleBtn(47)">47</button><button class="toggle-btn" id="btn48" onclick="toggleBtn(48)">48</button><br><button class="toggle-btn" id="btn49" onclick="toggleBtn(49)">49</button><button class="toggle-btn" id="btn50" onclick="toggleBtn(50)">50</button><button class="toggle-btn" id="btn51" onclick="toggleBtn(51)">51</button><button class="toggle-btn" id="btn52" onclick="toggleBtn(52)">52</button><button class="toggle-btn" id="btn53" onclick="toggleBtn(53)">53</button><button class="toggle-btn" id="btn54" onclick="toggleBtn(54)">54</button><button class="toggle-btn" id="btn55" onclick="toggleBtn(55)">55</button><button class="toggle-btn" id="btn56" onclick="toggleBtn(56)">56</button><br><button class="toggle-btn" id="btn57" onclick="toggleBtn(57)">57</button><button class="toggle-btn" id="btn58" onclick="toggleBtn(58)">58</button><button class="toggle-btn" id="btn59" onclick="toggleBtn(59)">59</button><button class="toggle-btn" id="btn60" onclick="toggleBtn(60)">60</button><button class="toggle-btn" id="btn61" onclick="toggleBtn(61)">61</button><button class="toggle-btn" id="btn62" onclick="toggleBtn(62)">62</button><button class="toggle-btn" id="btn63" onclick="toggleBtn(63)">63</button></div> <div style="margin-top: 15px;"> <button style="padding: 10px 20px;" onclick="submitSelection()">Submit</button> <button style="padding: 10px 20px;" onclick="closePopup()">Cancel</button> </div> </div>
+<p>Your scene control UI goes here.</p>
+</div>
+<script>
+
+var savedGroupId = 0;
+var savedSceneIds = [0,0,0,0]; 
+var savedControlType = 'Individual Control'; 
+var savedControlType1 = 'Broadcast Control'; 
+
+function showToast(message, type = "info", duration = 3000) {
+  const toast = document.getElementById("toast");
+  if (!toast) return console.error("Toast element missing!");
+
+  // Reset classes
+  toast.className = "toast";
+  toast.textContent = message;
+  toast.classList.add(type);
+  toast.classList.add("show");
+
+  // Auto-hide after duration
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, duration);
+}
+
+
+document.addEventListener('DOMContentLoaded',function(){document.getElementById('group_id').value = savedGroupId;
+document.getElementById('scene1').value = savedSceneIds[0];
+document.getElementById('scene2').value = savedSceneIds[1];
+document.getElementById('scene3').value = savedSceneIds[2];
+document.getElementById('scene4').value = savedSceneIds[3]; 
+document.getElementById('control_type').value = savedControlType; 
+document.getElementById('control_type1').value = savedControlType1;});
+
+function updateHeader(newText) { 
+document.getElementById('mainHeader').textContent = newText; 
+} 
+function updateTitle(newTitle) { 
+document.title = newTitle; updateHeader(newTitle); 
+} 
+function setInputRange(min, max) {
+ let input1 = document.getElementById('scene1'); 
+ input1.min = min; input1.max = max; 
+ let input2 = document.getElementById('scene2');
+ input2.min = min; input2.max = max;
+ let input3 = document.getElementById('scene3'); 
+ input3.min = min; input3.max = max; 
+ let input4 = document.getElementById('scene4'); 
+ input4.min = min; input4.max = max; 
+} 
+ 
+ function updateGroupIdVisibility(show) {
+ var groupIdLabel = document.getElementById('groupIdLabel'); 
+ var groupIdInput = document.getElementById('group_id'); 
+ groupIdLabel.style.display = show ? '' : 'none'; 
+ groupIdInput.style.display = show ? '' : 'none'; }
+ document.getElementById('control_type').addEventListener('change', function() {
+ var val = this.value; var groupIdLabel = document.getElementById('groupIdLabel'); 
+ var groupIdInput = document.getElementById('group_id'); 
+ var sceneLabels = [ document.getElementById('scene1Label'), document.getElementById('scene2Label'), document.getElementById('scene3Label'), document.getElementById('scene4Label') ];   if (val === 'Individual Control') { groupIdLabel.style.display = 'none'; groupIdInput.style.display = 'none'; sceneLabels[0].innerText = 'Dali ID 1:'; sceneLabels[1].innerText = 'Dali ID 2:'; sceneLabels[2].innerText = 'Dali ID 3:'; sceneLabels[3].innerText = 'Dali ID 4:'; setInputRange(0, 63); updateTitle("DALI Id's Control Switch"); updateGroupIdVisibility(false); } else if (val === 'Group Control' || val === 'Broadcast Control') { groupIdLabel.style.display = 'none'; groupIdInput.style.display = 'none'; sceneLabels[0].innerText = 'Group ID 1:'; sceneLabels[1].innerText = 'Group ID 2:'; sceneLabels[2].innerText = 'Group ID 3:'; sceneLabels[3].innerText = 'Group ID 4:'; if (val === 'Group Control'){ updateTitle("DALI Group Control Switch"); updateGroupIdVisibility(false); setInputRange(0, 15); }else{ updateTitle("DALI Broadcast Control Switch"); setInputRange(0, 15); updateGroupIdVisibility(false); } } else if (val === 'Scene Control') { groupIdLabel.style.display = ''; groupIdInput.style.display = ''; sceneLabels[0].innerText = 'Scene ID 1:'; sceneLabels[1].innerText = 'Scene ID 2:'; sceneLabels[2].innerText = 'Scene ID 3:'; sceneLabels[3].innerText = 'Scene ID 4:'; setInputRange(0, 15); } var sceneDiv = document.getElementById('sceneControlDiv'); if (this.value === 'Scene Control') { sceneDiv.style.display = 'block'; var val = document.getElementById('control_type1').value; if (val === 'Broadcast Control') { updateGroupIdVisibility(false); updateTitle("DALI Scene Control Switch"); setInputRange(0, 15); }else if(val === 'Individual Control') { updateGroupIdVisibility(false); updateTitle("DALI Scene Control Switch"); setInputRange(0, 63); } else if (val === 'Group Control') { updateGroupIdVisibility(true); updateTitle("DALI Scene Control Switch (group required)"); setInputRange(0, 15); } } else { sceneDiv.style.display = 'none'; } }); document.getElementById('control_type1').addEventListener('change', function() { var val = this.value; if (document.getElementById('sceneControlDiv').style.display !== 'none') { if (val === 'Broadcast Control' || val === 'Individual Control') { updateGroupIdVisibility(false); } else if (val === 'Group Control') { updateGroupIdVisibility(true); } } }); document.getElementById('sceneForm').onsubmit = async function(e) { e.preventDefault(); const data = { fxn: '40', group_id: parseInt(document.getElementById('group_id').value), scene_ids: [ parseInt(document.getElementById('scene1').value), parseInt(document.getElementById('scene2').value), parseInt(document.getElementById('scene3').value), parseInt(document.getElementById('scene4').value) ], control_type:document.getElementById('control_type').selectedIndex, scn_ctrl_type:document.getElementById('control_type1').selectedIndex }; const res = await fetch('/action', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }); }; document.addEventListener('DOMContentLoaded', function() { fetch('/items?fxn=15') .then(response => response.json()) .then(data => { document.getElementById('group_id').value = data.group_id; document.getElementById('scene1').value = data.scene_ids[0]; document.getElementById('scene2').value = data.scene_ids[1]; document.getElementById('scene3').value = data.scene_ids[2]; document.getElementById('scene4').value = data.scene_ids[3]; document.getElementById('control_type').value = data.control_type; document.getElementById('control_type1').value = data.scn_ctrl_type; if (document.getElementById('control_type').value == 'Scene Control' || document.getElementById('control_type').value == 'Individual Control' || document.getElementById('control_type').value == 'Broadcast Control') { updateGroupIdVisibility(false); }else{ updateGroupIdVisibility(true); } if (document.getElementById('control_type').value == 'Scene Control'){ document.getElementById('sceneControlDiv').style.display = 'block'; }else{ document.getElementById('sceneControlDiv').style.display = 'none'; }}); fetch('/items?fxn=16') .then(response => response.json()) .then(data => { if (Array.isArray(data) && data.length === 4) { popupSelections = data.map(arr => Array.isArray(arr) ? arr : []); } console.log('Loaded popupSelections:', popupSelections); }) .catch(err => { console.error('Failed to load popupSelections:', err); });});let currentInput = null; let popupSelections = [[], [], [], []]; (function initGrid() { let grid = ''; for (let i = 0; i < 64; i++) { grid += `<button class="toggle-btn" id="btn${i}" onclick="toggleBtn(${i})">${i}</button>`; if (i % 8 === 0) grid += '<br>'; } document.getElementById('toggleGrid').innerHTML = grid; })(); ['scene1','scene2','scene3','scene4'].forEach((id, idx) => { let el = document.getElementById(id); let pressTimer; 
+
+function tryShowPopup() { 
+const ctrlType = document.getElementById('control_type').value; 
+if (ctrlType === 'Individual Control' || ctrlType === 'Group Control') { 
+openPopup(idx); 
+}else if (ctrlType === 'Scene Control') {
+ const ctrlType1 = document.getElementById('control_type1').value;
+ if (ctrlType1 === 'Individual Control') { openPopup(idx); 
+ } 
+ } 
+ } 
+ function sendClickIndex(idx, id) { 
+ const payload = { fxn: '42', index: idx, id: id }; 
+ fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }) .then(res => res.text()) .then(data => { }) .catch(err => {
+ setTimeout(() => {
+  showToast('Error sending data: ' + err);
+}, 1000);
+  });
+ }
+el.addEventListener('mousedown', () => pressTimer = setTimeout(tryShowPopup, 600)); 
+el.addEventListener('mouseup', () => clearTimeout(pressTimer)); 
+el.addEventListener('mouseleave', () => clearTimeout(pressTimer)); el.addEventListener('touchstart', () => pressTimer = setTimeout(tryShowPopup, 600)); el.addEventListener('touchend', () => clearTimeout(pressTimer)); el.addEventListener('click', function() { sendClickIndex(idx, id); }); }); 
+
+function openPopup(inputIdx) { 
+currentInput = inputIdx; 
+let selected = popupSelections[inputIdx] || []; 
+for (let i = 0; i < 64; i++) {
+ const btn = document.getElementById('btn' + i);
+ if (selected.includes(i)) {
+ btn.classList.add('selected'); 
+ } else {
+ btn.classList.remove('selected'); 
+ } 
+ } 
+ document.getElementById('popup').style.display = 'block'; 
+ document.getElementById('overlay').style.display = 'block'; 
+ } 
+ 
+ function toggleBtn(id) { let selected = popupSelections[currentInput] || []; const index = selected.indexOf(id); if (index === -1) { selected.push(id); } else { selected.splice(index, 1); } popupSelections[currentInput] = selected; const btn = document.getElementById(`btn${id}`); btn.classList.toggle('selected'); } function submitSelection() { if (currentInput === null) return; const selected = popupSelections[currentInput].slice().sort((a, b) => a - b); const payload = { fxn: '41', input_id: currentInput, selected_ids: selected }; fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }) .then(res => res.text()) .then(data => { closePopup(); }) .catch(err => { 
+ 
+ setTimeout(() => {
+  showToast("Error sending data!", "error");
+}, 1000);
+ closePopup(); }); } function closePopup() { document.getElementById('popup').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
+
+// Populate dropdowns
+function populateDropdown(el, max) {
+    for(let i=0;i<=max;i++) {
+        let opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = i;
+        el.appendChild(opt);
+    }
+}
+populateDropdown(document.getElementById('daliAddress'), 63);
+populateDropdown(document.getElementById('groupSelect'), 15);
+populateDropdown(document.getElementById('sceneGroupSelect'), 15);
+
+// Store per-group selections
+let groupSelections = {};  // { groupId: [ids] }
+let sceneSelections = {};  // { groupId: [scenes] }
+
+// Create toggle grids
+function createGrid(containerId, count, selectedList=[]) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    for(let i=0;i<count;i++) {
+        let btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = 'toggle-btn';
+        if (selectedList.includes(i)) btn.classList.add('selected');
+        btn.onclick = ()=>{
+            btn.classList.toggle('selected');
+        };
+        container.appendChild(btn);
+        if((i+1)%8===0) container.appendChild(document.createElement('br'));
+    }
+}
+
+// Initialize default grids
+createGrid('groupIdGrid', 64); // Group membership IDs
+createGrid('sceneGrid', 16);   // Scenes 0–15
+
+// Change group selection (membership)
+document.getElementById('groupSelect').addEventListener('change', ()=>{
+    let g = parseInt(document.getElementById('groupSelect').value);
+    createGrid('groupIdGrid', 64, groupSelections[g] || []);
+});
+
+// Change group selection (scene)
+document.getElementById('sceneGroupSelect').addEventListener('change', ()=>{
+    let g = parseInt(document.getElementById('sceneGroupSelect').value);
+    createGrid('sceneGrid', 16, sceneSelections[g] || []);
+});
+
+// Save selections before sending
+function getSelectedFromGrid(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} .selected`))
+                .map(b=>parseInt(b.textContent));
+}
+
+// 1. SEND DALI ADDRESS
+document.getElementById('sendDaliAddress').onclick = ()=>{
+    let address = parseInt(document.getElementById('daliAddress').value);
+    fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({fxn:'12', max_addr:address})
+    }).then(res=>res.text()).then(showToast);
+};
+
+// 2. SEND GROUP MEMBERSHIP
+document.getElementById('sendGroupMembership').onclick = ()=>{
+    let group = parseInt(document.getElementById('groupSelect').value);
+    let ids = getSelectedFromGrid('groupIdGrid');
+    groupSelections[group] = ids; // Save it
+    fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({fxn:'51', group_id:group, dali_ids:ids})
+    }).then(res=>res.text()).then(showToast);
+};
+
+// 3. SEND SCENES
+document.getElementById('sendScenes').onclick = ()=>{
+    let group = parseInt(document.getElementById('sceneGroupSelect').value);
+    let scenes = getSelectedFromGrid('sceneGrid');
+    sceneSelections[group] = scenes; // Save it
+    fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({fxn:'52', group_id:group, scenes:scenes})
+    }).then(res=>res.text()).then(showToast);
+};
+
+
+/* ----- Tab switching + lazy-init for DALI tab ----- */
+(function() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  let daliInitialized = false;
+
+  function showTab(name) {
+    // hide all contents and remove active from buttons
+    tabContents.forEach(tc => tc.classList.remove('active'));
+    tabButtons.forEach(tb => tb.classList.remove('active'));
+
+    // show the requested content and set active button
+    const targetContent = document.getElementById(name);
+    if (targetContent) targetContent.classList.add('active');
+
+    // set corresponding button active
+    tabButtons.forEach(tb => {
+      if (tb.dataset.tab === name) tb.classList.add('active');
+    });
+
+    // If showing DALI tab, ensure its UI is initialized (only once)
+    if (name === 'daliSettings' && !daliInitialized) {
+      try {
+        // Populate dropdowns and grids if not already populated
+        // (these functions are defined earlier in your script)
+        populateDropdown(document.getElementById('daliAddress'), 63);
+        populateDropdown(document.getElementById('groupSelect'), 15);
+        populateDropdown(document.getElementById('sceneGroupSelect'), 15);
+
+        // create grids with any saved selections if applicable
+        createGrid('groupIdGrid', 64, groupSelections[parseInt(document.getElementById('groupSelect').value)] || []);
+        createGrid('sceneGrid', 16, sceneSelections[parseInt(document.getElementById('sceneGroupSelect').value)] || []);
+
+        // If you want to fetch current server state for DALI tab on open:
+        // (uncomment if your backend supports the endpoints)
+        // fetch('/items?fxn=15').then(r=>r.json()).then(data=>{ /* update UI */ });
+      } catch (err) {
+        console.warn('DALI init error (may already be initialized or functions missing):', err);
+      }
+      daliInitialized = true;
+    }
+  }
+
+  // Attach click handlers
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabName = btn.dataset.tab;
+      if (!tabName) return;
+      showTab(tabName);
+    });
+  });
+
+  // Optionally make initial tab match markup (already set to sceneControl)
+  // but ensure UI functions for the visible tab are ready:
+  document.addEventListener('DOMContentLoaded', () => {
+    // Show whichever tab button has .active in markup
+    const activeBtn = document.querySelector('.tab-btn.active');
+    if (activeBtn && activeBtn.dataset.tab) {
+      showTab(activeBtn.dataset.tab);
+    } else {
+      // fallback
+      showTab('sceneControl');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>

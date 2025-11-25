@@ -1,4 +1,4 @@
-# Install script for directory: C:/esp/esp-idf/components/ieee802154
+# Install script for directory: C:/Users/procu/esp/v5.5/esp-idf/components/ieee802154
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

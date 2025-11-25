@@ -12,7 +12,7 @@
 
     #include "parson.h"
     #include "driver/uart.h"
-
+    #include "light_driver.h"
 
 
     #define UART_PORT_NUM                                           UART_NUM_1
@@ -21,6 +21,7 @@
     #define UART_BAUD_RATE                                          115200
     #define UART_BUF_SIZE                                           1024
 
+static bool toggle_status_led_long_press = false;
 
 void json_parse_data_light(const char* data) {
     JSON_Value *parsed = json_parse_string(data);
@@ -49,17 +50,50 @@ void json_parse_data_light(const char* data) {
                 }
             }
         }
-
+        #ifdef USE_FAN_SPEED
+        JSON_Value *fanItem = json_object_get_value(root_object, "fan");
+        if (fanItem != NULL && json_value_get_type(fanItem) == JSONNumber) {
+            int fspeed = (int)json_value_get_number(fanItem);
+            printf("fspeed = %d\n", fspeed);
+            //device_info[0].fan_speed = fspeed;
+            // for (int i = 0; i < 17; i++) {
+            //     if (ac_temp_values[i] == device_info[0].fan_speed) {
+            //         device_info[0].device_level = i;
+            //         break;
+            //     }
+            // }
+        }
+        #endif
         // Extract "time"
         JSON_Value *timeItem = json_object_get_value(root_object, "time");
         if (timeItem != NULL && json_value_get_type(timeItem) == JSONNumber) {
             int time = (int)json_value_get_number(timeItem);
             if (time >= 20) {
+                #ifdef USE_RGB_LED
+                    light_driver_set_power(false);
+                #endif 
                 setNVSCommissioningFlag(true);
                 setNVSWebServerEnableFlag(false);
                 setNVSPanicAttack(0);
                 esp_zb_factory_reset();
             }
+            #ifdef USE_RGB_LED
+            else{
+                if (time <= 10) {
+                
+                    light_driver_set_color_RGB(0, 0xff, 0x00);  //green
+                    light_driver_set_power(true);
+                    vTaskDelay(pdMS_TO_TICKS(400)); 
+                    light_driver_set_power(false);
+                                     
+                }else{
+                    light_driver_set_color_RGB(0, 0x00, 0xff);  //blue
+                    light_driver_set_power(true);
+                    vTaskDelay(pdMS_TO_TICKS(400)); 
+                    light_driver_set_power(false);
+                }
+            }
+            #endif 
         }
     }
     // Cleanup
@@ -78,12 +112,13 @@ void json_parse_data_light(const char* data) {
             int len = uart_read_bytes(UART_PORT_NUM, data, sizeof(data), 100 / portTICK_PERIOD_MS);
             if (len > 0 && len < UART_BUF_SIZE) {
                 data[len] = '\0'; // Null-terminate safely
-                printf("As string: %s\n", (char*)data);
-
-
-                //json_parse_data((char*)data);
-                json_parse_data_light((char*)data);
-                nuos_set_zigbee_attribute(0);
+                const char* m_data = (const char*)data;
+                printf("As string: %s len:%d\n", m_data, len);
+                if(m_data != NULL){
+                    //json_parse_data((char*)data);
+                    json_parse_data_light(m_data);
+                    nuos_set_zigbee_attribute(0);
+                }
             }
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
