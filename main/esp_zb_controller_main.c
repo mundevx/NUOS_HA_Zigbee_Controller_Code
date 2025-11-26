@@ -1895,11 +1895,12 @@ void app_main(void) {
     }else{
         ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "Failed" : "Successful");
     }
-
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    #ifdef USE_WIFI_WEBSERVER
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
     while(1){
         vTaskDelay(pdMS_TO_TICKS(100));
         start_dali_led_blink_task();
     }
+    #endif
     #endif
 }

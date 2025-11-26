@@ -45,7 +45,7 @@ cJSON *dcheck                           = NULL;
 cJSON *offset_json                      = NULL;
 cJSON *calibration_json                 = NULL;
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle);
 #endif
 uint8_t node_index, ep_index;
@@ -1430,8 +1430,17 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
 // Modify your http_get_handler to serve the embedded HTML
 esp_err_t http_get_handler(httpd_req_t *req) {
     // Add these external declarations for the embedded HTML
-    extern const char index_html_start[] asm("_binary_index_html_start");
-    extern const char index_html_end[]   asm("_binary_index_html_end");
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    extern const char index_html_start[] asm("_binary_index_dali_master_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_master_html_end");
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+    extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+    extern const char index_html_start[] asm("_binary_index_curtain_html_start");
+    extern const char index_html_end[]   asm("_binary_index_curtain_html_end");    
+    #endif
+
     // Calculate HTML size from embedded binary
     size_t html_size = index_html_end - index_html_start;
     
@@ -1449,7 +1458,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
 
 // #endif
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
     char* prepare_json(uint8_t index){
         int total_item = 0;
@@ -1899,7 +1908,7 @@ void start_webserver() {
         .handler   = submit_post_handler,
         .user_ctx  = NULL
     };
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         httpd_uri_t items_uri = {
             .uri       = "/items",
             .method    = HTTP_GET,
@@ -1917,7 +1926,7 @@ void start_webserver() {
     if (httpd_start(&server, &config) == ESP_OK) {
     	httpd_register_uri_handler(server, &index_uri);
 		httpd_register_uri_handler(server, &submit_uri);
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             httpd_register_uri_handler(server, &items_uri);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
             httpd_register_uri_handler(server, &items_uri);

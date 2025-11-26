@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUOS DALI Control</title>
+    <style>
+        :root {
+            --color-primary: #2196F3;
+            --color-primary-hover: #1976D2;
+            --color-success: #4CAF50;
+            --color-error: #dc3545;
+            --color-border: #ccc;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 20px;
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            padding: 2.5em 2em 2em 2em;
+            max-width: 410px;
+            width: 100%;
+            margin: 2em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .h2-header {
+            background: linear-gradient(to right, #6dd5ed, #2193b0);
+            color: white;
+            padding: 10px 10px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            margin: -2.5em -2em 20px -2em;
+            width: calc(100% + 4em);
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #3b82f6;
+            font-size: 0.95em;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 0.7em 0.8em;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f1f5f9;
+            font-size: 1.08em;
+            margin-top: 0.15em;
+            margin-bottom: 0.8em;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: #3b82f6;
+            background: #e0e7ff;
+        }
+
+        .stylish-button {
+            background-color: #2196F3;
+            border: none;
+            color: white;
+            padding: 12px 0;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            font-size: 16px;
+            margin: 4px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.4s;
+            width: 100%;
+            box-sizing: border-box;
+            font-weight: 500;
+        }
+
+        .stylish-button:hover {
+            background: linear-gradient(90deg, #6366f1 0, #3b82f6 100);
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .stylish-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .row {
+            display: flex;
+            gap: 1em;
+            width: 100%;
+        }
+
+        .row > div {
+            flex: 1;
+        }
+
+        p {
+            color: #64748b;
+            font-size: 1em;
+            margin-bottom: 0.5em;
+            text-align: center;
+            width: 100%;
+        }
+
+        p.info-text {
+            font-size: 0.85em;
+            margin: 1em 0;
+        }
+
+        #result {
+            margin-top: 1.5em;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 1em;
+            border-radius: 8px;
+            min-height: 1.5em;
+            font-size: 0.98em;
+            word-break: break-all;
+            width: 100%;
+            text-align: left;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Popup Styles */
+        .popup {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            border: 1px solid #888;
+            z-index: 100;
+            padding: 20px;
+            max-width: 90vw;
+            overflow-y: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 99;
+        }
+
+        .toggle-btn {
+            width: 40px;
+            height: 40px;
+            margin: 2px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .toggle-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .toggle-btn.selected {
+            background: #4CAF50;
+            color: white;
+            border-color: #388E3C;
+        }
+
+        #toggleGrid {
+            max-height: 60vh;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            padding: 15px 0;
+        }
+
+        .popup h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .popup-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .popup-buttons button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+            transition: all 0.2s;
+        }
+
+        .popup-buttons button:hover {
+            background: #e8e8e8;
+        }
+
+        .popup-buttons button.submit {
+            background: #4CAF50;
+            color: white;
+            border-color: #388E3C;
+        }
+
+        .popup-buttons button.submit:hover {
+            background: #45a049;
+        }
+
+        /* Toast Notification */
+        .toast {
+            visibility: hidden;
+            min-width: 300px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 12px;
+            padding: 18px;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            z-index: 9999;
+            opacity: 0;
+            font-size: 18px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+            transition: opacity 0.4s ease, transform 0.3s ease;
+        }
+
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .toast.success {
+            background-color: #28a745;
+        }
+
+        .toast.error {
+            background-color: #dc3545;
+        }
+
+        .toast.info {
+            background-color: #007bff;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            gap: 0.5em;
+            width: 100%;
+            margin-bottom: 1.5em;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab-btn {
+            padding: 0.8em 1.5em;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: #2193b0;
+        }
+
+        .tab-btn.active {
+            color: #2193b0;
+            border-bottom-color: #2193b0;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* DALI Addressing specific styles */
+        .dali-control-group {
+            display: flex;
+            gap: 2em;
+            margin-bottom: 1.5em;
+            flex-wrap: wrap;
+        }
+
+        .dali-control-group > div {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            z-index: 1002;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-overlay.show {
+            display: flex;
+        }
+
+        .popup-content {
+            background: white;
+            padding: 2em;
+            border-radius: 10px;
+            box-shadow: 0 0 20px #333;
+            min-width: 350px;
+            text-align: center;
+        }
+
+        .popup-content-text {
+            font-size: 1.15em;
+            color: #2193b0;
+            margin-bottom: 1.5em;
+            line-height: 1.5;
+        }
+
+        .popup-buttons-group {
+            display: flex;
+            gap: 1em;
+            justify-content: center;
+        }
+
+        .popup-buttons-group button {
+            padding: 0.8em 1.5em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .popup-buttons-group .confirm-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .popup-buttons-group .confirm-btn:hover {
+            background: #45a049;
+        }
+
+        .popup-buttons-group .cancel-btn {
+            background: #bbb;
+            color: #222;
+        }
+
+        .popup-buttons-group .cancel-btn:hover {
+            background: #aaa;
+        }
+
+        @media (max-width: 500px) {
+            .card {
+                padding: 1.2em 0.5em 1.2em 0.5em;
+                max-width: 98vw;
+                margin: 1em;
+            }
+
+            .h2-header {
+                font-size: 1.2em;
+                padding: 8px 5px;
+            }
+
+            .toggle-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 11px;
+            }
+
+            .tab-btn {
+                padding: 0.6em 1em;
+                font-size: 0.9em;
+            }
+
+            .dali-control-group {
+                gap: 1em;
+            }
+
+            .popup-content {
+                min-width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+
+    <div class="card">
+        <div class="h2-header" id="mainHeader">DALI Scene Control Switch</div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="setControlType">Set Control Type</button>
+            <button class="tab-btn" data-tab="daliAddressing">DALI Addressing</button>
+        </div>
+
+        <!-- Tab 1: Set Control Type -->
+        <div id="setControlType" class="tab-content active">
+            <p>Choose Switch Control Type, and submit to your device.</p>
+
+            <form id="sceneForm" class="form" autocomplete="off">
+            <label for="control_type">Switch Control Type:</label>
+            <select id="control_type" required>
+                <option value="Individual Control">Individual Control</option>
+                <option value="Broadcast Control">Broadcast Control</option>
+            </select>
+
+            <p class="info-text" id="instructionText">Long Press the ID field to set DALI IDs</p>
+
+            <div class="row">
+                <div>
+                    <label for="scene1" id="scene1Label">Scene ID 1:</label>
+                    <input type="text" id="scene1">
+                </div>
+            </div>
+
+                <button class="stylish-button" id="submitBtn" type="submit">Save Changes</button>
+            </form>
+
+            <pre id="result"></pre>
+        </div>
+
+        <!-- Tab 2: DALI Addressing -->
+        <div id="daliAddressing" class="tab-content">
+            <div class="dali-control-group">
+                <div>
+                    <label for="daliStartAddress">Start Address:</label>
+                    <select id="daliStartAddress">
+                        <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option><option value="60">60</option><option value="61">61</option><option value="62">62</option><option value="63">63</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="daliNumAddresses">Total Address:</label>
+                    <select id="daliNumAddresses"></select>
+                </div>
+            </div>
+            <button class="stylish-button" id="sendDaliAddress">Send Address</button>
+        </div>
+    </div>
+
+    <!-- Confirmation Popup for DALI Addressing -->
+    <div class="popup-overlay" id="daliConfirmPopup">
+        <div class="popup-content">
+            <div class="popup-content-text">
+                Are you sure you want to start DALI devices addressing?<br>You will be unable to control the devices until the process is complete.
+            </div>
+            <div class="popup-buttons-group">
+                <button id="daliPopupOk" class="confirm-btn">OK</button>
+                <button id="daliPopupCancel" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Popup for DALI Addressing -->
+    <div class="popup-overlay" id="daliInfoPopup">
+        <div class="popup-content">
+            <div class="popup-content-text">
+                Kindly allow the process to finish, then reconnect to the webpage.
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup for DALI ID Selection -->
+    <div class="overlay" id="overlay"></div>
+    <div class="popup" id="popup">
+        <h3>Select DALI IDs (0-63)</h3>
+        <div id="toggleGrid"></div>
+        <div class="popup-buttons">
+            <button class="submit" onclick="submitSelection()">Submit</button>
+            <button onclick="closePopup()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let currentInput = null;
+        let popupSelections = [[]];
+        let savedSceneIds = [0];
+        let savedControlType = 'Individual Control';
+
+        // Toast Notification
+        function showToast(message, type = "info", duration = 3000) {
+            const toast = document.getElementById("toast");
+            if (!toast) return console.error("Toast element missing!");
+
+            toast.className = "toast";
+            toast.textContent = message;
+            toast.classList.add(type);
+            toast.classList.add("show");
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, duration);
+        }
+
+        // Initialize Grid with 64 DALI IDs (0-63)
+        function initializeGrid() {
+            const grid = document.getElementById('toggleGrid');
+            grid.innerHTML = '';
+            grid.style.display = 'flex';
+            grid.style.flexWrap = 'wrap';
+            grid.style.gap = '5px';
+            grid.style.justifyContent = 'center';
+            grid.style.padding = '15px 0';
+
+            for (let i = 0; i < 64; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'toggle-btn';
+                btn.id = `btn${i}`;
+                btn.textContent = i;
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    toggleBtn(i);
+                });
+                grid.appendChild(btn);
+            }
+        }
+
+        // Toggle button selection
+        function toggleBtn(id) {
+            if (currentInput === null) return;
+
+            let selected = popupSelections[currentInput] || [];
+            const index = selected.indexOf(id);
+
+            if (index === -1) {
+                selected.push(id);
+            } else {
+                selected.splice(index, 1);
+            }
+
+            popupSelections[currentInput] = selected;
+            const btn = document.getElementById(`btn${id}`);
+            btn.classList.toggle('selected');
+        }
+
+        // Submit popup selection
+        function submitSelection() {
+            if (currentInput === null) return;
+    
+            const selected = popupSelections[currentInput].slice().sort((a, b) => a - b);
+            const payload = {
+                fxn: '41',
+                input_id: currentInput,
+                selected_ids: selected,
+                control_type: document.getElementById('control_type').value === 'Individual Control' ? 0 : 1
+            };
+
+            fetch('/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.text())
+                .then(data => {
+                    // Update scene1 input field with all selected DALI IDs as comma-separated string
+                    document.getElementById('scene1').value = selected.length > 0 ? selected.join(',') : '0';
+                    showToast("DALI IDs saved successfully!", "success");
+                    closePopup();
+                })
+                .catch(err => {
+                    showToast("Error sending data: " + err, "error");
+                    closePopup();
+                });
+        }
+
+        // Open popup
+        function openPopup(inputIdx) {
+            currentInput = inputIdx;
+            const selected = popupSelections[inputIdx] || [];
+
+            // Update button states
+            for (let i = 0; i < 64; i++) {
+                const btn = document.getElementById(`btn${i}`);
+                if (selected.includes(i)) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            }
+
+            document.getElementById('popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        // Close popup
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            currentInput = null;
+        }
+
+        // Update UI based on control type
+        function updateControlTypeUI() {
+            const controlType = document.getElementById('control_type').value;
+            const scene1Label = document.getElementById('scene1Label');
+            const scene1Input = document.getElementById('scene1');
+            const instructionText = document.getElementById('instructionText');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (controlType === 'Individual Control') {
+                // Show field and update labels
+                scene1Label.textContent = 'DALI ID 1:';
+                scene1Label.classList.remove('hidden');
+                scene1Input.classList.remove('hidden');
+                scene1Input.setAttribute('required', '');
+                instructionText.classList.remove('hidden');
+                submitBtn.classList.remove('hidden');
+
+                // Set input range to 0-63
+                scene1Input.min = 0;
+                scene1Input.max = 63;
+
+                document.getElementById('mainHeader').textContent = "DALI IDs Control Switch";
+            } else if (controlType === 'Broadcast Control') {
+                // Hide input field and instruction, but keep Save Changes button visible
+                scene1Label.classList.add('hidden');
+                scene1Input.classList.add('hidden');
+                scene1Input.removeAttribute('required');
+                instructionText.classList.add('hidden');
+                submitBtn.classList.remove('hidden');
+
+                document.getElementById('mainHeader').textContent = "DALI Broadcast Control Switch";
+            }
+        }
+
+        // Setup long press handlers for scene inputs
+        function setupInputLongPress() {
+            const el = document.getElementById('scene1');
+            let pressTimer;
+
+            function tryShowPopup() {
+                const ctrlType = document.getElementById('control_type').value;
+                if (ctrlType === 'Individual Control') {
+                    openPopup(0);
+                }
+            }
+
+            el.addEventListener('mousedown', () => {
+                pressTimer = setTimeout(tryShowPopup, 600);
+            });
+
+            el.addEventListener('mouseup', () => {
+                clearTimeout(pressTimer);
+            });
+
+            el.addEventListener('mouseleave', () => {
+                clearTimeout(pressTimer);
+            });
+
+            el.addEventListener('touchstart', () => {
+                pressTimer = setTimeout(tryShowPopup, 600);
+            });
+
+            el.addEventListener('touchend', () => {
+                clearTimeout(pressTimer);
+            });
+        }
+
+        // Handle form submission
+        document.getElementById('sceneForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const sceneValue = document.getElementById('scene1').value;
+            const selectedIds = sceneValue.includes(',') 
+                ? sceneValue.split(',').map(id => parseInt(id.trim()))
+                : [parseInt(sceneValue)];
+
+            const data = {
+                fxn: '40',
+                scene_ids: selectedIds,
+                control_type: document.getElementById('control_type').value === 'Individual Control' ? 0 : 1
+            };
+
+            try {
+                const res = await fetch('/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                showToast("Changes saved successfully!", "success");
+            } catch (err) {
+                showToast("Error: " + err.message, "error");
+            }
+        });
+
+        // Handle dropdown change
+        document.getElementById('control_type').addEventListener('change', updateControlTypeUI);
+
+        // Close popup when overlay is clicked
+        document.getElementById('overlay').addEventListener('click', closePopup);
+
+        // Tab Navigation Handler
+        function setupTabNavigation() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabName = btn.getAttribute('data-tab');
+
+                    // Hide all tabs
+                    tabContents.forEach(tab => tab.classList.remove('active'));
+                    tabButtons.forEach(b => b.classList.remove('active'));
+
+                    // Show selected tab
+                    document.getElementById(tabName).classList.add('active');
+                    btn.classList.add('active');
+                });
+            });
+        }
+
+        // DALI Addressing Event Handlers
+        function setupDaliAddressing() {
+            const sendBtn = document.getElementById('sendDaliAddress');
+            const confirmPopup = document.getElementById('daliConfirmPopup');
+            const infoPopup = document.getElementById('daliInfoPopup');
+            const okBtn = document.getElementById('daliPopupOk');
+            const cancelBtn = document.getElementById('daliPopupCancel');
+
+            sendBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                confirmPopup.classList.add('show');
+            });
+
+            cancelBtn.addEventListener('click', function() {
+                confirmPopup.classList.remove('show');
+            });
+
+            okBtn.addEventListener('click', async function() {
+                confirmPopup.classList.remove('show');
+                try {
+                    const start = parseInt(document.getElementById('daliStartAddress').value, 10);
+                    const num = parseInt(document.getElementById('daliNumAddresses').value, 10);
+                    const payload = { fxn: 12, start_addr: start, max_addr: num };
+                    await fetch('/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    infoPopup.classList.add('show');
+                } catch (err) {
+                    console.warn('Could not send DALI addressing command:', err);
+                    showToast('Error sending DALI addressing command', 'error');
+                }
+            });
+
+            // Close info popup on overlay click
+            infoPopup.addEventListener('click', function(e) {
+                if (e.target === infoPopup) {
+                    infoPopup.classList.remove('show');
+                }
+            });
+        }
+
+        // Populate dropdown with range
+        function populateDropdown_2(select, min, max, defaultVal) {
+            select.innerHTML = "";
+            let found = false;
+            for (let i = min; i <= max; i++) {
+                let opt = document.createElement("option");
+                opt.value = String(i);
+                opt.text = i;
+                select.appendChild(opt);
+                if (i === defaultVal) { found = true; }
+            }
+            select.value = found ? String(defaultVal) : String(max);
+        }
+
+        // Update Total Address dropdown based on Start Address
+        function updateNumAddresses(startAddr) {
+            const numSelect = document.getElementById("daliNumAddresses");
+            const newDefault = startAddr + 15;
+            const maxNum = 63;
+            populateDropdown_2(numSelect, startAddr, maxNum, newDefault);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGrid();
+            setupInputLongPress();
+            updateControlTypeUI();
+            setupTabNavigation();
+            setupDaliAddressing();
+
+            // Initialize DALI dropdowns
+            const startSelect = document.getElementById("daliStartAddress");
+            if (startSelect) {
+                populateDropdown_2(startSelect, 0, 63, 0);
+                updateNumAddresses(0);
+                startSelect.addEventListener("change", function () {
+                    const start = parseInt(startSelect.value, 10);
+                    updateNumAddresses(start);
+                });
+            }
+
+            // Load saved settings from server
+            fetch('/items?fxn=15')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('scene1').value = data.scene_ids[0];
+                    document.getElementById('control_type').value = data.control_type;
+                    updateControlTypeUI();
+                })
+                .catch(err => console.warn('Could not load scene settings:', err));
+
+            // Load popup selections from server
+            fetch('/items?fxn=16')
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length >= 1) {
+                        popupSelections = [Array.isArray(data[0]) ? data[0] : []];
+                    }
+                })
+                .catch(err => console.warn('Could not load popup selections:', err));
+        });
+    </script>
+</body>
+</html>

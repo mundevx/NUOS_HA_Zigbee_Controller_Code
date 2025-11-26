@@ -88,11 +88,6 @@
     }
 
 
-    static void dali_addr_task(void *pvParameters){
-        start_dali_addressing(3);
-        vTaskDelete(NULL);
-    }
-
     static uint8_t last_dali_level = 0; 
     static uint16_t last_color_temp = 0;
 
@@ -684,17 +679,6 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         // }
     }
 
-    //User can expand or lower this array according to number of Lights !!
-    const uint8_t addresses[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};    
-    extern "C" void start_dali_addressing(int numAddresses)
-    {                                                                                                                                                                                          
-        printf("Initialize DALI nodes...");
-        int total_found_nodes = dali.initNodes(addresses, numAddresses);
-        printf("Found nodes:%d\n", total_found_nodes);
-        for (int i = 0; i < total_found_nodes; ++i) {
-            printf("Node number: %d, node address: %d\n", i, addresses[i]);
-        }
-    }// end void start_dali_addressing(int numAddresses)
 
     void nuos_set_state_touch_leds(bool state){
         for(int i=0; i<TOTAL_LEDS; i++){
@@ -730,7 +714,98 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             }
         }
         return getting_on_state;
-    }       
+    }   
+    
+    
+
+
+// Add at top with other defines
+    #define DALI_TASK_PRIORITY 6  // Higher than webserver tasks
+    #define DALI_ADDRESSING_TIMEOUT_MS 30000  // 30 second timeout
+    static TaskHandle_t dali_comm_task_handle = NULL;
+    static void esp_dali_commissioning_led_blink_task(void *pvParameters){
+        // printf("On Task esp_commissioning_detect_task\n");
+        bool _toggle = false;
+        while(1){
+            vTaskDelay(pdMS_TO_TICKS(500));
+            for(int i=0; i<TOTAL_LEDS; i++){
+                //gpio_set_level(gpio_touch_led_pins[i], _toggle);
+                if(!_toggle){
+                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                }else{
+                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0xff);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                }
+            }
+            _toggle = !_toggle;
+        }
+        vTaskDelete(NULL);
+    }
+
+    static void esp_dali_init_node_task(void *pvParameters) {
+        uint16_t addr = *(uint16_t*)pvParameters;
+        
+        uint8_t numAddresses = (uint8_t)(addr & 0xff);
+        uint8_t startAddresses = (uint8_t)((addr >> 8) & 0xff);
+        if(numAddresses > 63) return;
+        if(startAddresses > 63) return;
+
+        ESP_LOGI("DALI", "=== Starting DALI addressing from %d to %d of total=%d ===", startAddresses, numAddresses, numAddresses-startAddresses);
+        
+        // // Pause WiFi to reduce interference
+        #ifdef USE_WIFI_WEBSERVER
+        esp_wifi_stop();
+        vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
+        #endif
+        
+        // Perform DALI addressing with increased priority
+        vTaskPrioritySet(NULL, DALI_TASK_PRIORITY);
+        uint8_t total_addr = (numAddresses-startAddresses)+1;
+        printf("Initialize %d DALI nodes...\n", total_addr);
+        int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
+
+        printf("Found nodes: %d\n", totalfoundnodes);
+
+        
+        // Signal completion
+        if (recordsSemaphore != NULL) {
+            xSemaphoreGive(recordsSemaphore);
+        }
+
+        ESP_LOGI("DALI", "=== DALI addressing complete ===");
+        
+        vTaskDelete(NULL);
+    }
+
+    extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
+        recordsSemaphore = xSemaphoreCreateBinary();
+        if (recordsSemaphore == NULL) {
+            // Handle semaphore creation failure
+            printf("Failed to create semaphore!\n");
+            return;
+        }    
+        uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 8, NULL);
+        start_dali_led_commissioning_task_flag = true;
+        //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
+        if (recordsSemaphore != NULL) {
+            // Wait for the semaphore to be given by thaddre records task
+            xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
+        }
+
+        start_dali_led_commissioning_task_flag = false;
+        // Restart WiFi
+        #ifdef USE_WIFI_WEBSERVER
+        vTaskDelay(pdMS_TO_TICKS(200));
+        wifi_restart();
+        vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
+        #endif
+        
+        for(int i=0; i<TOTAL_ENDPOINTS; i++){
+            nuos_zb_set_hardware(i, false);
+        }
+    }    
 #endif
 
 

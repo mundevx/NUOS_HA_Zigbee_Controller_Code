@@ -284,10 +284,8 @@
         const char* scene_ctrl_type[3] = { "Broadcast Control", "Group Control", "Individual Control"};     
         //scene_switch_s scene_switch_t[4];
         scene_switch_s scene_group_switch_info;
-        uint16_t global_group_id[4]                                             = { 0x1, 0x2, 0x3, 0x4 };
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-        uint16_t global_dali_id[4]                                              = { 11, 12, 13, 14}; 
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        uint16_t global_group_id[4]                                             = { 0x1, 0x2, 0x3, 0x4 }; 
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         uint16_t global_dali_id[4]                                              = { 10, 11, 12, 13 }; 
         #else
         uint8_t global_dali_id[]                                                = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
@@ -1307,9 +1305,7 @@
         extern int node_counts;
         extern uint16_t global_group_id[4];
         extern scene_switch_s scene_group_switch_info;
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-        extern uint16_t global_dali_id[4]; 
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         extern uint16_t global_dali_id[4]; 
         #else
         extern uint8_t global_dali_id[]; 

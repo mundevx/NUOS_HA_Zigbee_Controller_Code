@@ -37,6 +37,6 @@ idf_component_register(
     "app_hardware_driver_dali_scene_switch.cpp"
     SRC_DIRS "." "../../../common/zcl_utility/src"
     INCLUDE_DIRS "." "../../../common/zcl_utility/include" 
-    EMBED_FILES "index.html"
+    EMBED_FILES "web_files/index_curtain.html" "web_files/index_dali_master.html" "web_files/index_dali_scn.html" "web_files/index_dali_switch.html"
     REQUIRES light_driver espressif__esp-zboss-lib mbedtls nvs_flash esp_timer app_update esp_http_server cjson esp_wifi
 )
