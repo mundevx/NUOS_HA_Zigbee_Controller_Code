@@ -1090,7 +1090,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #endif    
         #endif 
         #ifndef DONT_USE_ZIGBEE 
-        if((is_my_device_commissionned == true) && (wifi_webserver_active_flag == false)){
+        if((is_my_device_commissionned == true) && (!wifi_webserver_active_flag)){
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                 // nuos_set_zigbee_attribute(0); 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
@@ -1112,6 +1112,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #endif
                 #else
                 nuos_set_zigbee_attribute(button_index);
+                
                 #endif
             #endif
         }
@@ -1177,7 +1178,8 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
             #endif    
             nuos_set_zigbee_attribute(0);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
-
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
 
         #else

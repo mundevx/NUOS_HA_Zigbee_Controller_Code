@@ -380,9 +380,9 @@ bool DaliCommands::add_to_group(uint8_t addr, uint8_t group)
 {
     // Send the command to add to group
     send_command_standard(ADD_TO_GROUP + group, addr);
-//delay(50);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(ADD_TO_GROUP + group, addr);
-//delay(DELAY_COMMAND_SEND);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     return true;
 }
 
@@ -390,9 +390,9 @@ void DaliCommands::remove_from_group(uint8_t addr, uint8_t group)
 {
     // Send the command to remove from group
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-//delay(DELAY_COMMAND_SEND);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-//delay(DELAY_COMMAND_SEND);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
 }
 
 void DaliCommands::set_group_fade_time(uint8_t addr, uint8_t time)

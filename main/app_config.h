@@ -26,15 +26,15 @@
     #define DEVICE_SENSOR_CONTACT_SWITCH                            17
     #define DEVICE_SENSOR_GAS_LEAK                                  18
     #define DEVICE_SENSOR_TEMPERATURE_HUMIDITY                      19
-    #define DEVICE_SENSOR_LUX                                       20 //TSL2561
+    #define DEVICE_SENSOR_LUX                                       20 // TSL2561
 
-    #define DEVICE_WIRELESS_REMOTE_SWITCH                           21 //SW1=DEVICES_BIND, SW2=DEVICES_BIND, SW3=DEVICES_BIND, SW4=DEVICES_BIND
-    #define DEVICE_1CH_CURTAIN_SWITCH 					            22
+    #define DEVICE_WIRELESS_REMOTE_SWITCH                           21 // SW1=DEVICES_BIND, SW2=DEVICES_BIND, SW3=DEVICES_BIND, SW4=DEVICES_BIND
+    #define DEVICE_1CH_CURTAIN_SWITCH 					            22 
 
     #define DEVICE_WIRELESS_GROUP_SWITCH                            23 //Currently Running Remote Switch
     #define DEVICE_SCENE_DALI                                       24 //SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_CCT_DALI_CUSTOM //DEVICE_WIRELESS_GROUP_SWITCH //DEVICE_CCT_DALI_CUSTOM //DEVICE_GROUP_DALI
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_SCENE_DALI //DEVICE_WIRELESS_GROUP_SWITCH //DEVICE_CCT_DALI_CUSTOM //DEVICE_GROUP_DALI
 
     // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT)
     // #else

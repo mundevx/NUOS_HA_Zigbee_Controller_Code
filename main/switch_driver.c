@@ -78,7 +78,7 @@ static esp_switch_callback_t func_ptr;
 static uint8_t switch_num;
 static const char *TAG                          = "ESP_ZB_SWITCH";
 extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode);
-static void switch_driver_gpios_intr_enabled(bool enabled);
+void switch_driver_gpios_intr_enabled(bool enabled);
 static void esp_commissioning_detect_task(void *pvParameters);
 extern uint32_t timer_commissioning_ready_counts;
 extern uint32_t timer_led_blink_ready_counts;
@@ -108,7 +108,7 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
  *
  * @param enabled      enable isr if true.
  */
-static void switch_driver_gpios_intr_enabled(bool enabled)
+void switch_driver_gpios_intr_enabled(bool enabled)
 {
     for (int i = 0; i < switch_num; ++i) {
         if (enabled) {
@@ -245,7 +245,7 @@ void button_click_handler(TimerHandle_t xTimer)
                     setNVSCommissioningFlag(1);
                     setNVSPanicAttack(0);
                     //esp_zb_scheduler_alarm_cancel(esp_zb_callback, 0);
-                   
+                    // xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
                     if (esp_zb_bdb_dev_joined()) {
                          printf("ready_commisioning_flag: 2\n");
                         esp_zb_bdb_reset_via_local_action();
@@ -389,13 +389,13 @@ void button_click_handler(TimerHandle_t xTimer)
 
 static void esp_commissioning_detect_task(void *pvParameters){
     // printf("On Task esp_commissioning_detect_task\n");
-    for(int j=0; j<2; j++){
-        for(int i=0; i<TOTAL_ENDPOINTS; i++){
-            nuos_zb_set_hardware(i, true);
-            vTaskDelay(pdMS_TO_TICKS(100));
-        }
-        vTaskDelay(pdMS_TO_TICKS(500));    
-    }
+    // for(int j=0; j<4; j++){
+    //     nuos_set_state_touch_leds();
+    //     vTaskDelay(pdMS_TO_TICKS(500));    
+    // }
+    // for(int i=0; i<TOTAL_ENDPOINTS; i++){
+    //     nuos_zb_set_hardware(i, false);
+    // }
     // printf("Deleting Task esp_commissioning_detect_task\n");
     vTaskDelete(NULL); // Delete the task after executing
 }
@@ -434,18 +434,35 @@ void check_long_press_tasks(const uint16_t compare_time_in_secs){
                 #ifdef USE_RGB_LED
                     light_driver_set_power(false);
                 #endif 
-                xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
+                //xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
             }else if(total_press_in_secs > compare_time_in_secs){  
 
             }else{
-                ready_commisioning_flag = true;
+                //wifi_webserver_active_flag = true;
                 #ifdef USE_RGB_LED
                     toggle_status_led_long_press = !toggle_status_led_long_press;
                     if(toggle_status_led_long_press) light_driver_set_color_RGB(0, 0, 0xff);  //red
                     light_driver_set_power(toggle_status_led_long_press);
                 #endif  
             }
-        }                          
+        }  else if(get_button_pressed_mode() == 2){
+                if(total_press_in_secs == compare_time_in_secs){
+                    #ifdef USE_RGB_LED
+                        light_driver_set_power(false);
+                    #endif 
+                    //xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
+                }else if(total_press_in_secs > compare_time_in_secs){  
+
+                }else{
+                    //wifi_webserver_active_flag = true;
+                    #ifdef USE_RGB_LED
+                        toggle_status_led_long_press = !toggle_status_led_long_press;
+                        if(toggle_status_led_long_press) light_driver_set_color_RGB(0x00, 0xff, 0x00);  //green
+                        light_driver_set_power(toggle_status_led_long_press);
+                    #endif  
+                }   
+            }
+                             
     }
 }
 
@@ -457,17 +474,19 @@ void brightness_control_tasks(uint32_t io_num){
                 nuos_set_hardware_brightness(io_num);
             }
         #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-            if(change_cw_ww_color_flag){
-                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
-                    is_long_press_brightness = true;
-                    nuos_set_hardware_brightness(io_num);
-                } 
-            }else{
-                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                    is_long_press_brightness = true;
-                    nuos_set_hardware_brightness(io_num);
-                }                                                
-            }            
+            if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
+                if(change_cw_ww_color_flag){
+                    if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    } 
+                }else{
+                    if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    }                                                
+                }  
+            }          
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             if(io_num == gpio_touch_btn_pins[0]){
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){

@@ -802,6 +802,9 @@ void parse_json(const char *json_string) {
                 }
 
                 printf("start_address:%d, max_addr: %d\n", start_address, max_address);
+
+                esp_stop_timer();
+                
                 //setNVSDaliNodesStartAddrCounts(start_address);
                 setNVSDaliNodesCommissioningCounts(max_address);
                 
@@ -811,15 +814,44 @@ void parse_json(const char *json_string) {
         
     #endif
 case 40:
+           #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             //{"fxn":"40","group_id":1,"scene_ids":[1,2,3,4],"control_type":2,"scn_ctrl_type":1}
-            scene_group_switch_info.group_id = cJSON_GetObjectItem(root, "group_id")->valueint;
-            cJSON *scenes1 = cJSON_GetObjectItem(root, "scene_ids");
-            for (int i = 0; i < cJSON_GetArraySize(scenes1); ++i) {
-                scene_group_switch_info.scene_ids[i] = cJSON_GetArrayItem(scenes1, i)->valueint;
+
+            // cJSON *sgid = cJSON_GetObjectItem(root, "group_id");
+            // if (sgid == NULL) {
+            //     printf("Missing JSON keys group_id\n");
+            //     cJSON_Delete(root);                
+            //     return;
+            // }
+            cJSON *sscnid = cJSON_GetObjectItem(root, "scene_ids");
+            if (sscnid == NULL) {
+                printf("Missing JSON keys scene_ids\n");
+                cJSON_Delete(root);                
+                return;
             }
-            scene_group_switch_info.control_type = cJSON_GetObjectItem(root, "control_type")->valueint;
-            scene_group_switch_info.scn_ctrl_type = cJSON_GetObjectItem(root, "scn_ctrl_type")->valueint;
+            // scene_group_switch_info.group_id = cJSON_GetObjectItem(root, "group_id")->valueint;
+            for (int i = 0; i < cJSON_GetArraySize(sscnid); ++i) {
+                scene_group_switch_info.scene_ids[i] = cJSON_GetArrayItem(sscnid, i)->valueint;
+            }
+
+            cJSON *sctrltype = cJSON_GetObjectItem(root, "control_type");
+            if (sctrltype == NULL) {
+                printf("Missing JSON keys control_type\n");
+                cJSON_Delete(root);                
+                return;
+            }
+            
+            scene_group_switch_info.control_type = sctrltype->valueint;
+            cJSON *sscnctrltype = cJSON_GetObjectItem(root, "scn_ctrl_type");
+            if (sscnctrltype == NULL) {
+                printf("Missing JSON keys scn_ctrl_type\n");
+                // cJSON_Delete(root);                
+                // return;
+            } else {           
+                scene_group_switch_info.scn_ctrl_type = 0;//sscnctrltype->valueint;
+            }
             nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            #endif
         break;
 
         case 42:
@@ -842,7 +874,7 @@ case 40:
         break;
         
         case 41:
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             cJSON * sindex22 = cJSON_GetObjectItem(root, "input_id");
             if (sindex22 == NULL) {
                 printf("Missing JSON keys index\n");
@@ -920,6 +952,7 @@ case 40:
             }
 
             nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
+        
             #endif         
         break;  
         
@@ -941,12 +974,20 @@ case 40:
             cJSON *g_id    = cJSON_GetObjectItem(root, "group_id");
             cJSON *s_id    = cJSON_GetObjectItem(root, "scene_id");
             if (!g_val) { cJSON_Delete(root); return; }
-            int state = g_val->valueint;
-
+            
+            int state = 0;
+            int value = g_val->valueint;
+            if(value == 0) state = false;
+            else state = true;
+            
             if (g_id) {
                 int group = g_id ? g_id->valueint : 0;
                 printf("Immediate toggle state:%d group:%d\n", state, group);
                 nuos_dali_set_state_group(group, state);
+                if(state) {
+                    uint8_t val = map(value, 0, 100, 0, 255);
+                    nuos_dali_set_group_brightness(group, 0, val);
+                }
             }else{
                 if (dali_id) {
                     
@@ -1758,6 +1799,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                     cJSON_AddStringToObject(item_json, "scn_ctrl_type", scene_ctrl_type[scene_group_switch_info.scn_ctrl_type]);
                                               
                     response = cJSON_Print(item_json);
+                    printf("%s\n", response);
                     cJSON_Delete(item_json);
                 }else if(fxn == 16){
                     cJSON *item_json = cJSON_CreateArray();
@@ -1771,6 +1813,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                         cJSON_AddItemToArray(item_json, arr);
                     }
                     response = cJSON_Print(item_json);
+                    printf("%s\n", response);
                     cJSON_Delete(item_json);
                     if (!response) {
                         httpd_resp_send_500(req);

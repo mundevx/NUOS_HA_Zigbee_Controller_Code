@@ -12,7 +12,8 @@
     #include <esp_log.h>
     #include "driver/ledc.h"
     #include "DaliCommands.h"
-
+    #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
+    #include "esp_wifi_station.h"
 
     DaliCommands 										        dali(gpio_load_pins[1], gpio_load_pins[0]);
 
@@ -115,35 +116,46 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     extern "C" void set_state(uint8_t index){
         esp_zb_lock_acquire(portMAX_DELAY);
         if(!device_info[index].device_state) {
-            
-            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-            dali.turn_off(global_dali_id[0]); 
-            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-            dali.set_group_off(global_group_id[0]); 
-            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-            dali.send_broadcast(dali.OFF_C); 
+            if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type != 0) { 
+                #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                dali.turn_off(global_dali_id[0]); 
+                #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                dali.set_group_off(global_group_id[0]); 
+                #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                dali.send_broadcast(dali.OFF_C); 
+                }
+            }else{
+                for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                    printf("dali_id:%d\n", scene_group_switch_info.device_ids[index][i]);
+                    dali.turn_off(scene_group_switch_info.device_ids[index][i]);
+                }
+            }
             #endif  
         } else {
-            //dali.send_broadcast(dali.ON_C);
-            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-            // dali.turn_on_to_last_level(global_dali_id[0]);
-            // vTaskDelay(5 / portTICK_PERIOD_MS);
-            dali.set_dim_value(global_dali_id[0], calibrate_dali_brightness(device_info[index].device_level));
-            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-            dali.set_group_level(global_group_id[0], calibrate_dali_brightness(device_info[index].device_level));
-            vTaskDelay(5 / portTICK_PERIOD_MS);
-            dali.set_group_level(global_group_id[0], calibrate_dali_brightness(device_info[index].device_level));
-            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-            uint8_t cal_val = calibrate_dali_brightness(device_info[index].device_level);
-            dali.set_broadcast_level(cal_val);  
-            vTaskDelay(5 / portTICK_PERIOD_MS);
-            cal_val = calibrate_dali_brightness(device_info[index].device_level);
-            dali.set_broadcast_level(cal_val);  
-
-            // dali.set_broadcast_level(calibrate_dali_brightness(device_info[index].device_level));
-            // vTaskDelay(5 / portTICK_PERIOD_MS);
-            // dali.set_broadcast_level(calibrate_dali_brightness(device_info[index].device_level));
-            #endif   
+            if(scene_group_switch_info.control_type != 0) { 
+                //dali.send_broadcast(dali.ON_C);
+                #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                // dali.turn_on_to_last_level(global_dali_id[0]);
+                // vTaskDelay(5 / portTICK_PERIOD_MS);
+                dali.set_dim_value(global_dali_id[0], calibrate_dali_brightness(device_info[index].device_level));
+                #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                dali.set_group_level(global_group_id[0], calibrate_dali_brightness(device_info[index].device_level));
+                vTaskDelay(5 / portTICK_PERIOD_MS);
+                dali.set_group_level(global_group_id[0], calibrate_dali_brightness(device_info[index].device_level));
+                #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                uint8_t cal_val = calibrate_dali_brightness(device_info[index].device_level);
+                dali.set_broadcast_level(cal_val);  
+                vTaskDelay(5 / portTICK_PERIOD_MS);
+                cal_val = calibrate_dali_brightness(device_info[index].device_level);
+                dali.set_broadcast_level(cal_val);  
+                #endif 
+            }else{
+                for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                    printf("dali_id:%d\n", scene_group_switch_info.device_ids[index][i]);
+                    dali.set_dim_value(scene_group_switch_info.device_ids[index][i], device_info[index].device_level);
+                }
+            }  
         }
         esp_zb_lock_release();
         nuos_set_state_attribute(0);
@@ -151,24 +163,32 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     }
     extern "C" void set_level(uint8_t index){
             esp_zb_lock_acquire(portMAX_DELAY);
-            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-            // dali.turn_on_to_last_level(global_dali_id[0]);
-            // vTaskDelay(5 / portTICK_PERIOD_MS);
-            dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
-            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-            dali.set_group_level(global_group_id[0], device_info[index].device_level);
-            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-            //esp_zb_lock_acquire(portMAX_DELAY);
-            uint8_t cal_val = calibrate_dali_brightness(device_info[index].device_level);
-            printf("cal_val:%d\n", cal_val);
-            dali.set_broadcast_level(cal_val);        
-            //esp_zb_lock_release(); 
-            #endif 
+            if(scene_group_switch_info.control_type != 0) { 
+                #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                // dali.turn_on_to_last_level(global_dali_id[0]);
+                // vTaskDelay(5 / portTICK_PERIOD_MS);
+                dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
+                #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                dali.set_group_level(global_group_id[0], device_info[index].device_level);
+                #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                //esp_zb_lock_acquire(portMAX_DELAY);
+                uint8_t cal_val = calibrate_dali_brightness(device_info[index].device_level);
+                printf("cal_val:%d\n", cal_val);
+                dali.set_broadcast_level(cal_val);        
+                //esp_zb_lock_release(); 
+                #endif 
+            }else{
+                for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                    printf("dali_id:%d\n", scene_group_switch_info.device_ids[index][i]);
+                    dali.set_dim_value(scene_group_switch_info.device_ids[index][i], device_info[index].device_level);
+                }                
+            }
             esp_zb_lock_release();
             nuos_set_color_temp_level_attribute(0); 
 
     }
     extern "C" void set_color_temp(){
+        if(scene_group_switch_info.control_type != 0) { 
             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
             dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
             #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
@@ -177,20 +197,25 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
             dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
             #endif 
-
-            nuos_set_color_temperature_attribute(0);     
+        }else{
+            for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
+                dali.set_color_temperature(scene_group_switch_info.device_ids[0][i], device_info[0].device_val);
+            }  
+        }
+        nuos_set_color_temperature_attribute(0);     
     }
-    extern "C" void set_color_temp_args(uint16_t color){
-            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-            dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
-            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-            dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
-            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-            dali.set_color_temperature(dali.BROADCAST_C, color); 
-            #endif 
+    extern "C" void set_color_temp_args(uint16_t color) {
+        #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+        dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
+        #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+        dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
+        #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+        dali.set_color_temperature(dali.BROADCAST_C, color); 
+        #endif 
 
-            nuos_set_color_temperature_attribute(0);     
+        nuos_set_color_temperature_attribute(0);     
     }
+
     static void update_duty_cycle_task(void *pvParameters){
         uint8_t index = *(uint8_t*)pvParameters;
         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
@@ -282,8 +307,9 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 if(device_info[0].fan_speed > 2) device_info[0].fan_speed--;
                 else {
                     device_info[0].fan_speed = 1;
-                    gpio_set_level(gpio_touch_led_pins[2], 1);
+                    
                     gpio_set_level(gpio_touch_led_pins[3], 0);
+                    gpio_set_level(gpio_touch_led_pins[2], 1);
                 }
                 device_info[0].device_val = cct_values[device_info[0].fan_speed];
             }
@@ -299,61 +325,68 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         
     }
 
+    // static void esp_dali_off_task(void* args) {
+    //     uint8_t index = *(uint8_t*)args;
+    //     printf("index:%d total_ids:%d\n", index, scene_group_switch_info.total_ids[index]);
+    //     for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+    //         printf("dali_id:%d\n", scene_group_switch_info.device_ids[index][i]);
+    //         dali.turn_off(scene_group_switch_info.device_ids[index][i]);
+    //         vTaskDelay(10 / portTICK_PERIOD_MS);
+    //     }
+    //     vTaskDelete(NULL); // Delete the task after executing
+    // }
+
+    // static void esp_dali_on_task(void* args) {
+    //     uint8_t index = *(uint8_t*)args;
+    //     printf("index:%d total_ids:%d\n", index, scene_group_switch_info.total_ids[index]);
+    //     for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+    //         printf("dali_id:%d\n", scene_group_switch_info.device_ids[index][i]);
+    //         dali.set_dim_value(scene_group_switch_info.device_ids[index][i], device_info[index].device_level);
+    //         vTaskDelay(10 / portTICK_PERIOD_MS);
+    //     }
+    //     vTaskDelete(NULL); // Delete the task after executing
+    // }
     void set_hardware(uint8_t index, uint8_t is_toggle){
-        if(index == 0){
-            if(is_toggle>0) device_info[0].device_state = !device_info[0].device_state;
-            device_info[0].color_or_fan_state = false;
-            gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-            if(!device_info[0].device_state){
-                printf("Turn OFF\n");
-                #ifdef USE_CCT_TIME_SYNC
-                gpio_set_level(gpio_touch_led_pins[1], 0);
-                #else
-                device_info[0].color_or_fan_state = false;
-                gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-                #endif
-                //xTaskCreate(group_off_task, "off_task", 2048, NULL, 14, NULL);
-                // esp_zb_lock_acquire(portMAX_DELAY);
-                // dali.send_broadcast(dali.OFF_C);
-                // esp_zb_lock_release();
-            }else{
-                printf("Turn ON\n");
+        printf("control_type:%d\n", scene_group_switch_info.control_type);
 
-                //xTaskCreate(update_duty_cycle_task, "update_duty_cycle_task", 2048, &index, 28, NULL); 
-                
+            if(index == 0){
+                if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
+                if(!device_info[index].device_state) {
+                    printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
+                    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                        ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
+                        ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+                    #else
+                        gpio_set_level(gpio_touch_led_pins[index], 0);
+                    #endif
+                    //xTaskCreate(esp_dali_off_task, "dali_off_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
+                } else {
+                    printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
+                    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                        ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
+                        ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+                    #else
+                        gpio_set_level(gpio_touch_led_pins[index], 1);
+                    #endif
+                    //xTaskCreate(esp_dali_on_task, "dali_on_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
+                }
+                set_color_temp_only_leds_2();
+                nuos_store_data_to_nvs(0);
+            }else if(index == 1){
                 #ifdef USE_CCT_TIME_SYNC
-                gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-                #else
-                device_info[0].color_or_fan_state = true;
-                gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
+                if(device_info[0].device_state){
+                    device_info[0].color_or_fan_state = !device_info[0].color_or_fan_state;
+                    gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
+                }
                 #endif
-
-            } 
-            set_color_temp_only_leds_2();
-            // #ifdef USE_RGB_LED
-            //     nuos_rgb_trigger_blink();
-            // #endif    
-        }else if(index == 1){
-            #ifdef USE_CCT_TIME_SYNC
-            if(device_info[0].device_state){
-                device_info[0].color_or_fan_state = !device_info[0].color_or_fan_state;
-                // if(!device_info[0].color_or_fan_state) { set_cct_time_sync_request_flag = false;}
-                // else { set_cct_time_sync_request_flag = true;}
-                gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-            }
-            #endif
-        } else {
-            #ifdef USE_CCT_TIME_SYNC
-                set_color_temp_leds(index);
-            #else
-                if(device_info[0].color_or_fan_state)
+            } else {
+                #ifdef USE_CCT_TIME_SYNC
                     set_color_temp_leds(index);
-            #endif    
-        }
-        // #ifdef USE_CCT_TIME_SYNC
-        // gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-        // #endif
-        nuos_store_data_to_nvs(0);
+                #else
+                    if(device_info[0].color_or_fan_state)
+                        set_color_temp_leds(index);
+                #endif    
+            }
     }
 
     void set_leds(int i, bool state){
@@ -428,10 +461,8 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 }
             }      
         }else{
-             
-                
+                     
         }
-       
     }
 
     static uint8_t level_backup = 0;
@@ -517,17 +548,24 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level));                
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
 
-                        #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                        dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
-                        #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-                        dali.set_group_level(global_group_id[0], device_info[index].device_level);
-                        #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-                        //esp_zb_lock_acquire(portMAX_DELAY);
                         uint8_t cal_val = calibrate_dali_brightness(device_info[index].device_level);
-                        dali.set_broadcast_level(cal_val);        
-                        //esp_zb_lock_release(); 
-                        #endif
-
+                        if(scene_group_switch_info.control_type == 0) { 
+                            for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
+                                //printf("dali_id:%d\n", scene_group_switch_info.device_ids[0][i]);
+                                dali.set_dim_value(scene_group_switch_info.device_ids[0][i], cal_val);
+                                //vTaskDelay(10 / portTICK_PERIOD_MS);
+                            }
+                        }else{
+                            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                            dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
+                            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                            dali.set_group_level(global_group_id[0], device_info[index].device_level);
+                            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                            //esp_zb_lock_acquire(portMAX_DELAY);
+                            dali.set_broadcast_level(cal_val);        
+                            //esp_zb_lock_release(); 
+                            #endif
+                        }
                         if(counts_level++ >= 10){
                             counts_level = 0;
                             nuos_set_color_temp_level_attribute(0);
@@ -539,14 +577,23 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                    convert_colors_to_index(is_long_press_brightness);
                     if(color_backup != device_info[0].device_val){
                         color_backup = device_info[0].device_val;
-                        #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                        dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
-                        #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-                        dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
-                        #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-                        //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
-                        dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
-                        #endif 
+
+                        if(scene_group_switch_info.control_type == 0) { 
+                            for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
+                                //printf("dali_id:%d\n", scene_group_switch_info.device_ids[0][i]);
+                                dali.set_color_temperature(scene_group_switch_info.device_ids[0][i], device_info[0].device_val);
+                                //vTaskDelay(10 / portTICK_PERIOD_MS);
+                            }
+                        }else{
+                            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                            dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
+                            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                            dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
+                            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                            //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
+                            dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
+                            #endif 
+                        }
                         if(counts_color++ >= 10){
                             counts_color = 0;
                             nuos_set_color_temperature_attribute(0);
@@ -555,14 +602,23 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                     nuos_store_data_to_nvs(0);                      
             }else{
                 convert_colors_to_index(is_long_press_brightness);
-                #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
-                #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-                dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
-                #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-                //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
-                dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
-                #endif 
+
+                if(scene_group_switch_info.control_type == 0) { 
+                    for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
+                        //printf("dali_id:%d\n", scene_group_switch_info.device_ids[0][i]);
+                        dali.set_color_temperature(scene_group_switch_info.device_ids[0][i], device_info[0].device_val);
+                        //vTaskDelay(10 / portTICK_PERIOD_MS);
+                    }
+                }else{
+                    #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                    dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
+                    #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                    dali.set_color_temperature(global_group_id[0], device_info[0].device_val);
+                    #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                    //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
+                    dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
+                    #endif 
+                }
                 if(counts_color++ >= 10){
                     counts_color = 0;
                     nuos_set_color_temperature_attribute(0);
@@ -630,6 +686,19 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     }  
 
 
+    extern "C" void nuos_dali_set_state(uint8_t dali_id, uint8_t state) { 
+        //#ifdef IS_USE_DALI_HARDWARE
+        if(state == 0) dali.turn_off(dali_id);
+        else dali.set_dim_value(dali_id, MAX_DIM_LEVEL_VALUE);
+        //#endif
+    } 
+    extern "C" void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level) { 
+        dali.set_dim_value(dali_id, level);
+    }   
+    
+    extern "C" void nuos_dali_set_cct_color(uint8_t did, uint16_t value) {
+        dali.set_color_temperature(did, value);
+    }
 
     extern "C" void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id){
         //#ifdef IS_USE_DALI_HARDWARE
@@ -663,8 +732,35 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         dali.set_broadcast_level(value);
         //#endif
     } 
+    bool _toggle_ = false;
+    void start_dali_led_blink_task(){
+    
+        if(start_dali_led_commissioning_task_flag){
+            for(int i=0; i<TOTAL_LEDS; i++){
+                if(!_toggle_){
+                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                }else{
+                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0xff);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                }
+            }
+            _toggle_ = !_toggle_;
+        }
+    }
+      extern "C" int get_all_dali_addresses(uint8_t *foundAddresses) {
+         // DALI allows up to 64 short addresses (0-63)
+        uint8_t maxAddresses = 64;
+        printf("Discovering assigned DALI addresses:\n");
+        // Scan for assigned short addresses
+        int numFound = dali.scanAssignedShortAddresses(foundAddresses, maxAddresses);
+        printf("Found %d assigned DALI addresses:\n", numFound);
+        for (int i = 0; i < numFound; ++i) {
+            printf("  Short address: %d\n", foundAddresses[i]>>1);
+        }    
+        return numFound;
+    }
 
-   
     uint8_t cct_counts = 0;
     extern "C" void nuos_dali_set_color_temperate(uint8_t index){
         device_info[index].device_val = cct_values[cct_counts];

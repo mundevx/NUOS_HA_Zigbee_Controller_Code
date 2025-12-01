@@ -219,17 +219,17 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
         <option>Group Control</option>
         <option>Scene Control</option>
       </select>
-      <div id="sceneControlDiv" style="display: block; margin-top: 1em; color: rgb(59, 130, 246);">
+      <!-- <div id="sceneControlDiv" style="display: block; margin-top: 1em; color: rgb(59, 130, 246);">
         <label for="control_type1">Scene Control Type:</label>
         <select id="control_type1" required="">
           <option>Broadcast Control</option>
           <option>Group Control</option>
           <option>Individual Control</option>
         </select>
-      </div>
+      </div> -->
       <br><br><br>
-      <label for="group_id" id="groupIdLabel" style="color: rgb(59, 130, 246); display: none;">Group ID (0–15):</label>
-      <input type="number" id="group_id" min="0" max="15" value="0" style="display: none;">
+      <!-- <label for="group_id" id="groupIdLabel" style="color: rgb(59, 130, 246); display: none;">Group ID (0–15):</label>
+      <input type="number" id="group_id" min="0" max="15" value="0" style="display: none;"> -->
       <p>Long Press each ID field to set DALI Ids</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div>
@@ -541,13 +541,13 @@ function showToast(message, type = "info", duration = 3000) {
 }
 // Initial field setup
 document.addEventListener('DOMContentLoaded',function(){
-  document.getElementById('group_id').value = savedGroupId;
+  // document.getElementById('group_id').value = savedGroupId;
   document.getElementById('scene1').value = savedSceneIds[0];
   document.getElementById('scene2').value = savedSceneIds[1];
   document.getElementById('scene3').value = savedSceneIds[2];
   document.getElementById('scene4').value = savedSceneIds[3];
   document.getElementById('control_type').value = savedControlType;
-  document.getElementById('control_type1').value = savedControlType1;
+  // document.getElementById('control_type1').value = savedControlType1;
 });
 
 function updateHeader(newText) {
@@ -568,18 +568,18 @@ function setInputRange(min, max) {
 }
 
 function updateGroupIdVisibility(show) {
-  var groupIdLabel = document.getElementById('groupIdLabel');
-  var groupIdInput = document.getElementById('group_id');
-  groupIdLabel.style.display = show ? '' : 'none';
-  groupIdInput.style.display = show ? '' : 'none';
+  // var groupIdLabel = document.getElementById('groupIdLabel');
+  // var groupIdInput = document.getElementById('group_id');
+  // groupIdLabel.style.display = show ? '' : 'none';
+  // groupIdInput.style.display = show ? '' : 'none';
 }
 
 
 
 document.getElementById('control_type').addEventListener('change', function() {
   var val = this.value;
-  var groupIdLabel = document.getElementById('groupIdLabel');
-  var groupIdInput = document.getElementById('group_id');
+  // var groupIdLabel = document.getElementById('groupIdLabel');
+  // var groupIdInput = document.getElementById('group_id');
   var sceneLabels = [ document.getElementById('scene1Label'), document.getElementById('scene2Label'), document.getElementById('scene3Label'), document.getElementById('scene4Label') ];
   if (val === 'Individual Control') {
     groupIdLabel.style.display = 'none';
@@ -616,38 +616,38 @@ document.getElementById('control_type').addEventListener('change', function() {
     sceneLabels[3].innerText = 'Scene ID 4:';
     setInputRange(0, 15);
   }
-  var sceneDiv = document.getElementById('sceneControlDiv');
-  if (this.value === 'Scene Control') {
-    sceneDiv.style.display = 'block';
-    var val = document.getElementById('control_type1').value;
-    if (val === 'Broadcast Control') {
-      updateGroupIdVisibility(false);
-      updateTitle("DALI Scene Control Switch");
-      setInputRange(0, 15);
-    }else if(val === 'Individual Control') {
-      updateGroupIdVisibility(false);
-      updateTitle("DALI Scene Control Switch");
-      setInputRange(0, 63);
-    } else if (val === 'Group Control') {
-      updateGroupIdVisibility(false);
-      updateTitle("DALI Scene Control Switch (group required)");
-      setInputRange(0, 15);
-    }
-  } else {
-    sceneDiv.style.display = 'none';
-  }
+  // var sceneDiv = document.getElementById('sceneControlDiv');
+  // if (this.value === 'Scene Control') {
+  //   sceneDiv.style.display = 'block';
+  //   var val = document.getElementById('control_type1').value;
+  //   if (val === 'Broadcast Control') {
+  //     updateGroupIdVisibility(false);
+  //     updateTitle("DALI Scene Control Switch");
+  //     setInputRange(0, 15);
+  //   }else if(val === 'Individual Control') {
+  //     updateGroupIdVisibility(false);
+  //     updateTitle("DALI Scene Control Switch");
+  //     setInputRange(0, 63);
+  //   } else if (val === 'Group Control') {
+  //     updateGroupIdVisibility(false);
+  //     updateTitle("DALI Scene Control Switch (group required)");
+  //     setInputRange(0, 15);
+  //   }
+  // } else {
+  //   sceneDiv.style.display = 'none';
+  // }
 });
-document.getElementById('control_type1').addEventListener('change', function() {
-  var val = this.value;
-  if (document.getElementById('sceneControlDiv').style.display !== 'none') {
-    updateGroupIdVisibility(false);
-  }
-});
+// document.getElementById('control_type1').addEventListener('change', function() {
+//   var val = this.value;
+//   if (document.getElementById('sceneControlDiv').style.display !== 'none') {
+//     updateGroupIdVisibility(false);
+//   }
+// });
 document.getElementById('sceneForm').onsubmit = async function(e) {
   e.preventDefault();
   const data = {
     fxn: '40',
-    group_id: parseInt(document.getElementById('group_id').value),
+    // group_id: parseInt(document.getElementById('group_id').value),
     scene_ids: [
       parseInt(document.getElementById('scene1').value),
       parseInt(document.getElementById('scene2').value),
@@ -655,7 +655,7 @@ document.getElementById('sceneForm').onsubmit = async function(e) {
       parseInt(document.getElementById('scene4').value)
     ],
     control_type: document.getElementById('control_type').selectedIndex,
-    scn_ctrl_type: document.getElementById('control_type1').selectedIndex
+    // scn_ctrl_type: document.getElementById('control_type1').selectedIndex
   };
   const res = await fetch('/action', {
     method: 'POST',
@@ -669,13 +669,13 @@ document.addEventListener('DOMContentLoaded', function() {
   fetch('/items?fxn=15')
     .then(response => response.json())
     .then(data => {
-      document.getElementById('group_id').value = data.group_id;
+      // document.getElementById('group_id').value = data.group_id;
       document.getElementById('scene1').value = data.scene_ids[0];
       document.getElementById('scene2').value = data.scene_ids[1];
       document.getElementById('scene3').value = data.scene_ids[2];
       document.getElementById('scene4').value = data.scene_ids[3];
       document.getElementById('control_type').value = data.control_type;
-      document.getElementById('control_type1').value = data.scn_ctrl_type;
+      // document.getElementById('control_type1').value = data.scn_ctrl_type;
       if (document.getElementById('control_type').value == 'Scene Control' ||
           document.getElementById('control_type').value == 'Individual Control' ||
           document.getElementById('control_type').value == 'Broadcast Control') {
@@ -683,11 +683,11 @@ document.addEventListener('DOMContentLoaded', function() {
       } else {
         updateGroupIdVisibility(true);
       }
-      if (document.getElementById('control_type').value == 'Scene Control'){
-        document.getElementById('sceneControlDiv').style.display = 'block';
-      }else{
-        document.getElementById('sceneControlDiv').style.display = 'none';
-      }
+      // if (document.getElementById('control_type').value == 'Scene Control'){
+      //   document.getElementById('sceneControlDiv').style.display = 'block';
+      // }else{
+      //   document.getElementById('sceneControlDiv').style.display = 'none';
+      // }
     });
   fetch('/items?fxn=16')
     .then(response => response.json())
@@ -824,7 +824,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 /* ---------- small grid for group membership and scene grid (from your working upload) ---------- */
-function createToggleGrid(container, count){
+function createToggleGrid123(container, count){
   if(!container) return;
   container.innerHTML = '';
   for(let i=0;i<count;i++){
@@ -835,9 +835,31 @@ function createToggleGrid(container, count){
     if ((i+1)%8===0) container.appendChild(document.createElement('br'));
   }
 }
+
+function createToggleGrid(container, count, idPrefix){
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toggle-btn';
+    btn.textContent = i;
+    btn.id = idPrefix + i;          // <– use prefix
+    btn.addEventListener('click', () => btn.classList.toggle('selected'));
+    container.appendChild(btn);
+    if ((i + 1) % 8 === 0) container.appendChild(document.createElement('br'));
+  }
+}
+
+
+
+
 /* create required grids */
 document.addEventListener('DOMContentLoaded', ()=> {
-  createToggleGrid(document.getElementById('groupIdGrid'), 64);
+  // createToggleGrid(document.getElementById('groupIdGrid'), 64);
+
+  // on DOMContentLoaded
+createToggleGrid(document.getElementById('groupIdGrid'), 64, 'gridbtn');
   // keep legacy sceneGrid creation safe (if used elsewhere it won't break)
   const sceneGridEl = document.getElementById('sceneGrid');
   if (sceneGridEl) createToggleGrid(sceneGridEl, 16);
@@ -995,10 +1017,10 @@ document.addEventListener('DOMContentLoaded', ()=> {
   const saveDeviceBtn = document.getElementById('saveDevice');
   const removeDeviceBtn = document.getElementById('removeDevice');
 
-  const sceneModeModal = document.getElementById('sceneModeModal');
-  const chooseGroupMode = document.getElementById('chooseGroupMode');
-  const chooseDeviceMode = document.getElementById('chooseDeviceMode');
-  const rememberSceneMode = document.getElementById('rememberSceneMode');
+  // const sceneModeModal = document.getElementById('sceneModeModal');
+  // const chooseGroupMode = document.getElementById('chooseGroupMode');
+  // const chooseDeviceMode = document.getElementById('chooseDeviceMode');
+  // const rememberSceneMode = document.getElementById('rememberSceneMode');
 
   function setDevicePowerUI(on){
     const bool = !!on;
@@ -1086,29 +1108,30 @@ document.addEventListener('DOMContentLoaded', ()=> {
     }
     // show modal to ask
     showSceneModeModal(sid);
+    
   });
 
   // when device select changes, just restore UI (mode determines how)
   deviceSelector.addEventListener('change', ()=> restoreUIFor(sceneSelector.value, deviceSelector.value));
 
   function showSceneModeModal(sceneId){
-    sceneModeModal.style.display = 'flex';
-    sceneModeModal.setAttribute('aria-hidden','false');
+    // sceneModeModal.style.display = 'flex';
+    // sceneModeModal.setAttribute('aria-hidden','false');
 
     const onChoose = async (mode) => {
       const remember = rememberSceneMode.checked;
       if (remember) { sceneModeMap[String(sceneId)] = mode; saveModeMap(); }
       applySceneMode(mode, sceneId);
-      sceneModeModal.style.display = 'none';
-      sceneModeModal.setAttribute('aria-hidden','true');
+      // sceneModeModal.style.display = 'none';
+      // sceneModeModal.setAttribute('aria-hidden','true');
       // restore UI now that mode is chosen
       await restoreUIFor(sceneId, deviceSelector.value);
       // reset checkbox
       rememberSceneMode.checked = false;
     };
-
-    chooseGroupMode.onclick = ()=> onChoose('group');
-    chooseDeviceMode.onclick = ()=> onChoose('device');
+    onChoose('device');
+  //   chooseGroupMode.onclick = ()=> onChoose('group');
+  //   chooseDeviceMode.onclick = ()=> onChoose('device');
   }
 
   function applySceneMode(mode, sceneId){
@@ -1156,7 +1179,7 @@ if (saveDeviceBtn) {
         const payload = {
           fxn: FXN_SAVE_SCENE,
           scene_id: sid,
-         
+          action: "add",
           included: !!(deviceIncluded && deviceIncluded.checked),
           power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
           brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
@@ -1318,7 +1341,7 @@ if (removeDeviceBtn) {
         const payload = {
           fxn: FXN_SAVE_SCENE,
           scene_id: sid,
-         
+          action: "remove",
           included: !!(deviceIncluded && deviceIncluded.checked),
           power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
           brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
@@ -1600,7 +1623,67 @@ document.addEventListener('DOMContentLoaded', function loadSavedTabData() {
 
 
 
-async function refreshGroupGridFor(groupId){
+async function refreshGroupGridFor(groupId) {
+  try {
+    const resp = await fetch('/items?fxn=21&group_id=' + encodeURIComponent(groupId));
+    if (!resp.ok) throw new Error('non-ok');
+    const data = await resp.json();   // expects { group_id: N, selected_ids: [...] }
+
+    const sel = Array.isArray(data.selected_ids)
+      ? data.selected_ids
+      : (Array.isArray(data) ? data : []);
+
+    // clear previous selection
+    document
+      .querySelectorAll('#groupIdGrid .toggle-btn')
+      .forEach(b => b.classList.remove('selected'));
+
+    // mark buttons (btn0..btn63)
+    // sel.forEach(id => {
+    //   const btn = document.getElementById('btn' + id);
+    //   if (btn) btn.classList.add('selected');
+    // });
+sel.forEach(id => {
+  const btn = document.getElementById('gridbtn' + id);  // now unambiguous
+  if (btn) btn.classList.add('selected');
+});
+    console.log('Group', groupId, 'loaded IDs:', sel);
+    return sel;
+  } catch (e) {
+    console.error('refreshGroupGridFor failed', e);
+    return [];
+  }
+}
+
+// hook group dropdown to server + refresh
+document.addEventListener('DOMContentLoaded', () => {
+  const groupSelectEl = document.getElementById('groupSelect');
+  if (!groupSelectEl) return;
+
+  groupSelectEl.addEventListener('change', async () => {
+    const gid = parseInt(groupSelectEl.value || 0, 10);
+
+    // optional: notify server of group selection
+    try {
+      await postJson('/action', { fxn: 21, group_id: gid });
+    } catch (e) {
+      console.warn('group change post failed', e);
+    }
+
+    // now actually fetch membership and update UI
+    await refreshGroupGridFor(gid);
+  });
+
+  // initial load for default group on page open
+  (async () => {
+    const initialG = parseInt(groupSelectEl.value || 0, 10);
+    await refreshGroupGridFor(initialG);
+  })();
+});
+
+
+
+async function refreshGroupGridFor1234(groupId){
   try {
     // Try scoped fetch first
     const resp = await fetch('/items?fxn=21&group_id=' + encodeURIComponent(groupId));
@@ -1611,6 +1694,7 @@ async function refreshGroupGridFor(groupId){
     const data = await resp.json();
     // data.expected: { group_id: N, selected_ids: [..] } or { selected_ids: [...] }
     const sel = Array.isArray(data.selected_ids) ? data.selected_ids : (Array.isArray(data) ? data : []);
+	console.log("sel: "); console.log(sel);
     // clear existing selections
     document.querySelectorAll('#groupIdGrid .toggle-btn').forEach(b => b.classList.remove('selected'));
     sel.forEach(id => {

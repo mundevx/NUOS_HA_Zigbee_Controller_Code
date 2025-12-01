@@ -1262,7 +1262,7 @@ void nuos_get_data_from_nvs() {
     }  
 
 
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)  
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)  
         //clear_all_groups_and_scenes_in_nvs();
         get_nvs_dali_scene_switch_webpage_data();
     #endif

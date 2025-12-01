@@ -280,7 +280,12 @@
         bool set_cct_time_sync_request_flag                                     = false;
         #endif
         bool is_reporting[MAX_DST_EP][MAX_NODES];
-        const char* switch_ctrl_type[4] = { "Individual Control", "Group Control", "Scene Control", "Broadcast Control" }; 
+         
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" }; 
+        #else
+        const char* switch_ctrl_type[4] = { "Individual Control", "Group Control", "Scene Control", "Broadcast Control" };
+        #endif
         const char* scene_ctrl_type[3] = { "Broadcast Control", "Group Control", "Individual Control"};     
         //scene_switch_s scene_switch_t[4];
         scene_switch_s scene_group_switch_info;
@@ -1123,7 +1128,7 @@
             #else
                 #ifdef USE_TUYA_BRDIGE 
                     //ydfvmon7   latest
-                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'y', 'd', 'f', 'v', 'm', 'o', 'n', '7'};
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'a', 'n', 'x', 'j', 'o', 'n', 'u', '1'};
                     char modelid[]                                              = {6,'T', 'S', '0', '0', '1', '4'};
                 #endif
             #endif
@@ -1335,7 +1340,11 @@
         #endif
         extern bool is_reporting[MAX_DST_EP][MAX_NODES];
 
-        extern const char* switch_ctrl_type[4]; 
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        extern const char* switch_ctrl_type[2]; 
+        #else
+        extern const char* switch_ctrl_type[4];             
+        #endif
         extern const char* scene_ctrl_type[3];
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
@@ -1432,6 +1441,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    void switch_driver_gpios_intr_enabled(bool enabled);
     void set_state(uint8_t index);
     void set_level(uint8_t index);
     void set_color_temp();
@@ -1474,6 +1484,9 @@ extern "C" {
  
     extern void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp);
     extern void nuos_dali_remove_device_from_scene(uint8_t device_id, uint8_t scene_id);
+
+    extern void nuos_dali_add_group_to_scene(uint8_t group_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp);
+    extern void nuos_dali_remove_group_from_scene(uint8_t device_id, uint8_t scene_id);
 
     extern void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id);
     extern int get_all_dali_addresses(uint8_t *foundAddresses); 

@@ -861,7 +861,9 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
             send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);         
         #endif 
     #else
-       if (is_my_device_commissionned){//} && !is_some_device_unavailable) {
+            //printf("is_my_device_commissionned=%d wifi_webserver_active_flag=%d\n", is_my_device_commissionned, wifi_webserver_active_flag);
+       if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+        //printf("Setting ON/OFF attribute to %d at ep=%d\n", device_info[index].device_state, ENDPOINTS_LIST[index_1]);
             status = esp_zb_zcl_set_attribute_val(
                 ENDPOINTS_LIST[index_1],
                 ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -1127,7 +1129,7 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
         uint16_t mapValue = map_1000(device_info[index].device_val, 2000, 6500, 0, 1000);
         
         esp_zb_zcl_status_t status = ESP_OK;
-        if (is_my_device_commissionned){
+        if (is_my_device_commissionned && !wifi_webserver_active_flag){
             status = esp_zb_zcl_set_attribute_val(
                 ENDPOINTS_LIST[0],
                 ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1164,7 +1166,7 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     #ifdef USE_TUYA_BRDIGE
     uint16_t val = map_1000(device_info[index].device_level, 0, 255, 0, 1000);
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1755,7 +1757,19 @@ void nuos_set_zigbee_attribute(uint8_t index){
                 //     nuos_set_level_attribute(index);
                 // }  
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                nuos_set_state_attribute(index);    
+            if(scene_group_switch_info.control_type == 2) { //scene control
+                for(int i=0; i<TOTAL_ENDPOINTS; i++) {
+                    if(i == index) {
+                        device_info[i].device_state = true;
+                    } else {
+                        device_info[i].device_state = false;
+                    }
+                    nuos_set_state_attribute(i); 
+                }   
+            } else{
+                nuos_set_state_attribute(index);
+            }
+                   
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)   
                 nuos_set_sensor_motion_attribute(index);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)   
@@ -1974,18 +1988,22 @@ esp_err_t nuos_driver_init(void)
         set_state(0);
         // set_level();
         set_color_temp(); 
+
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         init_dali_hw(); 
         //for(int i=0; i<TOTAL_ENDPOINTS; i++){
             nuos_zb_set_hardware(0, false);  
         //}
+
+
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)    
-        init_dali_hw();
+        //init_dali_hw();
+        printf("Scene Control Type: %d Selected ID: %d\n", scene_group_switch_info.control_type, scene_group_switch_info.selected_id);
         if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){ //individual or group ctrl
             for(int i=0; i<TOTAL_ENDPOINTS; i++){
                 nuos_zb_set_hardware(i, false);  
             }
-        }else if(scene_group_switch_info.control_type == 2){ //scene ctrl
+        }else if(scene_group_switch_info.control_type == 2) { //scene ctrl
             nuos_zb_set_hardware(scene_group_switch_info.selected_id, false);  
         }
 
@@ -2335,7 +2353,19 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                 #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM)
                 #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)   
                 #else 
-                    nuos_set_state_attribute(endpoint_counts);                   
+                    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                        if(scene_group_switch_info.control_type == 2) {
+                            if(endpoint_counts == scene_group_switch_info.selected_id) {
+                                nuos_set_state_attribute(endpoint_counts); 
+                            }
+                        }else{
+                            nuos_set_state_attribute(endpoint_counts); 
+                        }
+                    #else
+                        nuos_set_state_attribute(endpoint_counts);     
+                    #endif
+
+                                      
                 #endif
             }  
             endpoint_counts++;
@@ -4879,7 +4909,11 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         if(index_1 == 0){
                         #endif
                         #endif
-                            nuos_set_state_attribute(index_1);  //to fast update switches on app  
+                        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                        nuos_set_zigbee_attribute(index_1);
+                        #else
+                        nuos_set_state_attribute(index_1);  //to fast update switches on app  
+                        #endif
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
                         #ifdef USE_FAN_SPEED
                         }
@@ -5770,7 +5804,8 @@ bool nuos_init_sequence(){
         #endif 
     #endif
     #ifdef USE_WIFI_WEBSERVER
-    wifi_webserver_active_flag = true;
+    //wifi_webserver_active_flag = true;
+    //is_my_device_commissionned = false;
     // printf("wifi_webserver_active_flag:%d\n", wifi_webserver_active_flag); //This line, Added by NUOS
     if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
         setNVSWebServerEnableFlag(0); 
