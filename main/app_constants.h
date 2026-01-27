@@ -52,6 +52,7 @@
     #define CATEGORY_ZIGBEE_SENSORS                                 6 
     #define CATEGORY_ZIGBEE_DALI_LIGHT                              7
 
+
     #define CURTAIN_OPEN                                            0
     #define CURTAIN_CLOSE                                           1
     #define CURTAIN_STOP                                            2
@@ -107,7 +108,7 @@
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT  
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254
-        //#define CHANGE_LOAD_PIN                                    /*disable for Triac and enable for Relay*/
+        #define CHANGE_LOAD_PIN                                    /*disable for Triac and enable for Relay*/
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       2
@@ -122,18 +123,20 @@
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254        
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
-        #define CHANGE_LOAD_PIN                                   /*disable for Triac and enable for Relay */  
+        #define CHANGE_LOAD_PIN                                     /* enable for Relay and disable for Triac */
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       4
         #define TOTAL_LEDS                                          4
         #define TOTAL_LOADS                                         4
         //#define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4
+        //#define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4
         #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254        
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_CURTAIN 
+        #define OLD_CURTAIN_BOARD
+        #define CHANGE_LOAD_PIN
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
         #define TOTAL_ENDPOINTS                                     1
         #define TOTAL_BUTTONS                                       2
@@ -212,8 +215,8 @@
         #define BRIGHTNESS_SET_CHECKER_COUNTS                       2//8 
         #define DIMMING_STEPS                                       1    
         #define ENABLE_PWM_DIMMING           
-        #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 255)
-        #define MAX_DIM_LEVEL_VALUE                                 254
+        #define MIN_DIM_LEVEL_VALUE                                 1 // (0 to 255)
+        #define MAX_DIM_LEVEL_VALUE                                 255
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_COLOR_DIMMABLE_LIGHT)
         #define TOTAL_ENDPOINTS                                     4
@@ -299,7 +302,7 @@
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT_FAN
 
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
-        #define TOTAL_ENDPOINTS                                     1
+        #define TOTAL_ENDPOINTS                                     3
         #define TOTAL_BUTTONS                                       1
         #define TOTAL_LEDS                                          1
         #define TOTAL_LOADS                                         0
@@ -327,10 +330,11 @@
         #define MAX_DIM_LEVEL_VALUE                                 254        
         //#define USE_HEATING_PIPES
         //#define USE_TEMPERATURE_MESAUREMENT
+        #define USE_IR_UART_WS4_HW
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
-            #define USE_LOCAL_TEMPERATURE
-            #define USE_WEEKLY_TRANSITION
+            //#define USE_LOCAL_TEMPERATURE
+            //#define USE_WEEKLY_TRANSITION
             //#define USE_FAN_CTRL
         #endif             
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT
@@ -611,17 +615,24 @@
             #define TUYA_ATTRIBUTES
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        //#define DALI_DIRECT_ADDRESSING 
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
-            #define TOTAL_ENDPOINTS                                 MAX_DALI_ADDRESSES
-            #define TOTAL_BUTTONS                                   2
-            #define TOTAL_LEDS                                      2
-        #else
-            #define TOTAL_ENDPOINTS                                 4
-            #define TOTAL_BUTTONS                                   4
-            #define TOTAL_LEDS                                      4
+            #define TOTAL_ENDPOINTS                                     MAX_DALI_ADDRESSES
+            #define TOTAL_BUTTONS                                       2
+            #define TOTAL_LEDS                                          2
+        #else  
+            #ifdef DALI_DIRECT_ADDRESSING
+                #define TOTAL_ENDPOINTS                                 2
+                #define TOTAL_BUTTONS                                   2
+                #define TOTAL_LEDS                                      2
+            #else
+                #define TOTAL_ENDPOINTS                                 4
+                #define TOTAL_BUTTONS                                   4
+                #define TOTAL_LEDS                                      4
+            #endif
         #endif
 
-        #define TOTAL_LOADS                                         2  //dali pins Tx, Rx 
+        #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
         #define USE_RGB_LED
 
         #ifdef USE_TUYA_BRDIGE
@@ -634,7 +645,7 @@
             #define BRIGHTNESS_SET_CHECKER_COUNTS                       20
         #else
             #define LONG_PRESS_BRIGHTNESS_ENABLE
-            #define DIMMING_STEPS                                       10
+            #define DIMMING_STEPS                                       5
             #define BRIGHTNESS_SET_CHECKER_COUNTS                       15
 
             #define COLOR_CHANGE_STEPS                                  500
@@ -645,14 +656,18 @@
         #endif
         
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
-        #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 255)
-        #define MAX_DIM_LEVEL_VALUE                                 254   
+        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
+        #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
+        #define MAX_DIM_LEVEL_VALUE                                     254   
         
-        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
+        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1
 
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             #define ENABLE_PWM_DIMMING
+        #else
+            #ifdef DALI_DIRECT_ADDRESSING
+            #define ENABLE_PWM_DIMMING
+            #endif
         #endif
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
             #define USE_WIFI_WEBSERVER
@@ -668,18 +683,22 @@
             #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
             
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #ifdef DALI_DIRECT_ADDRESSING
+            #define ESP_WIFI_SSID                                       "NUOS DALI DIRECT SWITCH"
+            #else
             #define ESP_WIFI_SSID                                       "NUOS DALI SCENE SWITCH"
+            #endif
             #else
             #define ESP_WIFI_SSID                                       "NUOS DALI GROUP LIGHT"
             #endif
             #define ESP_WIFI_PASS                                       "NUOS1234"
         #endif        
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
-        #define TOTAL_ENDPOINTS                                     3
-        #define TOTAL_BUTTONS                                       4
-        #define TOTAL_LEDS                                          4
+        #define TOTAL_ENDPOINTS                                         3
+        #define TOTAL_BUTTONS                                           4
+        #define TOTAL_LEDS                                              4
 
-        #define TOTAL_LOADS                                         1
+        #define TOTAL_LOADS                                             1
 
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
@@ -687,7 +706,7 @@
 
         #define USE_RGB_LED
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
-        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1      
+        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1      
         #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
 
         // #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
@@ -724,12 +743,13 @@
             #define TUYA_ATTRIBUTES
         #endif
 
-        //#define USE_RGB_LED
+        #define USE_RGB_LED
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1      
-        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
 
-        #define LONG_PRESS_BRIGHTNESS_ENABLE 
+        #define LONG_PRESS_BRIGHTNESS_ENABLE
+
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)      
             #define BRIGHTNESS_SET_CHECKER_COUNTS                       20
             #define DIMMING_STEPS                                       1
@@ -752,7 +772,24 @@
   
 
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_DMX_LIGHT
-        //#define USE_DOUBLE_PRESS
+        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+            #define USE_WIFI_WEBSERVER
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            
+
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       5 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            
+            
+            #define ESP_WIFI_SSID                                       "NUOS DALI RGB LIGHT"
+            
+            #define ESP_WIFI_PASS                                       "NUOS1234"
+        #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       2

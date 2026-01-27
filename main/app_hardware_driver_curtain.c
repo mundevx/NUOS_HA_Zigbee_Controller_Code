@@ -1,4 +1,3 @@
-
 #include "app_hardware_driver.h"
 #include "esp_zigbee_core.h"
 #include "app_zigbee_misc.h"
@@ -228,9 +227,10 @@ void curtain_cmd_stop(void)
     }
 #endif
 void pause_curtain_timer()
-{
+{   
+    #ifdef ENABLE_CURTAIN_TIMER_CONTROL
     if(device_info[0].curtain_motor_total_time>0){
-        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
+        
         #ifdef TUYA_ATTRIBUTES
             if (!timer_paused) {
                 esp_timer_stop(periodic_timer);
@@ -241,8 +241,9 @@ void pause_curtain_timer()
             }
         #endif
         device_info[0].device_level = ds_to_pct(elapsed_ds);
-        #endif
+        
     }
+    #endif
     // Stop hardware movement
     gpio_set_level(gpio_load_pins[0], 0);
     #ifdef OLD_CURTAIN_BOARD
@@ -270,7 +271,9 @@ void pause_curtain_timer()
         gpio_config(&io_conf);	
 
         timer_paused = true;
+        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
         elapsed_sec = (device_info[0].device_level * device_info[0].curtain_motor_total_time) / 100;
+        #endif
         #ifdef TUYA_ATTRIBUTES
             #ifdef ENABLE_CURTAIN_TIMER_CONTROL
                 init_curtain_timer();
@@ -285,18 +288,18 @@ void pause_curtain_timer()
         #ifdef USE_RGB_LED
             nuos_toggle_rgb_led();
         #else
-            if(TOTAL_LEDS >= TOTAL_LEDS_SHOW_ON_COMMISSIONING){
-                if(is_toggle>0) {
-                    state = !state;
-                    for(int index=TOTAL_LEDS-TOTAL_LEDS_SHOW_ON_COMMISSIONING; index<TOTAL_LEDS; index++){
-                        gpio_set_level(gpio_touch_led_pins[index], state);
-                    }
-                }else{
-                    for(int i=0; i<TOTAL_ENDPOINTS; i++){
-                        nuos_zb_set_hardware_curtain(i, false);
-                    }
-                }
-            }
+            // if(TOTAL_LEDS >= TOTAL_LEDS_SHOW_ON_COMMISSIONING){
+            //     if(is_toggle>0) {
+            //         state = !state;
+            //         for(int index=TOTAL_LEDS-TOTAL_LEDS_SHOW_ON_COMMISSIONING; index<TOTAL_LEDS; index++){
+            //             gpio_set_level(gpio_touch_led_pins[index], state);
+            //         }
+            //     }else{
+            //         for(int i=0; i<TOTAL_ENDPOINTS; i++){
+            //             nuos_zb_set_hardware_curtain(i, false);
+            //         }
+            //     }
+            // }
         #endif
     }
 
@@ -316,7 +319,7 @@ void pause_curtain_timer()
             printf("LOAD_CURTAIN_STOP\n");
         }
     }
-
+    static uint8_t last_button_index[2] = {0xff, 0xff};
     void set_curtain_percentage(uint8_t value, bool set_hw_flag){
         
         #ifdef ENABLE_CURTAIN_TIMER_CONTROL
@@ -334,6 +337,7 @@ void pause_curtain_timer()
             nuos_zb_set_hardware_curtain(0, device_info[0].curtain_state);
         }
         #else
+        #ifndef OLD_CURTAIN_BOARD
             if(value <= 50){
                 value = 0;
                 device_info[0].curtain_state = 0;
@@ -346,11 +350,13 @@ void pause_curtain_timer()
                 nuos_report_curtain_blind_state(0, value);    
             }
             nuos_zb_set_hardware_curtain(0, device_info[0].curtain_state);
+            #endif
         #endif
     }
 
     void set_harware(uint8_t index, uint8_t is_toggle){
         #ifdef OLD_CURTAIN_BOARD
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
         if(index == 0){
             if(device_info[0].device_state == CURTAIN_OPEN){
                 //set load pins
@@ -399,6 +405,7 @@ void pause_curtain_timer()
             curtain_cmd_stop();
         }
         nuos_store_data_to_nvs(0);
+        #endif
         #else
             if(is_toggle>0) {
                 if(index == 0){
@@ -460,24 +467,48 @@ void pause_curtain_timer()
         #endif
   
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
-            if(index == 2){
-                device_info[1].device_state = CURTAIN_OPEN;
-                gpio_set_level(gpio_touch_led_pins[2], CURTAIN_OPEN);
+            // if(is_toggle>0) {  
+            //     device_info[index].device_state = !device_info[index].device_state; 
+            // }
+            
+            if(index == 0){
+                device_info[0].device_state = true;
+                gpio_set_level(gpio_touch_led_pins[0], 1);
                 //set load pins
-                gpio_set_level(gpio_load_pins[2], CURTAIN_OPEN);
+                gpio_set_level(gpio_load_pins[0], 1);
+                gpio_set_level(gpio_touch_led_pins[1], 0);
+                //set load pins
+                gpio_set_level(gpio_load_pins[1], 0);
+                nuos_store_data_to_nvs(0);  
+            }else if(index == 1){
+                device_info[0].device_state = false;
+                gpio_set_level(gpio_touch_led_pins[0], 0);
+                //set load pins
+                gpio_set_level(gpio_load_pins[0], 0);
+                gpio_set_level(gpio_touch_led_pins[1], 1);
+                //set load pins
+                gpio_set_level(gpio_load_pins[1], 1);   
+                nuos_store_data_to_nvs(0);
+
+            } else  if(index == 2){
+                device_info[1].device_state = true;
+                gpio_set_level(gpio_touch_led_pins[2], 1);
+                //set load pins
+                gpio_set_level(gpio_load_pins[2], 1);
                 gpio_set_level(gpio_touch_led_pins[3], 0);
                 //set load pins
-                gpio_set_level(gpio_load_pins[3], 0);  
+                gpio_set_level(gpio_load_pins[3], 0);
+                nuos_store_data_to_nvs(1);  
             }else if(index == 3){
-                device_info[1].device_state = CURTAIN_CLOSE;
-                gpio_set_level(gpio_touch_led_pins[2], CURTAIN_CLOSE);
+                device_info[1].device_state = false;
+                gpio_set_level(gpio_touch_led_pins[2], 0);
                 //set load pins
-                gpio_set_level(gpio_load_pins[2], CURTAIN_CLOSE);
+                gpio_set_level(gpio_load_pins[2], 0);
                 gpio_set_level(gpio_touch_led_pins[3], 1);
                 //set load pins
-                gpio_set_level(gpio_load_pins[3], 1); 
-            }
-            nuos_store_data_to_nvs(1);
+                gpio_set_level(gpio_load_pins[3], 1);   
+                nuos_store_data_to_nvs(1);
+            }           
         #endif
         
     }

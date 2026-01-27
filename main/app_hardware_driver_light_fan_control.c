@@ -70,7 +70,7 @@
 		} else if(index == FAN_INDEX) {
 			if(is_toggle>0) device_info[FAN_INDEX].device_state = !device_info[FAN_INDEX].device_state;
 			nuos_set_hardware_fan_ctrl(FAN_INDEX);
-			nuos_store_data_to_nvs(FAN_INDEX);
+			//nuos_store_data_to_nvs(FAN_INDEX);
 		} else {
 			if(device_info[FAN_INDEX].device_state){
 				if(index == 2) {
@@ -83,7 +83,7 @@
 			}
 			device_info[FAN_INDEX].device_level = fan_speed_values[device_info[FAN_INDEX].fan_speed];
 			nuos_set_hardware_fan_ctrl(FAN_INDEX);
-			nuos_store_data_to_nvs(FAN_INDEX);
+			//nuos_store_data_to_nvs(FAN_INDEX);
 		}
         #ifdef USE_RGB_LED
             nuos_rgb_trigger_blink(); 
@@ -139,7 +139,7 @@ void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
     }
 
 	void nuos_set_hardware_fan_ctrl(uint8_t index){
-        // printf("device_info[index].fan_speed:%d\n", device_info[index].fan_speed);
+        
 		if(!device_info[index].device_state){
 			gpio_set_level(gpio_load_pins[1], 0); //fan on-off load out
 			gpio_set_level(gpio_load_pins[2], 0);
@@ -189,6 +189,7 @@ void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
 				gpio_set_level(gpio_touch_led_pins[3], 1);			
 			}
 		}
+		nuos_store_data_to_nvs(index);
 	}
 
 	void nuos_set_hardware_fan_touch_leds_ctrl_only(uint8_t index){

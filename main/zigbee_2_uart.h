@@ -1,16 +1,18 @@
+#ifndef CJSON_H
+#define CJSON_H
 
+    #ifdef USE_IR_UART_WS4HW
+    void uart_init(void);
+    #endif
 
-#ifndef cJSON_H
-#define cJSON_H
-#ifdef USE_IR_UART_WS4_HW
-void uart_init();
     #ifdef __cplusplus
     extern "C" {
     #endif
-    void send_serial(const char* data);
+
+        void send_serial(const char *data);
 
     #ifdef __cplusplus
     }
     #endif
-#endif
-#endif // cJSON_H
+
+#endif  // CJSON_H

@@ -80,7 +80,6 @@ void json_parse_data_light(const char* data) {
             #ifdef USE_RGB_LED
             else{
                 if (time <= 10) {
-                
                     light_driver_set_color_RGB(0, 0xff, 0x00);  //green
                     light_driver_set_power(true);
                     vTaskDelay(pdMS_TO_TICKS(400)); 
@@ -118,6 +117,7 @@ void json_parse_data_light(const char* data) {
                     //json_parse_data((char*)data);
                     json_parse_data_light(m_data);
                     nuos_set_zigbee_attribute(0);
+                    nuos_store_data_to_nvs(0);
                 }
             }
             vTaskDelay(10 / portTICK_PERIOD_MS);

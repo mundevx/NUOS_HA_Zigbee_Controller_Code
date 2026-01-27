@@ -49,6 +49,7 @@ public:
 private:
     void sendZero(void);
     void sendOne(void);
+    bool isBusIdle();
     void sendCommand(uint8_t command, uint8_t data);
     void sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     bool sendSearchAddr(uint32_t addr);

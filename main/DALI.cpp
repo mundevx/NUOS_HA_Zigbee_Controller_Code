@@ -81,10 +81,31 @@ void DALI::sendOne(void) {
     task_delayMicroseconds(416);
 }
 
+bool DALI::isBusIdle() {
+    // Sample RX pin multiple times to confirm stable idle state (HIGH = idle)
+    for (int i = 0; i < 10; i++) {
+        if (gpio_get_level(rxPin) != DALI_HIGH) {
+            return false;  // Bus busy (LOW detected)
+        }
+        task_delayMicroseconds(10);  // Small debounce delay
+    }
+    return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void DALI::sendCommand(uint8_t command, uint8_t data) {
     uint16_t info = (uint16_t)((command << 8) | data);
-   
+    #ifdef IS_WAIT_FOR_BUS_IDLE
+    // Wait for bus idle (max 100ms timeout)
+    uint32_t timeout = 10000;  // ~100ms at 10us ticks
+    while (!isBusIdle() && timeout--) {
+        task_delayMicroseconds(10);
+    }
+    if (timeout == 0) {
+        ESP_LOGE(TAG, "Bus idle timeout in sendCommand(0x%02X, 0x%02X)", command, data);
+        return;  // Abort to avoid collision
+    }   
+    #endif
     // Send start bit
     sendOne();
    

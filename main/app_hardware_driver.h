@@ -7,7 +7,6 @@
     #include "switch_driver.h"
     #include "app_nvs_store_info.h"
 
-
     typedef struct {
         uint16_t h; // Hue [0, 0x0168] (0 to 360 degrees)
         uint16_t s; // Saturation [0, 0x3E8] (0 to 1000)
@@ -270,6 +269,10 @@
         // Global variables for curtain settings
         //uint32_t offset_time                                                    = DEFAULT_OFFSET_TIME;
 
+        uint8_t dali_fade_time                                                  = 0;
+        uint8_t dali_fade_rate                                                  = 0;                                            
+        uint8_t dali_min_off_offset                                             = 0;
+        uint8_t dali_range_size                                                 = 255;
 
         bool double_press_click_enable                                          = false;
         uint16_t disable_double_press_enable_counts                             = 0;
@@ -291,7 +294,7 @@
         scene_switch_s scene_group_switch_info;
         uint16_t global_group_id[4]                                             = { 0x1, 0x2, 0x3, 0x4 }; 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-        uint16_t global_dali_id[4]                                              = { 10, 11, 12, 13 }; 
+        uint8_t global_dali_id[4]                                              = { 1, 2, 3, 4 }; 
         #else
         uint8_t global_dali_id[]                                                = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                                                                                     11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
@@ -654,8 +657,13 @@
                 const char modelid[]                                            = {9, 'L', 'i', 'g', 'h', 't', ' ', 'F', 'a', 'n'};
                 const char manufname[]                                          = {4, 'N', 'U', 'O', 'S'};
             #else
-                // NUOS 3j1b2aiw
+                
                 #ifdef USE_TUYA_BRDIGE 
+                    //te1gmjd3
+                    //char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 't', 'e', '1', 'g', 'm', 'j', 'd', '3'};  
+                    //twloqzuu
+                    //char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 't', 'w', 'l', 'o', 'q', 'z', 'u', 'u'};
+                    // 3j1b2aiw
                     char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', '3', 'j', '1', 'b', '2', 'a', 'i', 'w'}; 
                     const char modelid[]                                        = {6, 'T', 'S', '1', '1', '0', '1'};
                 #endif
@@ -666,7 +674,7 @@
 
         /*************IR BLASTER************* */ 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-            const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2};
+            const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2, 3};
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
                 #ifdef USE_FAN_SPEED
                 const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
@@ -674,7 +682,7 @@
                 const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
                 #endif
             #else
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID};
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_CUSTOM_ATTR_DEVICE_ID};
             #endif
             #ifdef USE_HOME_ASSISTANT
                 const char modelid[]                                            = {10, 'I', 'R', ' ', 'B', 'l', 'a', 's', 't', 'e', 'r'};
@@ -729,7 +737,7 @@
             uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL};
             #endif
             #else
-            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT};
+            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, 0xFC31};
             #endif
         /*************SENSORS IAS ZONE************* */ 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
@@ -1060,9 +1068,9 @@
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #ifdef USE_HOME_ASSISTANT
                 #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
-                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2 ,3, 4 , 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14 , 15, 16, 17, 18, 19, 20,
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1, 2 ,3, 4 , 5, 6, 7, 8, 9, 10, 11, 12 ,13, 14 , 15, 16, 17, 18, 19, 20,
                                                                                     21, 22 ,23, 24 , 25, 26, 27, 28, 29, 30, 31, 32  };            
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = { ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, 
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = { ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, 
                                                                                         ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID,
                                                                                         ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID,
                                                                                         ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID,
@@ -1080,13 +1088,13 @@
                                                                                         ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID
                                                                                     };
                 #else 
-                    const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
-                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, 
+                    const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]               = { 1, 2 ,3, 4 };                                                                       
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, 
                                                                                         ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
                 #endif  
             #else //if tuya
-                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = { 1, 2 ,3, 4 };                                                                       
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
                                                                                     ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
             #endif
                                                                      
@@ -1098,8 +1106,7 @@
                 #ifdef USE_TUYA_BRDIGE 
                 //umaawtpc
 
-                //char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'u', 'm', 'a', 'a', 'w', 't', 'p', 'c'};
-                //ydfvmon7   latest
+                 //ydfvmon7   latest
                     char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'y', 'd', 'f', 'v', 'm', 'o', 'n', '7'};
                     ////char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'j', 'f', 'j', 's', 's', '8', 'r', 'l'};
                     char modelid[]                                              = {6,'T', 'S', '0', '0', '1', '4'};
@@ -1113,25 +1120,34 @@
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 
             #ifdef USE_HOME_ASSISTANT
-                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = { 1, 2 ,3, 4 };                                                                       
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
                                                                                         ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
-            #else //if tuya
-                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = { 1, 2 ,3, 4 };                                                                       
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                      = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
-                                                                                    ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
-            #endif
-                                                                     
-            #ifdef USE_HOME_ASSISTANT
+                
                 char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
                 char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', 'S', 'c', 'e', 'n', 'e'};
-            #else
+ 
+            #else //if tuya
                 #ifdef USE_TUYA_BRDIGE 
-                    //ydfvmon7   latest
-                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'a', 'n', 'x', 'j', 'o', 'n', 'u', '1'};
-                    char modelid[]                                              = {6,'T', 'S', '0', '0', '1', '4'};
+                    #ifdef DALI_DIRECT_ADDRESSING 
+                        //lbdxarah
+                        char manufname[]                                        = {16, '_', 'T', 'Y', 'Z', 'B', '0', '1', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
+                        char modelid[]                                          = {6, 'T', 'S', '1', '1', '0', 'F'};
+
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = { 1, 2 };                                                                       
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                    #else
+                        //ydfvmon7   latest
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'a', 'n', 'x', 'j', 'o', 'n', 'u', '1'};
+                        char modelid[]                                          = {6,'T', 'S', '0', '0', '1', '4'};
+
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = { 1, 2 ,3, 4 };                                                                       
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, 
+                                                                                   ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID, ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};                        
+                    #endif
                 #endif
             #endif
+
 
             const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
             const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
@@ -1148,32 +1164,32 @@
                 const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1};
 
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {0x0102 /*COLOR_LIGHT*/};
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {0x0102 /*COLOR_LIGHT*/};
                 #elif(USE_COLOR_DEVICE == COLOR_RGBW)
-                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {0x010D /*COLOR_LIGHT*/};
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {0x010D /*COLOR_LIGHT*/};
                 #elif(USE_COLOR_DEVICE == COLOR_RGB_CW_WW)
-                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {0x010D /*EXTENDED_COLOR_LIGHT*/};                                                   
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {0x010D /*EXTENDED_COLOR_LIGHT*/};                                                   
                 #endif      
                 
             #endif
 
             #ifdef USE_HOME_ASSISTANT
-                char manufname[]                                                    = {4, 'N', 'U', 'O', 'S'};
-                char modelid []                                                     = {10, 'D', 'A', 'L', 'I', ' ', '1', '-', 'R', 'G', 'B'};
+                char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
+                char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', '1', '-', 'R', 'G', 'B'};
             #else
                 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
-                    char manufname[]                                                = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', '6', 'o', 'a', 'r', 'u', 'g', 's', 'x'};
-                    char modelid[]                                                  = {6, 'T', 'S', '0', '6', '0', '1'}; 
+                    char manufname[]                                            = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', '6', 'o', 'a', 'r', 'u', 'g', 's', 'x'};
+                    char modelid[]                                              = {6, 'T', 'S', '0', '6', '0', '1'}; 
                 #else
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
                     //r7xbuwbw
-                    char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'r', '7', 'x', 'b', 'u', 'w', 'b', 'w'};
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'r', '7', 'x', 'b', 'u', 'w', 'b', 'w'};
                     //TS0503B
-                    char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '3', 'B'};
+                    char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '3', 'B'};
                     #elif(USE_COLOR_DEVICE == COLOR_RGBW)
-                    char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'w', 'w', '5', 'y', 'e', 'n', 'a', '0'};
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'w', 'w', '5', 'y', 'e', 'n', 'a', '0'};
                     //TS0504B
-                    char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '4', 'B'};
+                    char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '4', 'B'};
                     #elif(USE_COLOR_DEVICE == COLOR_RGB_CW_WW)
 
                     // xjakrdcp
@@ -1194,10 +1210,10 @@
 
                     //NUOS-RGBCW
                     // char modelid[]                                                  = {9, 'N', 'U', 'O', 'S', '-', 'R', 'G', 'B', 'W'}; 
-                    char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '5', 'B'}; 
+                    char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '5', 'B'}; 
 
                     //s4zadi21
-                    char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 's', '4', 'z', 'a', 'd', 'i', '2', '1'};
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 's', '4', 'z', 'a', 'd', 'i', '2', '1'};
                     // ww5yena0
                     //char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'w', 'w', '5', 'y', 'e', 'n', 'a', '0'};
 
@@ -1209,14 +1225,14 @@
 
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
                 //Using 1-Light 1-Fan Touch
-                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                        = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
-                const gpio_num_t gpio_load_pins[TOTAL_LOADS]                            = { DALI_TX_PIN };
-                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                     = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
+                const gpio_num_t gpio_load_pins[TOTAL_LOADS]                    = { DALI_TX_PIN };
+                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]             = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
             #else
                 //Using Normal 4-On-ff Touch
-                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                        = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
-                const gpio_num_t gpio_load_pins[TOTAL_LOADS]                            = { DALI_RX_PIN, DALI_TX_PIN};
-                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                     = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
+                const gpio_num_t gpio_load_pins[TOTAL_LOADS]                    = { DALI_RX_PIN, DALI_TX_PIN};
+                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]             = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
             #endif
 
         /*************SCENE SWITCH************* */ 
@@ -1239,7 +1255,7 @@
         #endif
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
         bool curtain_cal_mode_active_flag                                       = false;
-        uint8_t cal_task_mode                                                  = 0;
+        uint8_t cal_task_mode                                                   = 0;
         bool is_bt_start_pressed                                                = false;
         bool is_bt_end_pressed                                                  = false;
         #endif
@@ -1311,7 +1327,7 @@
         extern uint16_t global_group_id[4];
         extern scene_switch_s scene_group_switch_info;
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-        extern uint16_t global_dali_id[4]; 
+        extern uint8_t global_dali_id[4]; 
         #else
         extern uint8_t global_dali_id[]; 
         #endif
@@ -1330,6 +1346,11 @@
         extern bool mode_change_flag;
         //extern uint32_t curtain_cal_time;
         //extern uint32_t offset_time;
+        extern uint8_t dali_fade_time;
+        extern uint8_t dali_fade_rate; 
+        extern uint8_t dali_min_off_offset;
+        extern uint8_t dali_range_size;
+
         extern bool double_press_click_enable;
         extern uint16_t disable_double_press_enable_counts;
 
@@ -1490,6 +1511,12 @@ extern "C" {
 
     extern void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id);
     extern int get_all_dali_addresses(uint8_t *foundAddresses); 
+
+    void send_ac_model(uint8_t model_num);
+    void send_fan(uint8_t fan_speed);
+
+    extern void nuos_set_dali_fade_time(uint8_t time);
+    extern void nuos_set_dali_fade_rate(uint8_t rate);
 #ifdef __cplusplus
 }
 #endif 

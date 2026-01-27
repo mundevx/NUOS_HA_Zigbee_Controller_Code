@@ -196,235 +196,235 @@ void send_ping_to_device() {
 }
 
 
-void nuos_set_scene_devices(uint8_t index, bool _is_state, uint8_t dlevel, uint8_t switch_id, uint8_t _dst_ep, uint16_t _short_addr){
+// void nuos_set_scene_devices(uint8_t index, bool _is_state, uint8_t dlevel, uint8_t switch_id, uint8_t _dst_ep, uint16_t _short_addr){
 
-    for(int node_index=0; node_index<existing_nodes_info[index].scene_switch_info.total_records; node_index++){
-        //check node not itself
-        if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr != esp_zb_get_short_address()){
-            //check if short address equals 
-            if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr == _short_addr){
-                //node found
-                for(int ep_index = 0; ep_index <existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){
-                    //check for destination endpoint
-                    if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep == _dst_ep){
+//     for(int node_index=0; node_index<existing_nodes_info[index].scene_switch_info.total_records; node_index++){
+//         //check node not itself
+//         if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr != esp_zb_get_short_address()){
+//             //check if short address equals 
+//             if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr == _short_addr){
+//                 //node found
+//                 for(int ep_index = 0; ep_index <existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){
+//                     //check for destination endpoint
+//                     if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep == _dst_ep){
                     
-                        printf("short_addr:0x%x dst_ep=%d  bind_status=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr, 
-                            existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep,
-                        existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind);
+//                         printf("short_addr:0x%x dst_ep=%d  bind_status=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr, 
+//                             existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep,
+//                         existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind);
 
-                        printf("state:0x%x level=%d \n", _is_state, dlevel);
-                        for(uint8_t cluster_index=0; cluster_index < existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
+//                         printf("state:0x%x level=%d \n", _is_state, dlevel);
+//                         for(uint8_t cluster_index=0; cluster_index < existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
 
-                            if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
+//                             if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
                                 
-                                esp_zb_zcl_on_off_cmd_t cmd_req;
-                                cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                cmd_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                cmd_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                 esp_zb_zcl_on_off_cmd_t cmd_req;
+//                                 cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                 cmd_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                 cmd_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                 cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
 
-                                if(_is_state)
-                                cmd_req.on_off_cmd_id = ESP_ZB_ZCL_CMD_ON_OFF_ON_ID;
-                                else
-                                cmd_req.on_off_cmd_id = ESP_ZB_ZCL_CMD_ON_OFF_OFF_ID;
-                                //esp_zb_lock_acquire(portMAX_DELAY);
-                                esp_zb_zcl_on_off_cmd_req(&cmd_req);
-                                //esp_zb_lock_release(); 
+//                                 if(_is_state)
+//                                 cmd_req.on_off_cmd_id = ESP_ZB_ZCL_CMD_ON_OFF_ON_ID;
+//                                 else
+//                                 cmd_req.on_off_cmd_id = ESP_ZB_ZCL_CMD_ON_OFF_OFF_ID;
+//                                 //esp_zb_lock_acquire(portMAX_DELAY);
+//                                 esp_zb_zcl_on_off_cmd_req(&cmd_req);
+//                                 //esp_zb_lock_release(); 
 
-                            } else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
-                                if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state){
-                                    esp_zb_zcl_move_to_level_cmd_t cmd_level;
-                                    cmd_level.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                    cmd_level.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                    cmd_level.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                    cmd_level.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                    cmd_level.level = dlevel;
-                                    cmd_level.transition_time = 0xffff;
-                                    //printf("level=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
-                                    //esp_zb_lock_acquire(portMAX_DELAY);
-                                    esp_zb_zcl_level_move_to_level_with_onoff_cmd_req(&cmd_level);
-                                    //esp_zb_lock_release(); 
-                                }                         
-                            } else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
-                                if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state){
-                                // esp_zb_zcl_color_move_to_color_cmd_t cmd_color;
-                                // cmd_color.color_x = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value & 0xff;
-                                // cmd_color.color_y = (existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value >> 16) & 0xff;
-                                // cmd_color.transition_time = 0;
-                                // cmd_color.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                // cmd_color.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                // cmd_color.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                // cmd_color.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                             } else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
+//                                 if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state){
+//                                     esp_zb_zcl_move_to_level_cmd_t cmd_level;
+//                                     cmd_level.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                     cmd_level.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                     cmd_level.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                     cmd_level.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                     cmd_level.level = dlevel;
+//                                     cmd_level.transition_time = 0xffff;
+//                                     //printf("level=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
+//                                     //esp_zb_lock_acquire(portMAX_DELAY);
+//                                     esp_zb_zcl_level_move_to_level_with_onoff_cmd_req(&cmd_level);
+//                                     //esp_zb_lock_release(); 
+//                                 }                         
+//                             } else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
+//                                 if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state){
+//                                 // esp_zb_zcl_color_move_to_color_cmd_t cmd_color;
+//                                 // cmd_color.color_x = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value & 0xff;
+//                                 // cmd_color.color_y = (existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value >> 16) & 0xff;
+//                                 // cmd_color.transition_time = 0;
+//                                 // cmd_color.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                 // cmd_color.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                 // cmd_color.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                 // cmd_color.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
                                 
-                                // //esp_zb_lock_acquire(portMAX_DELAY);
-                                // esp_zb_zcl_color_move_to_color_cmd_req(&cmd_color);
-                                // //esp_zb_lock_release();  
+//                                 // //esp_zb_lock_acquire(portMAX_DELAY);
+//                                 // esp_zb_zcl_color_move_to_color_cmd_req(&cmd_color);
+//                                 // //esp_zb_lock_release();  
                                 
-                                    //printf("COLOR: 0x%lx\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value);
-                                    if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.mode == 1){
-                                        //uint16_t mapValue = map_cct(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value, MIN_CCT_VALUE, MAX_CCT_VALUE, 158, 500);
-                                        esp_zb_zcl_color_move_to_color_temperature_cmd_t cmd_req;
-                                        cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                        cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                        cmd_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                        cmd_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                        cmd_req.color_temperature = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
-                                        cmd_req.transition_time = 0;
-                                        esp_zb_zcl_color_move_to_color_temperature_cmd_req(&cmd_req);
-                                    }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.mode == 2){
-                                        //printf("COLOR VAL: 0x%X\n", map_color_value(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value));
-                                        esp_zb_zcl_color_move_to_hue_cmd_t cmd2;
-                                        cmd2.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                        cmd2.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                        cmd2.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                        cmd2.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                        cmd2.hue = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
-                                        cmd2.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                                        cmd2.transition_time = 0;
-                                        esp_zb_zcl_color_move_to_hue_cmd_req(&cmd2);
-                                    }                                
-                                }                                              
-                            }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
-                                /* configure report attribute command */
-                                if(!is_reporting[index][node_index]){
-                                    is_reporting[index][node_index] = true;
+//                                     //printf("COLOR: 0x%lx\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value);
+//                                     if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.mode == 1){
+//                                         //uint16_t mapValue = map_cct(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value, MIN_CCT_VALUE, MAX_CCT_VALUE, 158, 500);
+//                                         esp_zb_zcl_color_move_to_color_temperature_cmd_t cmd_req;
+//                                         cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                         cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                         cmd_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                         cmd_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                         cmd_req.color_temperature = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
+//                                         cmd_req.transition_time = 0;
+//                                         esp_zb_zcl_color_move_to_color_temperature_cmd_req(&cmd_req);
+//                                     }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.mode == 2){
+//                                         //printf("COLOR VAL: 0x%X\n", map_color_value(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value));
+//                                         esp_zb_zcl_color_move_to_hue_cmd_t cmd2;
+//                                         cmd2.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                         cmd2.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                         cmd2.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                         cmd2.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                         cmd2.hue = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
+//                                         cmd2.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                                         cmd2.transition_time = 0;
+//                                         esp_zb_zcl_color_move_to_hue_cmd_req(&cmd2);
+//                                     }                                
+//                                 }                                              
+//                             }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
+//                                 /* configure report attribute command */
+//                                 if(!is_reporting[index][node_index]){
+//                                     is_reporting[index][node_index] = true;
 
-                                    int16_t report_change = 1; // Report on each change 
-                                    esp_zb_zcl_config_report_cmd_t report_cmd = {0};
-                                    report_cmd.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                    report_cmd.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;  // Short address of Server B
-                                    report_cmd.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                    report_cmd.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;                                
-                                    report_cmd.clusterID = ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL;
+//                                     int16_t report_change = 1; // Report on each change 
+//                                     esp_zb_zcl_config_report_cmd_t report_cmd = {0};
+//                                     report_cmd.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                     report_cmd.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;  // Short address of Server B
+//                                     report_cmd.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                     report_cmd.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;                                
+//                                     report_cmd.clusterID = ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL;
                                     
-                                    esp_zb_zcl_config_report_record_t records[] = {
-                                        {
-                                            .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
-                                            .attributeID = ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID,
-                                            .attrType = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
-                                            .min_interval = 1,
-                                            .max_interval = 0,
-                                            .reportable_change = &report_change,
-                                        },        
-                                    };
-                                    report_cmd.record_number = ARRAY_LENTH(records);
-                                    report_cmd.record_field = records;
-                                    esp_zb_zcl_config_report_cmd_req(&report_cmd);
-                                }
+//                                     esp_zb_zcl_config_report_record_t records[] = {
+//                                         {
+//                                             .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
+//                                             .attributeID = ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID,
+//                                             .attrType = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
+//                                             .min_interval = 1,
+//                                             .max_interval = 0,
+//                                             .reportable_change = &report_change,
+//                                         },        
+//                                     };
+//                                     report_cmd.record_number = ARRAY_LENTH(records);
+//                                     report_cmd.record_field = records;
+//                                     esp_zb_zcl_config_report_cmd_req(&report_cmd);
+//                                 }
                                 
-                                esp_zb_zcl_attribute_t attr_field1;
-                                attr_field1.id = ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID;
-                                attr_field1.data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM;
-                                attr_field1.data.size = 1;
-                                attr_field1.data.value = (uint8_t*)&existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
+//                                 esp_zb_zcl_attribute_t attr_field1;
+//                                 attr_field1.id = ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID;
+//                                 attr_field1.data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM;
+//                                 attr_field1.data.size = 1;
+//                                 attr_field1.data.value = (uint8_t*)&existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
 
-                                esp_zb_zcl_write_attr_cmd_t write_req1;
-                                memset(&write_req1, 0, sizeof(write_req1));
+//                                 esp_zb_zcl_write_attr_cmd_t write_req1;
+//                                 memset(&write_req1, 0, sizeof(write_req1));
 
-                                write_req1.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                write_req1.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
-                                write_req1.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep; // Source endpoint (set to 1 or 0 depending on your setup)
-                                write_req1.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                write_req1.clusterID = ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL;
-                                write_req1.attr_field = &attr_field1;
-                                write_req1.attr_number = 1;
-                                write_req1.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                                // write_req1.dis_default_resp = 1;
-                                //esp_zb_lock_acquire(portMAX_DELAY);
-                                esp_zb_zcl_write_attr_cmd_req(&write_req1);
-                                //esp_zb_lock_release();    
-                                printf("fan_speed=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
-                            }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]== ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
-                                /* configure report attribute command */
-                                if(!is_reporting[index][node_index]){
-                                    is_reporting[index][node_index] = true;
+//                                 write_req1.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                 write_req1.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
+//                                 write_req1.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep; // Source endpoint (set to 1 or 0 depending on your setup)
+//                                 write_req1.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                 write_req1.clusterID = ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL;
+//                                 write_req1.attr_field = &attr_field1;
+//                                 write_req1.attr_number = 1;
+//                                 write_req1.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                                 // write_req1.dis_default_resp = 1;
+//                                 //esp_zb_lock_acquire(portMAX_DELAY);
+//                                 esp_zb_zcl_write_attr_cmd_req(&write_req1);
+//                                 //esp_zb_lock_release();    
+//                                 printf("fan_speed=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
+//                             }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]== ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
+//                                 /* configure report attribute command */
+//                                 if(!is_reporting[index][node_index]){
+//                                     is_reporting[index][node_index] = true;
 
-                                    int16_t report_change = 1; // Report on each change 
-                                    esp_zb_zcl_config_report_cmd_t report_cmd = {0};
-                                    report_cmd.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                    report_cmd.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;  // Short address of Server B
-                                    report_cmd.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                                    report_cmd.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;                                
-                                    report_cmd.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
+//                                     int16_t report_change = 1; // Report on each change 
+//                                     esp_zb_zcl_config_report_cmd_t report_cmd = {0};
+//                                     report_cmd.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                     report_cmd.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;  // Short address of Server B
+//                                     report_cmd.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+//                                     report_cmd.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;                                
+//                                     report_cmd.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
                                     
-                                    esp_zb_zcl_config_report_record_t records[] = {
-                                        {
-                                            .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
-                                            .attributeID = ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
-                                            .attrType = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
-                                            .min_interval = 1,
-                                            .max_interval = 0,
-                                            .reportable_change = &report_change,
-                                        },
-                                        {
-                                            .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
-                                            .attributeID = ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID,
-                                            .attrType = ESP_ZB_ZCL_ATTR_TYPE_S16,
-                                            .min_interval = 1,
-                                            .max_interval = 0,
-                                            .reportable_change = &report_change,
-                                        },        
-                                    };
-                                    report_cmd.record_number = ARRAY_LENTH(records);
-                                    report_cmd.record_field = records;
-                                    esp_zb_zcl_config_report_cmd_req(&report_cmd);
+//                                     esp_zb_zcl_config_report_record_t records[] = {
+//                                         {
+//                                             .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
+//                                             .attributeID = ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
+//                                             .attrType = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
+//                                             .min_interval = 1,
+//                                             .max_interval = 0,
+//                                             .reportable_change = &report_change,
+//                                         },
+//                                         {
+//                                             .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
+//                                             .attributeID = ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID,
+//                                             .attrType = ESP_ZB_ZCL_ATTR_TYPE_S16,
+//                                             .min_interval = 1,
+//                                             .max_interval = 0,
+//                                             .reportable_change = &report_change,
+//                                         },        
+//                                     };
+//                                     report_cmd.record_number = ARRAY_LENTH(records);
+//                                     report_cmd.record_field = records;
+//                                     esp_zb_zcl_config_report_cmd_req(&report_cmd);
 
-                                }
+//                                 }
 
-                                uint8_t ac_mode = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
-                                esp_zb_zcl_attribute_t attr_field;
-                                attr_field.id = ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID;
-                                attr_field.data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM;
-                                attr_field.data.size = 1;
-                                attr_field.data.value = (uint8_t*)&ac_mode;
-                                esp_zb_zcl_write_attr_cmd_t write_req;
-                                memset(&write_req, 0, sizeof(write_req));
+//                                 uint8_t ac_mode = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
+//                                 esp_zb_zcl_attribute_t attr_field;
+//                                 attr_field.id = ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID;
+//                                 attr_field.data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM;
+//                                 attr_field.data.size = 1;
+//                                 attr_field.data.value = (uint8_t*)&ac_mode;
+//                                 esp_zb_zcl_write_attr_cmd_t write_req;
+//                                 memset(&write_req, 0, sizeof(write_req));
 
-                                write_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                write_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
-                                write_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                write_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                write_req.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
-                                write_req.attr_field = &attr_field;
-                                write_req.attr_number = 1;
-                                write_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                                // write_req.dis_default_resp = 1;
-                                esp_zb_zcl_write_attr_cmd_req(&write_req);
-                                // printf("ac mode=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
-                                // printf("ac temp=%ld\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value);
-                                if(ac_mode == 3){
-                                    esp_zb_zcl_attribute_t attr_field_2;
-                                    attr_field_2.id = ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID;
-                                    attr_field_2.data.type = ESP_ZB_ZCL_ATTR_TYPE_S16;
-                                    attr_field_2.data.size = 1;
-                                    uint16_t value = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value/100;
-                                    attr_field_2.data.value = (uint16_t*)&value;
-                                    esp_zb_zcl_write_attr_cmd_t write_req_2;
-                                    memset(&write_req_2, 0, sizeof(write_req_2));
+//                                 write_req.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                 write_req.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
+//                                 write_req.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                 write_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                 write_req.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
+//                                 write_req.attr_field = &attr_field;
+//                                 write_req.attr_number = 1;
+//                                 write_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                                 // write_req.dis_default_resp = 1;
+//                                 esp_zb_zcl_write_attr_cmd_req(&write_req);
+//                                 // printf("ac mode=%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level);
+//                                 // printf("ac temp=%ld\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value);
+//                                 if(ac_mode == 3){
+//                                     esp_zb_zcl_attribute_t attr_field_2;
+//                                     attr_field_2.id = ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID;
+//                                     attr_field_2.data.type = ESP_ZB_ZCL_ATTR_TYPE_S16;
+//                                     attr_field_2.data.size = 1;
+//                                     uint16_t value = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value/100;
+//                                     attr_field_2.data.value = (uint16_t*)&value;
+//                                     esp_zb_zcl_write_attr_cmd_t write_req_2;
+//                                     memset(&write_req_2, 0, sizeof(write_req_2));
 
-                                    write_req_2.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                                    write_req_2.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
-                                    write_req_2.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
-                                    write_req_2.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                                    write_req_2.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
-                                    write_req_2.attr_field = &attr_field_2;
-                                    write_req_2.attr_number = 1;
-                                    // write_req_2.dis_default_resp = 1;
-                                    write_req_2.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                                    esp_zb_zcl_write_attr_cmd_req(&write_req_2);
-                                }
-                            }else{
-                                printf("CLUSTER_ID:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]);
-                            }
-                        }
-                    } 
-                } //for
-                break;  //leave node finding loop
-            }
-        }
-    }
+//                                     write_req_2.zcl_basic_cmd.dst_addr_u.addr_short = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+//                                     write_req_2.zcl_basic_cmd.dst_endpoint = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep; // Target endpoint on the device
+//                                     write_req_2.zcl_basic_cmd.src_endpoint = existing_nodes_info[index].scene_switch_info.src_ep;
+//                                     write_req_2.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                                     write_req_2.clusterID = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
+//                                     write_req_2.attr_field = &attr_field_2;
+//                                     write_req_2.attr_number = 1;
+//                                     // write_req_2.dis_default_resp = 1;
+//                                     write_req_2.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                                     esp_zb_zcl_write_attr_cmd_req(&write_req_2);
+//                                 }
+//                             }else{
+//                                 printf("CLUSTER_ID:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]);
+//                             }
+//                         }
+//                     } 
+//                 } //for
+//                 break;  //leave node finding loop
+//             }
+//         }
+//     }
 
-}
+// }
 uint8_t map_color_value(uint8_t x) {
     return (x * 2) / 3;  // Applying y = (2/3) * x
 }
@@ -702,37 +702,79 @@ esp_err_t nuos_set_scene_button_attribute(uint8_t index){
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
 
         #else
+
+            uint8_t dst_ep = 1;  //gateway endpoint
+            uint8_t addr_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+            // single_endpoint_gateway = true;
+            if(!single_endpoint_gateway){
+                dst_ep = ENDPOINTS_LIST[index];
+            }
+
             #ifdef USE_CUSTOM_SCENE
                 nuos_zb_set_hardware(index, true);
-                esp_err_t err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
-                if(err == ESP_OK){
-                    printf("Recaling group: 0x%x scene:%d\n", zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
+
+                if(zb_scene_info[index].scene_id == 0){
+                    printf("group: 0x%x scene:%d uchKeypressed:%d\n", zb_scene_info[index].group_id, zb_scene_info[index].scene_id, uchKeypressed);
+                    //nuos_set_state_attribute(index);
+                    esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+                        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+                        .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+                        .custom_cmd_id = 0xFD,
+                        .data.value = &index,
+                        .data.size = 1,
+                        .data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
+                        #ifdef NEW_SDK_6
+                            .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+                        #else
+                            .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                        #endif
+                        .profile_id = 0x0104,
+                        .manuf_code = 0,
+                        .manuf_specific = 0,
+                        .dis_default_resp = 0,
+                        .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+                        .zcl_basic_cmd.dst_endpoint = dst_ep,
+                        .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
+                    };
+                    esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);
                 }else{
-                    //store error
-                    //setNVSSceneRecallErrorFlag(err);
-                    err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
+                    esp_err_t err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
                     if(err == ESP_OK){
                         printf("Recaling group: 0x%x scene:%d\n", zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
                     }else{
                         //store error
                         //setNVSSceneRecallErrorFlag(err);
-                        if(is_my_device_commissionned){
-                            err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
-                            if(err == ESP_OK){
-                                esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+                        err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
+                        if(err == ESP_OK){
+                            printf("Recaling group: 0x%x scene:%d\n", zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
+                        }else{
+                            //store error
+                            //setNVSSceneRecallErrorFlag(err);
+                            if(is_my_device_commissionned){
+                                err = zb_switch_send_recall_scene_to_light(ENDPOINTS_LIST[index], zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
+                                if(err == ESP_OK){
+                                    esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
                                     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
                                     .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
                                     .custom_cmd_id = 0xFD,
-                                    .data.value = &uchKeypressed,
+                                    .data.value = &index,
                                     .data.size = 1,
                                     .data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
-                                    .direction = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                                    #ifdef NEW_SDK_6
+                                        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+                                    #else
+                                        .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                                    #endif
                                     .profile_id = 0x0104,
+                                    .manuf_code = 0,
+                                    .manuf_specific = 0,
+                                    .dis_default_resp = 0,
                                     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-                                    .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+                                    .zcl_basic_cmd.dst_endpoint = dst_ep,
                                     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
                                 };
-                                esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
+                                esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);
+                                }
                             }
                         }
                     }
@@ -746,10 +788,14 @@ esp_err_t nuos_set_scene_button_attribute(uint8_t index){
                     .data.value = &uchKeypressed,
                     .data.size = 1,
                     .data.type = ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM,
-                    .direction = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                    #ifdef NEW_SDK_6
+                        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+                    #else
+                        .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                    #endif
                     .profile_id = 0x0104,
                     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-                    .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+                    .zcl_basic_cmd.dst_endpoint = dst_ep,
                     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
                 };
                 esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);          
@@ -772,10 +818,6 @@ void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
     // single_endpoint_gateway = true;
     if(!single_endpoint_gateway){
         dst_ep = ENDPOINTS_LIST[index];
-        //printf("SEND REPORT\n");
-        //addr_mode = ESP_ZB_APS_ADDR_MODE_DST_ADDR_ENDP_NOT_PRESENT;
-    }else{
-        //printf("SINGLE ENDPOINT\n");
     }
     esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
         .zcl_basic_cmd = {
@@ -788,14 +830,20 @@ void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
         #else
             .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
         #endif
-        
+        .manuf_specific = 0,
+        .manuf_code = 0,
+        .dis_default_resp = 1,
         .address_mode = addr_mode,
         .clusterID = cluster_id,
         .attributeID = attr_id,
     };
 
     esp_zb_lock_acquire(portMAX_DELAY);
-    esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+    esp_err_t err = esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+    if(err != ESP_OK){
+        printf("Report Attribute Failed!!\n");
+        esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+    }
     esp_zb_lock_release();
     #endif
 }
@@ -872,6 +920,7 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                 (uint8_t*)&device_info[index].device_state,
                 false
             );
+            printf("SEND_ZB_RESPONSE EP:%d STATE:%d\n", ENDPOINTS_LIST[index_1], device_info[index].device_state);
             send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
         }    
         is_some_device_unavailable = false;
@@ -888,7 +937,7 @@ esp_err_t nuos_set_level_attribute(uint8_t index){
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
         index_1 = 0;   
     #endif
-    if (is_my_device_commissionned){ //&& !is_some_device_unavailable) {
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){ //&& !is_some_device_unavailable) {
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index_1],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1064,7 +1113,7 @@ esp_err_t nuos_set_sensor_temperature_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     #ifndef DONT_USE_ZIGBEE
     //esp_zb_lock_acquire(portMAX_DELAY);
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT,
@@ -1095,7 +1144,7 @@ esp_err_t nuos_set_sensor_temperature_attribute(uint8_t index){
 esp_err_t nuos_set_sensor_humidity_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     //esp_zb_lock_acquire(portMAX_DELAY);
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT,
@@ -1187,7 +1236,7 @@ esp_err_t nuos_set_color_temp_mode_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     /* set attribute value */
     #ifdef USE_TUYA_BRDIGE
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1209,7 +1258,7 @@ esp_err_t nuos_set_color_hue_attribute(uint8_t index, uint16_t hue){
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
         index_1 = 0;   
     #endif    
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         /* set attribute value */
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index_1],
@@ -1230,7 +1279,7 @@ esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode){
     /* set attribute value */
     esp_zb_zcl_status_t status = ESP_OK;
     #ifdef USE_TUYA_BRDIGE
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1248,7 +1297,7 @@ esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode){
 esp_err_t nuos_set_state_attribute_rgb(uint8_t index){
     /* set attribute value */
     esp_zb_zcl_status_t status = ESP_OK;
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
         ENDPOINTS_LIST[0],
         ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -1299,7 +1348,8 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
         val.bytes[4] = hsv_2.v & 0xff; 
         //printf("v2:%d   level:%d", hsv_2.v, device_info[3].device_level);
     }
-    
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+
     /* set attribute value */
     //esp_zb_lock_acquire(portMAX_DELAY);
     status = esp_zb_zcl_set_attribute_val(
@@ -1325,6 +1375,7 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
     //esp_zb_lock_acquire(portMAX_DELAY);
     esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
     //esp_zb_lock_release();
+    }
     #else
         nuos_set_color_hue_attribute(0, hsv->h);
     #endif
@@ -1336,7 +1387,7 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     uint16_t m_level = (device_info[index].device_level*1000)/254;
     #ifdef USE_TUYA_BRDIGE
-    if (is_my_device_commissionned){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1554,8 +1605,11 @@ esp_err_t nuos_set_thermostat_attribute(uint8_t index){
             nuos_set_ac_cool_temperature_attribute(index);
         } 
     #else
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)  
+            index = 1;
+        #endif
         uint8_t ac_mode = 0;
-        if(device_info[index].device_state){ 
+        if(device_info[0].device_state){ 
             ac_mode = ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_COOL;  //cooling 
         }else{
             ac_mode = ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_OFF;
@@ -1571,86 +1625,38 @@ esp_err_t nuos_set_thermostat_attribute(uint8_t index){
             false
         );
         send_report(index, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID);
-
-
-        
-        // uint56_t thermostat_data = {0};
-        // thermostat_data.bytes[0] = 0;
-        // thermostat_data.bytes[1] = 0;
-        // thermostat_data.bytes[2] = 1;
-        // thermostat_data.bytes[3] = 1;
-        // thermostat_data.bytes[4] = 0;
-        // thermostat_data.bytes[5] = 1;
-        // thermostat_data.bytes[6] = device_info[index].device_state;
-
-        // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-        //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-        //     .cluster_id = 0xEF00,
-        //     .custom_cmd_id = 1,
-        //     .data.value = &thermostat_data.bytes,
-        //     .data.size = 7,
-        //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
-        //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-        //     .profile_id = 0x0104,
-        //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-        //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[0],
-        //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[0],
-        //     .dis_default_resp = 1,
-        //     // .manuf_code = message->info.header.manuf_code,
-        //     .manuf_specific = 0,             
-        // };
-        // esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);
-
-        // uint80_t thermostat_temp = {0};
-        // thermostat_temp.bytes[0] = 0; // DP_ID (e.g., 0x01 = temperature)
-        // thermostat_temp.bytes[1] = 0; // DP_TYPE (0x02 = value)
-        // thermostat_temp.bytes[2] = 50;
-        // thermostat_temp.bytes[3] = 2;
-        // thermostat_temp.bytes[4] = 0;
-        // thermostat_temp.bytes[5] = 4;
-        // thermostat_temp.bytes[6] = 0;
-        // thermostat_temp.bytes[7] = 0;
-        // thermostat_temp.bytes[8] = 0;
-        // thermostat_temp.bytes[9] = 25;
-
-        // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req2 = {
-        //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-        //     .cluster_id = 0xEF00,
-        //     .custom_cmd_id = 0x02,
-        //     .data.value = &thermostat_temp.bytes,
-        //     .data.size = 10,
-        //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_ARRAY,
-        //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-        //     .profile_id = 0x0104,
-        //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-        //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[0],
-        //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[0],
-        //     .dis_default_resp = 1,
-        //     // .manuf_code = message->info.header.manuf_code,
-        //     .manuf_specific = 0, 
-        // };
-        // esp_zb_zcl_custom_cluster_cmd_req(&cmd_req2);    
-
-
-
     #endif
     //esp_zb_lock_release(); 
     return status;
 }
 
 
+void nuos_send_window_covering_command(uint8_t index, uint8_t command_id){
+    esp_zb_zcl_window_covering_cluster_send_cmd_req_t cmd_req;
+	cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+	cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
+	cmd_req.zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index];
+	cmd_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index];
+	cmd_req.cmd_id = command_id;
+
+	esp_zb_zcl_window_covering_cluster_send_cmd_req(&cmd_req);
+	printf("Updated window covering cluster\n");
+}
+
 void nuos_report_curtain_blind_state(uint8_t index, uint8_t value)
 {
     #ifndef DONT_USE_ZIGBEE
-    esp_zb_zcl_status_t status = ESP_OK;
-     status = esp_zb_zcl_set_attribute_val(
-        ENDPOINTS_LIST[index],
-        ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        ESP_ZB_ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE_ID,
-        &value,
-        false);
-    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, ESP_ZB_ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE_ID); 
+
+
+        esp_zb_zcl_status_t status = ESP_OK;
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[index],
+            ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE_ID,
+            &value,
+            false);
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING, ESP_ZB_ZCL_ATTR_WINDOW_COVERING_CURRENT_POSITION_LIFT_PERCENTAGE_ID); 
     #endif    
 }
 
@@ -1669,15 +1675,30 @@ void nuos_set_zigbee_attribute(uint8_t index){
                     nuos_report_curtain_blind_state(index, device_info[0].fan_speed);
                 #else
                     #ifdef TUYA_ATTRIBUTES
-                        nuos_report_curtain_blind_state(0, device_info[0].device_level);
+                        uint8_t val = 0;
+                        if(device_info[0].curtain_state == 0){
+                            if(!device_info[0].device_state){
+                                val = CURTAIN_STOP;
+                            }else{
+                                val = CURTAIN_OPEN;
+                            }
+                        }else if(device_info[0].curtain_state == 1){
+                            if(!device_info[1].device_state){
+                                val = CURTAIN_STOP;
+                            }else{
+                                val = CURTAIN_CLOSE;
+                            }
+                        }
+                        nuos_report_curtain_blind_state(0, val);
                     #else
-                        if(index<2) index = 0;
-                        else index = 1;                
-                        nuos_set_state_attribute(0);
+                        // if(index<2) index = 0;
+                        // else index = 1;                
+                        nuos_set_state_attribute(index);
                     #endif    
                 #endif
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
                 nuos_set_state_attribute(index);
+                
                 if(device_info[index].device_state){
                     nuos_set_level_attribute(index);
                 }
@@ -1768,6 +1789,11 @@ void nuos_set_zigbee_attribute(uint8_t index){
                 }   
             } else{
                 nuos_set_state_attribute(index);
+                #ifdef DALI_DIRECT_ADDRESSING 
+                if(device_info[index].device_state){
+                    nuos_set_level_attribute(index);
+                }
+                #endif
             }
                    
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)   
@@ -1942,7 +1968,7 @@ esp_err_t nuos_driver_init(void)
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
         for(int i=0; i<TOTAL_ENDPOINTS; i++)
            nuos_zb_set_hardware(i, 0);
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH) 
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH) 
  
 
         #ifdef TUYA_ATTRIBUTES
@@ -1960,6 +1986,19 @@ esp_err_t nuos_driver_init(void)
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
             init_curtain_timer();
         #endif
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
+        for(int i=0; i<TOTAL_ENDPOINTS; i++){
+            uint8_t m_index = 255;
+            if(i == 0){
+                if(!device_info[i].device_state) m_index = 0;
+                else m_index = 1;
+            }else if(i == 1){ 
+                if(!device_info[i].device_state) m_index = 2;
+                else m_index = 3;
+            }
+            if(m_index != 255 )
+            nuos_zb_set_hardware(m_index, false);            
+        }
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
         init_dali_hw(); 
@@ -2360,6 +2399,11 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                             }
                         }else{
                             nuos_set_state_attribute(endpoint_counts); 
+                            #ifdef DALI_DIRECT_ADDRESSING 
+                            if(device_info[endpoint_counts].device_state){
+                                nuos_set_level_attribute(endpoint_counts);
+                            }
+                            #endif
                         }
                     #else
                         nuos_set_state_attribute(endpoint_counts);     
@@ -2615,13 +2659,27 @@ void nuos_zb_bind_cb(esp_zb_zdp_status_t zdo_status, esp_zb_ieee_addr_t ieee_add
             ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
             esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]); 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+
+            #ifdef DALI_DIRECT_ADDRESSING 
+                bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL;
+                ESP_LOGI(TAG, "Try to bind Light %d Dimmmer", light_zb_info[index].endpoint);
+                esp_zb_zdo_device_bind_req(&bind_req, bind_level_cb, (void *)&light_zb_info[index]);
+            #endif  
+
             bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF;
             ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
             esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]); 
+          
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
-            bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
-            ESP_LOGI(TAG, "Try to bind Thermostat %d", light_zb_info[index].endpoint);
-            esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);         
+            if(index == 0 || index == 1){
+                bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT;
+                ESP_LOGI(TAG, "Try to bind Thermostat %d", light_zb_info[index].endpoint);
+                esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);    
+            }else{
+                bind_req.cluster_id = 0xFC31; // Custom Cluster;
+                ESP_LOGI(TAG, "Try to bind Custom Cluster %d", light_zb_info[index].endpoint);
+                esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]); 
+            }
             // bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF;
             // ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
             // esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]); 
@@ -2659,6 +2717,10 @@ void nuos_zb_bind_cb(esp_zb_zdp_status_t zdo_status, esp_zb_ieee_addr_t ieee_add
             bind_req.cluster_id = ENDPOINT_CLUSTERS[index];
             ESP_LOGI(TAG, "Try to bind IAS Sensor Cluster on ep= %d", light_zb_info[index].endpoint);
             esp_zb_zdo_device_bind_req(&bind_req, bind_cb_sensor, (void *)&light_zb_info[index]);  
+
+            bind_req.cluster_id = 0xFC31; // Custom Cluster;
+            ESP_LOGI(TAG, "Try to bind Custom Cluster %d", light_zb_info[index].endpoint);
+            esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);     
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)
             bind_req.cluster_id = ENDPOINT_CLUSTERS[index];
             ESP_LOGI(TAG, "Try to bind Temperature Humidity Sensor Cluster on ep= %d", light_zb_info[index].endpoint);
@@ -2772,14 +2834,14 @@ void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
             find_req.num_in_clusters = 2;
             find_req.num_out_clusters = 1;             
         #else
-            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+            uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, 0xFC31, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
             find_req.num_in_clusters = 1;
             find_req.num_out_clusters = 1;             
         #endif
  
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_IAS_ZONE, 0xFC31, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
         find_req.num_out_clusters = 1;  
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)
         uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_REL_HUMIDITY_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
@@ -2806,8 +2868,8 @@ void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
         find_req.num_in_clusters = 1;
         find_req.num_out_clusters = 1;   
     #elif(USE_NUOS_ZB_DEVICE_TYPE ==  DEVICE_SCENE_DALI)  
-        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
-        find_req.num_in_clusters = 1;
+        uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
+        find_req.num_in_clusters = 2;
         find_req.num_out_clusters = 1;
     #else    
         uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
@@ -3640,6 +3702,11 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
         #endif
         esp_zb_attribute_list_t* esp_zb_sensor_cluster = nuos_zb_create_ias_zone_cluster(ESP_ZB_ZCL_IAS_ZONE_ZONETYPE_MOTION, 20);
         esp_zb_cluster_list_add_ias_zone_cluster(esp_zb_cluster_list, esp_zb_sensor_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+        uint8_t ss = 0;
+        esp_zb_attribute_list_t *esp_zb_tuya_private_cluster = esp_zb_zcl_attr_list_create(0xFC31);
+        esp_zb_custom_cluster_add_custom_attr(esp_zb_tuya_private_cluster, 0x0000, ESP_ZB_ZCL_ATTR_TYPE_U16, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &ss);
+        esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH)
         esp_zb_attribute_list_t* esp_zb_sensor_cluster = nuos_zb_create_ias_zone_cluster(ESP_ZB_ZCL_IAS_ZONE_ZONETYPE_CONTACT_SWITCH, 0);
         esp_zb_cluster_list_add_ias_zone_cluster(esp_zb_cluster_list, esp_zb_sensor_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE); 
@@ -3719,7 +3786,6 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             esp_zb_attribute_list_t *esp_zb_tuya_private_cluster_5 = esp_zb_zcl_attr_list_create(0xEE00);
             esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster_5, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);            
         #endif
-
         esp_zb_attribute_list_t *esp_zb_on_off_server_cluster = esp_zb_on_off_cluster_create(NULL);
         esp_zb_cluster_list_add_on_off_cluster(esp_zb_cluster_list, esp_zb_on_off_server_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
@@ -3791,6 +3857,11 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
     // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster2, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);         
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
         esp_zb_cluster_list_add_on_off_cluster(esp_zb_cluster_list, esp_zb_on_off_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+        #ifdef DALI_DIRECT_ADDRESSING 
+        esp_zb_attribute_list_t *esp_zb_level_cluster = nuos_zb_create_level_cluster(0, 255);
+        esp_zb_cluster_list_add_level_cluster(esp_zb_cluster_list, esp_zb_level_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+        #endif
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_COLOR_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_COLOR_DIMMABLE_LIGHT) 
         /* level cluster create with standard cluster config*/
         esp_zb_attribute_list_t *esp_zb_colour_cluster = nuos_zb_create_color_ctrl_cluster();
@@ -3821,7 +3892,7 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
         }  
 	#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)   
 
-        esp_zb_attribute_list_t *esp_zb_level_cluster = nuos_zb_create_level_cluster(0x00, 255);
+        esp_zb_attribute_list_t *esp_zb_level_cluster = nuos_zb_create_level_cluster(1, 255);
         esp_zb_cluster_list_add_level_cluster(esp_zb_cluster_list, esp_zb_level_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
         esp_zb_cluster_list_add_on_off_cluster(esp_zb_cluster_list, esp_zb_on_off_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
@@ -3884,19 +3955,20 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
         // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);                
     
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+        uint8_t thermo_setback_id = 0xff;
+        uint8_t thermo_hvac_system_type = 0x00;
+        uint8_t thermo_stat_mode = ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_COOL;
+        #ifdef USE_HEATING_PIPES
+            uint8_t thermo_stat_ctrl_seq = ESP_ZB_ZCL_THERMOSTAT_CONTROL_SEQ_OF_OPERATION_COOLING_AND_HEATING_4_PIPES;
+        #else
+            uint8_t thermo_stat_ctrl_seq = ESP_ZB_ZCL_THERMOSTAT_CONTROL_SEQ_OF_OPERATION_COOLING_ONLY;
+        #endif
+        uint16_t thermo_setback_change_amount = 0x8000; 
+        uint16_t thermo_stat_min_coolpoint = 16*TEMPERATURE_MULTIPLICATION_FACTOR;  //16 degree
+        uint16_t thermo_stat_max_coolpoint = 30*TEMPERATURE_MULTIPLICATION_FACTOR;
          if(index == 0){
             //
-            uint8_t thermo_setback_id = 0xff;
-            uint8_t thermo_hvac_system_type = 0x00;
-            uint8_t thermo_stat_mode = ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_COOL;
-            #ifdef USE_HEATING_PIPES
-                uint8_t thermo_stat_ctrl_seq = ESP_ZB_ZCL_THERMOSTAT_CONTROL_SEQ_OF_OPERATION_COOLING_AND_HEATING_4_PIPES;
-            #else
-                uint8_t thermo_stat_ctrl_seq = ESP_ZB_ZCL_THERMOSTAT_CONTROL_SEQ_OF_OPERATION_COOLING_ONLY;
-            #endif
-            uint16_t thermo_setback_change_amount = 0x8000; 
-            uint16_t thermo_stat_min_coolpoint = 16*TEMPERATURE_MULTIPLICATION_FACTOR;  //16 degree
-            uint16_t thermo_stat_max_coolpoint = 30*TEMPERATURE_MULTIPLICATION_FACTOR;
+           
             #ifdef USE_HEATING_PIPES  
                 uint16_t thermo_stat_min_heatpoint = 5*TEMPERATURE_MULTIPLICATION_FACTOR;  //5 degree
                 uint16_t thermo_stat_max_heatpoint = 35*TEMPERATURE_MULTIPLICATION_FACTOR;  
@@ -3904,7 +3976,7 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             #endif      
             uint16_t thermo_stat_default_coolpoint = 25*TEMPERATURE_MULTIPLICATION_FACTOR;
             
-            uint8_t thermo_running_state = ESP_ZB_ZCL_THERMOSTAT_RUNNNING_STATE_COOL_STATE_ON_BIT;
+            uint8_t thermo_running_state = ESP_ZB_ZCL_THERMOSTAT_RUNNING_STATE_COOL_STATE_ON_BIT;
             #ifdef USE_LOCAL_TEMPERATURE
                 uint16_t thermo_local_temp = ESP_ZB_ZCL_THERMOSTAT_LOCAL_TEMPERATURE_MIN_VALUE;
                 uint16_t local_temp_default_val = ESP_ZB_ZCL_THERMOSTAT_LOCAL_TEMPERATURE_CALIBRATION_MIN_VALUE;
@@ -3915,8 +3987,8 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             
             esp_zb_attribute_list_t *esp_zb_thermo_stat_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT);
             //mode
-            esp_zb_cluster_add_attr(esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
-                                    ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &thermo_stat_mode);
+            // esp_zb_cluster_add_attr(esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
+            //                         ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &thermo_stat_mode);
 
             esp_zb_cluster_add_attr(esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_CONTROL_SEQUENCE_OF_OPERATION_ID,
                                     ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &thermo_stat_ctrl_seq);
@@ -3976,6 +4048,8 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             #ifdef TUYA_ATTRIBUTES
             uint8_t temp = 25;
             uint8_t ss = 0;
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+                temp = 0;
             esp_zb_cluster_list_add_on_off_cluster(esp_zb_cluster_list, esp_zb_on_off_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE); 
 
             
@@ -4003,9 +4077,28 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             //target_temp
             esp_zb_custom_cluster_add_custom_attr(esp_zb_tuya_private_cluster, 0xFFF1, ESP_ZB_ZCL_ATTR_TYPE_U8, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &temp);
             esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);  
+            #else
+                
+            #endif
 
             #endif
+
+        }else if(index == 1){    
+                        esp_zb_attribute_list_t *esp_zb_thermo_stat_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT);
+            //mode
+            esp_zb_cluster_add_attr(esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
+                                    ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &thermo_stat_mode);
+
+            esp_zb_cluster_add_attr(esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_ATTR_THERMOSTAT_CONTROL_SEQUENCE_OF_OPERATION_ID,
+                                    ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &thermo_stat_ctrl_seq);
+
+            esp_zb_cluster_list_add_thermostat_cluster(esp_zb_cluster_list, esp_zb_thermo_stat_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE); 
         }else {
+            uint8_t ss = 0;
+            esp_zb_attribute_list_t *esp_zb_tuya_private_cluster = esp_zb_zcl_attr_list_create(0xFC31);
+            esp_zb_custom_cluster_add_custom_attr(esp_zb_tuya_private_cluster, 0x0000, ESP_ZB_ZCL_ATTR_TYPE_U8, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &ss);
+            esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+
             #ifdef CUSTON_FAN_CTRL
                 uint8_t fan_current_level = 2;
                 uint8_t fan_min_level = 0;
@@ -4730,6 +4823,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
             break;
         }
     }
+    switch_driver_gpios_intr_enabled(true);
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         device_info[0].color_or_fan_state = false;
     #endif
@@ -4813,6 +4907,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         else index_1 = 4;
                     #endif
                     device_info[index_1].device_state = message->attribute.data.value ? *(bool *)message->attribute.data.value : device_info[index_1].device_state;
+                    printf("_STATE_:%d  index_1:%d\n",  device_info[index_1].device_state, index_1);
 
                     if(last_state[index_1] != device_info[index_1].device_state){
                         last_state[index_1] = device_info[index_1].device_state;
@@ -4831,26 +4926,34 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                     #else
 
                     #endif
-                    
+                   
                     //Added by Nuos
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-                        nuos_zb_set_hardware_curtain(index_1, false);
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
+                        
+                    nuos_zb_set_hardware_curtain(index_1, false);
+           
+                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
+                        uint8_t m_index = 255;
+                        if(index_1 == 0){
+                            if(!device_info[index_1].device_state) m_index = 0;
+                            else m_index = 1;
+                        }else if(index_1 == 1){ 
+                            if(!device_info[index_1].device_state) m_index = 2;
+                            else m_index = 3;
+                        }
+                        if(m_index != 255 )
+                        nuos_zb_set_hardware(m_index, false);
                     #else
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
-                            //nuos_zb_set_hardware(index_1, false);
-                            //set_state(index_1);
-                            // global_index = index_1;
-                            // toggle_state_flag = false;
-                            // set_hardware_flag = true;
-                            // set_state_flag = true;
+                            
                             if(selected_color_mode == 0){
                                 for(int rgb=0; rgb<3; rgb++){
                                     device_info[rgb].device_state = false;
                                 } 
-                                if(!device_info[3].device_state){
-                                    device_info[3].device_state = true;
-                                    change_state_flag = true;
-                                }
+                                // if(!device_info[3].device_state){
+                                //     device_info[3].device_state = true;
+                                //     change_state_flag = true;
+                                // }
                             }else if(selected_color_mode == 1){
                                 if(device_info[0].device_level == 0) device_info[0].device_state = false;
                                 else device_info[0].device_state = true;
@@ -4877,6 +4980,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
 
                             nuos_zb_set_hardware(index_1, false);
                             set_state(index_1);
+                            
                         #else
                         //printf("ac_mode_or_fan_speed:%d\n", device_info[index_1].ac_mode);
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
@@ -4898,11 +5002,12 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             #endif
                         #endif
                     #endif
-                    #ifdef USE_TUYA_BRDIGE
+                 #ifdef USE_TUYA_BRDIGE
                     if(is_my_device_commissionned){
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
+                            nuos_set_zigbee_attribute(index_1);
                         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                        nuos_set_state_attribute(0);  //to fast update switches on app
+                            nuos_set_state_attribute(0);  //to fast update switches on app
                         #else
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
                         #ifdef USE_FAN_SPEED
@@ -4910,9 +5015,9 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         #endif
                         #endif
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                        nuos_set_zigbee_attribute(index_1);
+                            nuos_set_zigbee_attribute(index_1);
                         #else
-                        nuos_set_state_attribute(index_1);  //to fast update switches on app  
+                            nuos_set_state_attribute(index_1);  //to fast update switches on app  
                         #endif
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
                         #ifdef USE_FAN_SPEED
@@ -4921,7 +5026,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         #endif
                         #endif 
                     }
-                    #endif
+                    #endif                    
                     cb_counts++;  
                     #endif                  
                     
@@ -4940,40 +5045,56 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         if(index == FAN_INDEX){
                             uint8_t d_level = *(uint8_t *)message->attribute.data.value;
                             printf("App Fan level : %d \n", d_level);
-                            if(d_level > 1){ //avoid double callback value
-                                device_info[FAN_INDEX].device_level = d_level;
+                            if(d_level > 1) { //avoid double callback value
+                                device_info[index].device_level = d_level;
                                 device_info[index].device_state = true;
-                                if(d_level <= 64){
+                                if(d_level <= 63){
                                     device_info[index].fan_speed = 1;
-                                }else if(d_level > 64 && d_level <= 128){
+                                }else if(d_level > 64 && d_level <= 127){
                                     device_info[index].fan_speed = 2;
                                 }else if(d_level > 128 && d_level <= 191){
                                     device_info[index].fan_speed = 3;
                                 }else if(d_level > 191){      //near 1000
                                     device_info[index].fan_speed = 4;   //max_speed
-                                }else{
-                                    device_info[index].device_state = false;
                                 }
                                 
                                 nuos_set_fan_attribute(index); //to fast update switches on app
 
                                 nuos_set_hardware_fan_ctrl(index);
                             }else{
-                                if(d_level == 1){
-                                    device_info[index].fan_speed = 0;
-                                    device_info[index].device_level = 0;
-                                    printf("device_info[index].device_level:%d\n", device_info[index].device_level);
-                                    nuos_set_fan_attribute(index); //to fast update switches on app
-                                    //nuos_set_hardware_fan_ctrl(index);
- 
-                                }                              
+
+                                    if(device_info[index].fan_speed == 1){
+                                        device_info[index].device_level = 63;
+                                    }else if(device_info[index].fan_speed == 2 ) //d_level > 64 && d_level <= 128){
+                                    {
+                                        device_info[index].device_level = 127;
+                                    }else if(device_info[index].fan_speed == 3 ) //d_level > 64 && d_level <= 128){
+                                    {
+                                        device_info[index].device_level = 191;
+                                    }else if(device_info[index].fan_speed == 4 ) //d_level > 64 && d_level <= 128){
+                                    {
+                                        device_info[index].device_level = 254;
+                                    }
+                                    printf("FORCED_LEVEL:%d\n", device_info[index].device_level);
+                                    //nuos_set_fan_attribute(index); //to fast update switches on app                                 
+                                // if(!device_info[index].device_state){
+                                //     //nuos_set_state_attribute(FAN_INDEX); 
+                                //     //nuos_set_hardware_fan_ctrl(index);    
+                                // }else{
+                                    nuos_set_fan_attribute(index); //to fast update switches on app   
+                                    nuos_set_state_attribute(FAN_INDEX);
+                                    nuos_set_hardware_fan_ctrl(index); 
+                                       
+                                // }
+                  
                             }
+                            
                             ESP_LOGI(TAG, "Fan %d Speed: %d & Level:%d\n", message->info.dst_endpoint, device_info[index].fan_speed, device_info[index].device_level);
                         }else{
                             if(*(uint8_t *)message->attribute.data.value >= MIN_DIM_LEVEL_VALUE) //10% of level value
                                 device_info[index].device_level = message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : device_info[index].device_level;
                             else
-                                device_info[index].device_level = MIN_DIM_LEVEL_VALUE; //
+                                device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
                             //Added by Nuos                 
                             nuos_zb_set_hardware(index, false); 
                             ESP_LOGI(TAG, "Light %d level changes to %d\n", message->info.dst_endpoint, device_info[index].device_level);
@@ -5006,16 +5127,27 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             uint8_t level1 = *(uint8_t *)message->attribute.data.value;
                             ESP_LOGI(TAG, "fan speed %d\n", level1);
                             device_info[1].device_level = level1;
-                            for(int i=0; i<5; i++){
-                                if(level1 > 0){
-                                    if(level1 == fan_level_speed[i]){
-                                        device_info[0].fan_speed = i+1;
-                                        break;
-                                    }
-                                }else{
-                                    device_info[0].fan_speed = 0;
+
+                            if(device_info[1].device_level > 0){
+                                if(device_info[1].device_level > fan_level_speed[0] && device_info[1].device_level <= fan_level_speed[1]){
+                                    device_info[0].fan_speed = 1;
+                                    //break;
+                                }else if(device_info[1].device_level > fan_level_speed[1] && device_info[1].device_level <= fan_level_speed[2]){
+                                    device_info[0].fan_speed = 2;
+                                    //break;
+                                }else if(device_info[1].device_level > fan_level_speed[2] && device_info[1].device_level <= fan_level_speed[3]){
+                                    device_info[0].fan_speed = 3;
+                                    //break;
+                                }else if(device_info[1].device_level > fan_level_speed[3] && device_info[1].device_level <= fan_level_speed[4]){
+                                    device_info[0].fan_speed = 4;
+                                    //break;
+                                }else if(device_info[1].device_level > fan_level_speed[4]){
+                                    device_info[0].fan_speed = 5;
                                 }
-                            }
+                            }else{
+                                device_info[0].fan_speed = 0;
+                            }                            
+
                             nuos_zb_set_hardware(1, false);
                             if(is_my_device_commissionned){ 
                                 nuos_set_ac_cool_temperature_attribute(1);
@@ -5029,8 +5161,6 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             uint8_t val = *(uint8_t *)message->attribute.data.value; 
                             printf("LEVEL_VAR:%d\n", val);
                             if(selected_color_mode == 0){
-                              
-                                
                                 if(val != 1) {
                                     color_level[selected_color_mode] = val;
                                     // if(selected_color_mode == 0){
@@ -5046,29 +5176,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                                 // set_hardware_flag = true;                                        
                                                 // set_level_flag = true;
                                             }
-                                        }                            
-                                    // }else{
-                                    //     if(color_level[selected_color_mode] != device_info[4].device_level){   
-                                    //         if(device_info[4].device_state){
-                                    //             device_info[4].device_level = color_level[selected_color_mode];
-                                    //             device_info[3].device_level = device_info[4].device_level;
-                                    //             printf("LEVEL_RGB_1:%d\n", device_info[4].device_level); 
-                                    //             //nuos_zb_set_hardware(4, false); 
-                                    //             // device_info[0].device_level = (uint8_t)((float)device_info[0].device_level * (device_info[4].device_level / 255.0f));
-                                    //             // device_info[1].device_level = (uint8_t)((float)device_info[1].device_level * (device_info[4].device_level / 255.0f));
-                                    //             // device_info[2].device_level = (uint8_t)((float)device_info[2].device_level * (device_info[4].device_level / 255.0f));
-                                                
-                                    //             // printf("RR:%d GG:%d BB:%d\n", device_info[0].device_level, device_info[1].device_level, device_info[2].device_level);
-
-                                    //             // global_index = 4;
-                                    //             // toggle_state_flag = false;
-                                    //             // set_hardware_flag = true;
-                                    //             // set_level_flag = true;
-                                    //             nuos_zb_set_hardware(4, false);
-                                    //             set_level(4);
-                                    //         }
-                                    //     }                                                                                            
-                                    // } 
+                                        }                             
                                 }
                                 #ifdef USE_TUYA_BRDIGE
                                 if(is_my_device_commissionned){                                  
@@ -5506,8 +5614,10 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                 //ESP_LOGI(TAG, "---------------->ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT<----------------");
                 #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
                 if (message->attribute.id == ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM) {
-                    device_info[index].ac_mode = message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : 0;
-                    ESP_LOGI(TAG, "ac mode %d", device_info[index].ac_mode);
+                    device_info[0].ac_mode = message->attribute.data.value ? *(uint8_t *)message->attribute.data.value : 0;
+                    ESP_LOGI(TAG, "ac mode %d", device_info[0].ac_mode);
+                    if(device_info[0].ac_mode == 0) device_info[0].device_state = false;
+                    else device_info[0].device_state = true;
                     //Added by Nuos 
                     nuos_zb_set_hardware(index, false);
                 }else if (message->attribute.id == ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_S16) {
@@ -5744,14 +5854,18 @@ bool nuos_init_sequence(){
     #ifndef USE_NVS_INIT
         nuos_init_nvs();
     #endif
-    
+    #ifdef USE_WIFI_WEBSERVER
      //Added by Nuos   
     wifi_webserver_active_flag = getNVSWebServerEnableFlag();
+    #else
+    wifi_webserver_active_flag = false;
+    #endif
     //Added by Nuos 
     start_commissioning = getNVSCommissioningFlag();
     is_my_device_commissionned = !start_commissioning;
     ready_commisioning_flag = getNVSStartCommissioningFlag();
     if(ready_commisioning_flag){
+        printf("Clearing Start Commissioning Flag from NVS\n");
         ready_commisioning_flag = false;
         setNVSStartCommissioningFlag(0);
         nuos_write_default_value();
@@ -5804,27 +5918,17 @@ bool nuos_init_sequence(){
         #endif 
     #endif
     #ifdef USE_WIFI_WEBSERVER
-    //wifi_webserver_active_flag = true;
-    //is_my_device_commissionned = false;
-    // printf("wifi_webserver_active_flag:%d\n", wifi_webserver_active_flag); //This line, Added by NUOS
-    if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
-        setNVSWebServerEnableFlag(0); 
-        #ifndef ZB_FACTORY_RESET
-            // if(wifi_info.is_wifi_sta_mode){
-            //     #ifdef USE_WIFI_WEBSERVER
-            //         nuos_init_wifi_webserver(); 
-            //     #endif       
-            //     return true;
-            // }else{
+        if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
+            setNVSWebServerEnableFlag(0); 
+            #ifndef ZB_FACTORY_RESET
                 #ifdef USE_WIFI_WEBSERVER
                     nuos_init_wifi_webserver();
                 #endif 
                 return false;             
-            // }
-        #else
-        return true; 
-        #endif 
-    } 
+            #else
+                return true; 
+            #endif 
+        } 
     #endif
     return true;
 }

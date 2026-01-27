@@ -324,15 +324,15 @@ void DaliCommands::set_ext_fade_time(uint8_t addr, uint8_t time)
 
 void DaliCommands::set_fade_time(uint8_t addr, uint8_t time)
 {
-    // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, time);
-    // daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
-    // //delay(DELAY_COMMAND_SEND);
-    // daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
+    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
+    send_command_standard(SET_FADE_TIME, addr); 
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
     send_command_standard(SET_FADE_TIME, addr);
-//delay(DELAY_COMMAND_SEND);
-    send_command_standard(SET_FADE_TIME, addr);
-//delay(DELAY_COMMAND_SEND);    
+    // vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    // send_command_standard(SET_FADE_TIME, addr); 
+    // vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
 }
 
 /**********Set DALI Device fade rate value***********/
@@ -340,13 +340,14 @@ void DaliCommands::set_fade_rate(uint8_t addr, uint8_t rate)
 {
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, rate);
-    // daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
-    // //delay(DELAY_COMMAND_SEND);
-    // daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
+    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
+    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
     send_command_standard(SET_FADE_RATE, addr);
-//delay(DELAY_COMMAND_SEND);
-    send_command_standard(SET_FADE_RATE, addr);
-//delay(DELAY_COMMAND_SEND);
+    // vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    // send_command_standard(SET_FADE_RATE, addr);
+    // vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
 }
 
 #define BROADCAST_DP 0b11111110

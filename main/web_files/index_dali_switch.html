@@ -446,6 +446,8 @@
                 min-width: 90vw;
             }
         }
+        .two-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
     </style>
 </head>
 <body>
@@ -501,7 +503,70 @@
                 </div>
             </div>
             <button class="stylish-button" id="sendDaliAddress">Send Address</button>
+<h3>Min Dimming Offset</h3>
+  <div class="two-buttons">
+    <input
+      type="number"
+      id="minDimmingOffset"
+      min="0"
+      max="255"
+      step="1"
+      placeholder="Enter min dimming offset"/>
+    <button
+      id="sendMinDimmingOffset"
+      class="stylish-button"
+      style="margin:0; padding:10px 16px;">
+      Calibrate Dali Dimming
+    </button>
+  </div>
+  <div class="small-note">
+    Sets minimum dali dimming value wheer it gets lowest dimming
+  </div>
+
+
+
+<h3>Set Fade Time </h3>
+  <div class="two-buttons">
+    <input
+      type="number"
+      id="setFadeTime"
+      min="0"
+      max="10"
+      step="1"
+      placeholder="Enter fade time"/>
+    <button
+      id="sendFadeTime"
+      class="stylish-button"
+      style="margin:0; padding:10px 16px;">
+      Set Fade Time
+    </button>
+  </div>
+
+
+
+
+<h3>Set Fade Rate</h3>
+  <div class="two-buttons">
+    <input
+      type="number"
+      id="setFadeRate"
+      min="0"
+      max="255"
+      step="1"
+      placeholder="Enter Fade Rate"/>
+    <button
+      id="sendFadeRate"
+      class="stylish-button"
+      style="margin:0; padding:10px 16px;">
+      Set Fade Rate
+    </button>
+  </div>
+
         </div>
+
+
+
+
     </div>
 
     <!-- Confirmation Popup for DALI Addressing -->
@@ -882,6 +947,155 @@
                 })
                 .catch(err => console.warn('Could not load popup selections:', err));
         });
+
+/* ---------- initial load of saved tab data (keeps your fetch logic) ---------- */
+document.addEventListener('DOMContentLoaded', function loadSavedTabData() {
+  // Tab2 saved DALI address / selection (fxn=20)
+    fetch('/items?fxn=20').then(r => r.json()).then(data => {
+        // expected data example: { selected_address: 12, max_addr: 32 }
+        if (data && data.selected_address !== undefined) {
+            const sel = data.selected_address;
+            const dselBtn = document.getElementById('btn' + sel);
+            if (dselBtn) dselBtn.classList.add('selected');
+            // set select box if needed
+            if (document.getElementById('daliStartAddress')) document.getElementById('daliStartAddress').value = data.selected_address;
+	    if (document.getElementById('daliNumAddresses')) document.getElementById('daliNumAddresses').value = data.selected_address + 15;
+
+        }
+if (data && data.dali_min_offset !== undefined) {
+    const minOffsetInput = document.getElementById('minDimmingOffset');
+    if (minOffsetInput) {
+        minOffsetInput.value = data.dali_min_offset;
+    }
+}
+
+if (data && data.fade_time !== undefined) {
+    const fadeTimeInput = document.getElementById('setFadeTime');
+    if (fadeTimeInput) {
+        fadeTimeInput.value = data.fade_time;
+    }
+}
+
+if (data && data.fade_rate !== undefined) {
+    const fadeRateInput = document.getElementById('setFadeRate');
+    if (fadeRateInput) {
+        fadeRateInput.value = data.fade_rate;
+    }
+}
+
+    }).catch(console.error);
+
+
+});
+
+
+document.addEventListener('DOMContentLoaded', function () {
+  const input = document.getElementById('minDimmingOffset');
+  const sendBtn = document.getElementById('sendMinDimmingOffset');
+
+  const input_f_t = document.getElementById('setFadeTime');
+  const sendBtn_f_t = document.getElementById('sendFadeTime');
+  
+  const input_f_r = document.getElementById('setFadeRate');
+  const sendBtn_f_r = document.getElementById('sendFadeRate');
+  
+  if (!input || !sendBtn || !input_f_t || !sendBtn_f_t || !input_f_r || !sendBtn_f_r) return;
+
+  sendBtn.addEventListener('click', async () => {
+    const value = parseInt(input.value, 10);
+
+    if (Number.isNaN(value)) {
+      showToast('Please enter a valid number', 'error');
+      return;
+    }
+
+    const payload = {
+      fxn: 70, // 🔁 change if your ESP expects a different fxn
+      min_dimming_offset: value
+    };
+
+    try {
+      const res = await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        showToast('Failed to send min dimming offset', 'error');
+        return;
+      }
+
+      showToast('Min dimming offset sent: ' + value, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('ESP server not reachable', 'error');
+    }
+  });
+  
+  sendBtn_f_t.addEventListener('click', async () => {
+    const value = parseInt(input_f_t.value, 10);
+
+    if (Number.isNaN(value)) {
+      showToast('Please enter a valid number', 'error');
+      return;
+    }
+
+    const payload = {
+      fxn: 71, // 🔁 change if your ESP expects a different fxn
+      fade_time: value
+    };
+
+    try {
+      const res = await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        showToast('Failed to send fade time', 'error');
+        return;
+      }
+
+      showToast('Fade Time sent: ' + value, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('ESP server not reachable', 'error');
+    }
+  });
+  sendBtn_f_r.addEventListener('click', async () => {
+    const value = parseInt(input_f_r.value, 10);
+
+    if (Number.isNaN(value)) {
+      showToast('Please enter a valid number', 'error');
+      return;
+    }
+
+    const payload = {
+      fxn: 72, // 🔁 change if your ESP expects a different fxn
+      fade_rate: value
+    };
+
+    try {
+      const res = await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        showToast('Failed to send fade rate', 'error');
+        return;
+      }
+
+      showToast('Fade Rate sent: ' + value, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('ESP server not reachable', 'error');
+    }
+  });  
+});        
     </script>
 </body>
 </html>

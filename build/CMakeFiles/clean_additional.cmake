@@ -15,6 +15,7 @@ if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "")
   "flash_project_args"
   "flasher_args.json"
   "index_curtain.html.S"
+  "index_dali_direct_addr.html.S"
   "index_dali_master.html.S"
   "index_dali_scn.html.S"
   "index_dali_switch.html.S"
@@ -22,7 +23,7 @@ if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "")
   "ldgen_libraries.in"
   "on_off_light_bulb.bin"
   "on_off_light_bulb.map"
-  "project_elf_src_esp32c6.c"
+  "project_elf_src_esp32h2.c"
   "x509_crt_bundle.S"
   )
 endif()

@@ -98,9 +98,7 @@ void nuos_stop_commissioning(unsigned char timeout){
 	printf("========start_commissioning:%d========\n", start_commissioning);
 	if(!start_commissioning){
 		start_commissioning = false;
-		// ready_commisioning_flag  = false;
-		// setNVSCommissioningFlag(0);
-       
+		
 		#ifdef USE_RGB_LED
 			light_driver_set_power(0);
 		#else
@@ -116,18 +114,14 @@ void nuos_stop_commissioning(unsigned char timeout){
 			esp_start_timer();	
 			printf("##############START_TIMER###########\n");
 		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-		// #ifndef ZB_COMMISSIONING_WITHOUT_TIMER
 		init_timer();
 		esp_start_timer();
-		// #endif
-		// 	printf("------START Timer-------\n");
 
 		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-		// #ifndef ZB_COMMISSIONING_WITHOUT_TIMER
+
 		init_timer();
 		esp_start_timer();	
-		// #endif	
-		// #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+		
 		#else
 			esp_stop_timer();
 			printf("##############STOP_TIMER###########\n");			
@@ -135,7 +129,7 @@ void nuos_stop_commissioning(unsigned char timeout){
 	}
 
     esp_start_timer_3();
-	// nuos_reset_count_nw_steering_fault();
+	
 }
 
 
@@ -195,31 +189,28 @@ void start_zb_commissioning_timer_task(){
 			if(timer_commissioning_counts >= COMMISSIONING_TIMEOUT){
 				timer_commissioning_counts = 0;
 				
-				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-					if(wifi_webserver_active_flag  == 0){
-						nuos_stop_commissioning(1);
+				// #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+				// 	if(wifi_webserver_active_flag  == 0){
+				// 		nuos_stop_commissioning(1);
 						
-					}
-					start_commissioning = false;
-				#else
+				// 	}
+				// 	start_commissioning = false;
+				// #else
 
 				    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)
 						start_commissioning = false;
 						nuos_stop_commissioning(1);	
 					#else
-					start_commissioning = false;
-					nuos_stop_commissioning(1);	
+						start_commissioning = false;
+						nuos_stop_commissioning(1);	
 
 
-					if(!ready_commisioning_flag){
-						ready_commisioning_flag = true;
-					}
-					// timer_led_blink_ready_counts = 0;
-					// timer_commissioning_ready_counts = 0;
-					setNVSStartCommissioningFlag(1);
-					setNVSCommissioningFlag(0);
-					// xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL); 
-					// start_commissioning_timeout_timer();
+						if(!ready_commisioning_flag){
+							ready_commisioning_flag = true;
+						}
+
+						setNVSStartCommissioningFlag(1);
+						setNVSCommissioningFlag(0);
 					  
 					#endif
 					#ifdef USE_RGB_LED
@@ -230,60 +221,20 @@ void start_zb_commissioning_timer_task(){
 					#else
 						nuos_set_state_touch_leds(false);
 					#endif
-				#endif
+				//#endif
 			}
 		}else{
 			timer_led_blink_counts++;
             timer_commissioning_counts++;
 		}
 	}
-	
-	// else{
-	// 	if(ready_commisioning_flag){
-	// 		if(timer_led_blink_ready_counts >= TIMER_COMMISSIONING_LED_BLINK_COUNTS){
-	// 			timer_led_blink_ready_counts = 0;
-	// 			#ifdef USE_RGB_LED
-	// 				toggle_status_led = !toggle_status_led;
-	// 				if(toggle_status_led) light_driver_set_color_RGB(0x00, 0xff, 0);  //green
-	// 				light_driver_set_power(toggle_status_led);
-	// 			#else
-	// 				nuos_zb_set_hardware_led_for_zb_commissioning(true);
-	// 			#endif
-	// 			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-
-	// 			#else
-	// 				printf("Zigbee Ready Commissioning...\n");	
-	// 			#endif
-				
-	// 			if(timer_commissioning_ready_counts >= 300){
-	// 				timer_commissioning_ready_counts = 0;
-					
-	// 				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-
-	// 				#else
-	// 					#ifdef USE_RGB_LED
-	// 						light_driver_set_color_RGB(0x00, 0xff, 0x00);
-	// 						light_driver_set_power(0);
-	// 						printf("stop_commissioning\n");
-	// 						light_driver_deinit_flag = true;
-	// 					#else
-
-	// 					#endif
-	// 				#endif
-	// 			}
-	// 		}else{
-	// 			timer_led_blink_ready_counts++;
-	// 			timer_commissioning_ready_counts++;	
-	// 		}
-	// 	}		
-	// }
 }
 
-void start_zb_devices_timer_task(){	
-	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
-		// nuos_esp_motion_sensor_check_in_timer();	
-	#endif	
-}
+// void start_zb_devices_timer_task(){	
+// 	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
+// 		// nuos_esp_motion_sensor_check_in_timer();	
+// 	#endif	
+// }
 
 
 
@@ -300,7 +251,7 @@ void timer_callback(void* arg) {
 		 	}
 		 #endif
 	#endif
-	start_zb_devices_timer_task();  
+	//start_zb_devices_timer_task();  
 	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 		if(find_active_neighbours_task_flag){
 			led_state = !led_state;
@@ -400,6 +351,8 @@ static TimerHandle_t commissioning_timeout_timer                = NULL;
 
 void commissioning_timeout_handler(TimerHandle_t xTimer)
 {
+	printf("Commissioning Timeout Handler called!\n");
+	start_commissioning = false;
 	ready_commisioning_flag = false;
 	setNVSStartCommissioningFlag(0);
 	setNVSPanicAttack(0);
@@ -506,31 +459,18 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 						} 
 						
 					}else if(second_button_pressed && fourth_button_pressed){
-						#ifdef USE_WIFI_WEBSERVER	
-							printf("enable_wifi_ap_mode\n");
-							if(wifi_webserver_active_flag){
-								wifi_webserver_active_flag = false;
-							}else{
-								wifi_webserver_active_flag = true;  
-							}
-							setNVSCommissioningFlag(0);
-							setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
-							esp_restart();					
-						#endif
-					}else{
-						nuos_set_rgb_led_normal_functionality();
-						//nuos_kill_rgb_led_blink_task();
+
 					}
 				#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)					
-				if(first_button_pressed){
-					printf("set_commissioning\n");
-					//esp_zb_nvram_erase_at_start(true);
-					setNVSCommissioningFlag(1);
-					if (esp_zb_bdb_dev_joined()) {
-						esp_zb_bdb_reset_via_local_action();
+					if(first_button_pressed){
+						printf("set_commissioning\n");
+						//esp_zb_nvram_erase_at_start(true);
+						setNVSCommissioningFlag(1);
+						if (esp_zb_bdb_dev_joined()) {
+							esp_zb_bdb_reset_via_local_action();
+						}
+						esp_zb_factory_reset();					
 					}
-					esp_zb_factory_reset();					
-				}
 				#else
 					if(first_button_pressed && second_button_pressed){
 						printf("set_commissioning\n");
@@ -541,17 +481,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 						}  
 					#if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_1CH_CURTAIN)							
 					}else if(third_button_pressed && fourth_button_pressed){
-						#ifdef USE_WIFI_WEBSERVER	
-							printf("enable_wifi_ap_mode\n");
-							if(wifi_webserver_active_flag){
-								wifi_webserver_active_flag = false;
-							}else{
-								wifi_webserver_active_flag = true;  
-							}
-							setNVSCommissioningFlag(0);
-							setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
-							esp_restart();					
-						#endif
+						
 					#endif
 					}else{
 					
@@ -565,15 +495,6 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 			nuos_set_rgb_led_normal_functionality();
 		}
 	#endif
-}
-
-
-void send_zb_status_task(void* args) {
-	// for(int i=0; i<TOTAL_ENDPOINTS; i++){
-	// 	nuos_set_zigbee_attribute(i);
-	// 	vTaskDelay(10);
-	// }
-    // vTaskDelete(NULL); // Delete the task after executing
 }
 
 void timer_callback_3(void* arg) {  
@@ -591,15 +512,14 @@ void timer_callback_3(void* arg) {
 }
 
 void init_timer_3() {
-	// if(touchLedsOffAfter1MinuteEnable){
-		// Create a timer
-		const esp_timer_create_args_t timer_args = {
-			.callback = &timer_callback_3,
-			.name = "timer_3"
-		};
-		ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle_3));
-		start_timer3_flag = false;
-	// }
+	// Create a timer
+	const esp_timer_create_args_t timer_args = {
+		.callback = &timer_callback_3,
+		.name = "timer_3"
+	};
+	ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle_3));
+	start_timer3_flag = false;
+	
 }
 
 void esp_start_timer_3(){

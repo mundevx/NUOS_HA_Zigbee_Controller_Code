@@ -1036,6 +1036,8 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
     }else if(message->info.command.id == 0x00){
         
+
+
         scene_counts = 0; 
         if(ep_cnts > TOTAL_ENDPOINTS) ep_cnts = 0;
  
@@ -1163,10 +1165,30 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 }   
                 #endif             
             }   
-        }   
+        }  else if(message->data.size == 2) {
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+                uint8_t custom_data[2] = {0};
+                memcpy(custom_data, message->data.value, sizeof(custom_data));
+                printf("val:%d\n", (uint8_t)custom_data[1]);
+                send_ac_model((uint8_t)custom_data[1]);
+            #endif
+        }
     } else {
         printf("default\n");
     }
+    #else
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION)
+        uint8_t custom_data[2] = {0};
+        if(message->info.command.id == 0x00){
+            printf("size:%d\n", message->data.size); 
+            if(message->data.size == 2) {
+                memcpy(custom_data, message->data.value, sizeof(custom_data));
+                printf("cmd:%d val:%d\n", custom_data[0], custom_data[1]); 
+                if(custom_data[0] == 0) store_motion_disable_timeout_value((int32_t)(custom_data[1] * 60));
+                else if(custom_data[0] == 1) store_motion_auto_enable_value((int32_t)custom_data[1]);
+            }
+        }
+    #endif
     #endif 
     return ESP_OK;
 }
@@ -1288,7 +1310,6 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                     device_info[0].curtain_state = 1;
                     device_info[0].device_state = 0;    
                     nuos_zb_set_hardware(1, false);
-
                 }
                 break;        
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_STOP:
@@ -1308,16 +1329,7 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
 
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_GO_TO_LIFT_PERCENTAGE:  
                 ESP_LOGI("WINDOW", "Go To Lift Percentage: %d%%\n", message->payload.percentage_lift_value);
-                //int result = fix_percentage(message->payload.percentage_lift_value);
-                //printf("Input: %d%%, Nearest: %d%%\n", message->payload.percentage_lift_value, result);
-                set_curtain_percentage(message->payload.percentage_lift_value, true);
-                // nuos_report_curtain_blind_state(0, result);    
-               
-                // uint8_t state = curtain_cmd_goto_pct(result);
-                // if(state == 0) device_info[0].device_state = 1;
-                // else if(state == 1) device_info[1].device_state = 1;
-                // device_info[0].device_level = result;
-                // nuos_zb_set_hardware_curtain(0, state);                              
+                set_curtain_percentage(message->payload.percentage_lift_value, true);                              
                 break;
             default:
                 break;
@@ -1794,8 +1806,19 @@ bool zb_apsde_data_indication_handler(esp_zb_apsde_data_ind_t ind)
             response_pending = true;
     return processed;
 }*/
+// #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER )
+// static int zb_zcl_custom_cluster_check_value_handler(uint16_t attr_id, uint8_t endpoint, uint8_t *value)
+// {
+//     esp_err_t ret = ESP_OK;
+//     ESP_LOGI(TAG, "Hook for checking custom cluster attribute validity");
+//     return ret;
+// }
 
-
+// static void zb_zcl_custom_cluster_write_attr_handler(uint8_t endpoint, uint16_t attr_id, uint8_t *new_value, uint16_t manuf_code)
+// {
+//     ESP_LOGI(TAG, "Hook for indicating which attribute will be written");
+// }
+// #endif
 
 static void esp_zb_task(void *pvParameters)
 {
@@ -1829,6 +1852,16 @@ static void esp_zb_task(void *pvParameters)
     nuos_init_privilege_commands(); 
     // esp_zb_aps_data_indication_handler_register(zb_apsde_data_indication_handler); 
     esp_zb_core_action_handler_register(zb_action_handler);
+
+//    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER )
+//     esp_zb_zcl_custom_cluster_handlers_t custom_handler = {
+//         .cluster_id = 0xFC31,
+//         .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+//         .check_value_cb = zb_zcl_custom_cluster_check_value_handler,
+//         .write_attr_cb = zb_zcl_custom_cluster_write_attr_handler,
+//     };
+//     esp_zb_zcl_custom_cluster_handlers_update(custom_handler);
+//     #endif
     esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK);
 
     #ifdef IS_END_DEVICE
@@ -1896,7 +1929,7 @@ void app_main(void) {
         ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "Failed" : "Successful");
     }
     #ifdef USE_WIFI_WEBSERVER
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     while(1){
         vTaskDelay(pdMS_TO_TICKS(100));
         start_dali_led_blink_task();

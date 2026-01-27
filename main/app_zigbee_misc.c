@@ -1085,8 +1085,13 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
                 device_info[0].fan_speed = 0xff;
                 nuos_zb_set_hardware(button_index, true); 
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)    
+                // if(button_index < 2) 
+                //     nuos_zb_set_hardware(0, true);  
+                // else if(button_index >=2 && button_index <4)
+                    nuos_zb_set_hardware(button_index, true);                
             #else
-                nuos_zb_set_hardware(button_index, true);  
+                nuos_zb_set_hardware(button_index, true);
             #endif    
         #endif 
         #ifndef DONT_USE_ZIGBEE 
@@ -1103,16 +1108,20 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             // if(one_time_scan_flag){ if(cccounts++ >= 20) { cccounts = 0; one_time_scan_flag = false; nuos_do_task(button_index, button_index+1, 1);}}
                 nuos_set_zigbee_attribute(button_index);     
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)                   
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)     
+                if(button_index < 2) 
+                    nuos_set_zigbee_attribute(0);
+                else if(button_index >=2 && button_index <4)
+                    nuos_set_zigbee_attribute(1);                               
             #else
                 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
                 #ifdef TUYA_ATTRIBUTES
-
+                nuos_set_zigbee_attribute(button_index);
                 #else
                 nuos_set_zigbee_attribute(button_index);
                 #endif
                 #else
                 nuos_set_zigbee_attribute(button_index);
-                
                 #endif
             #endif
         }
@@ -1179,7 +1188,9 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
             nuos_set_zigbee_attribute(0);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-        
+            #ifdef DALI_DIRECT_ADDRESSING
+                nuos_set_level_attribute(button_index);
+            #endif
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
 
         #else

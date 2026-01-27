@@ -37,7 +37,7 @@
 
     //Other functions
     #ifndef USE_IR_UART_WS4_HW   
-    extern "C" stdAc::opmode_t convert_zb_mode_to_esp_ac(uint8_t mode){
+    extern "C" stdAc::opmode_t convert_zb_mode_to_esp_ac(uint8_t mode) {
         switch(mode){
             case ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_OFF:
             return stdAc::opmode_t::kOff;
@@ -55,7 +55,7 @@
         return stdAc::opmode_t::kOff;
     }
 
-    extern "C" stdAc::fanspeed_t convert_zb_fan_speed_to_esp_ac(uint8_t speed){
+    extern "C" stdAc::fanspeed_t convert_zb_fan_speed_to_esp_ac(uint8_t speed) {
         switch(speed){
             case ESP_ZB_ZCL_FAN_CONTROL_FAN_MODE_OFF:
             return stdAc::fanspeed_t::kMin;
@@ -73,7 +73,7 @@
         return stdAc::fanspeed_t::kMin;
     }
 
-    extern "C" decode_type_t get_decode_type(int8_t decode_type){
+    extern "C" decode_type_t get_decode_type(int8_t decode_type) {
         if (decode_type >= -1 && decode_type <= 126) {
             return static_cast<decode_type_t>(decode_type);
         }
@@ -81,7 +81,7 @@
     }
 
      
-    static void ir_tx_task(void* args){
+    static void ir_tx_task(void* args) {
         while(1){
             vTaskDelay(pdMS_TO_TICKS(10));
             if(init_ok_ir){
@@ -125,20 +125,10 @@
         #endif
     }
 
-    void send_ac(bool state){
+    void send_ac(bool state) {
         // 1. Create JSON
         #ifdef USE_IR_UART_WS4_HW
-            // cJSON *root = cJSON_CreateObject();   // Create object
-            // cJSON_AddNumberToObject(root, "power", state);  // Add key: power=1
-            // cJSON_AddNumberToObject(root, "temp", device_info[0].ac_temperature);  // Add key: temp=37
-            // // Convert to JSON string
-            // char *json_str = cJSON_PrintUnformatted(root);
-            // printf("Generated JSON: %s\n", json_str);
-            // send_serial(json_str);
-            // // Free the original JSON object
-            // cJSON_Delete(root); 
-            // free(json_str); 
-
+           
             // Create object
             JSON_Value *root_value = json_value_init_object();
             JSON_Object *root_object = json_value_get_object(root_value);
@@ -161,15 +151,16 @@
         #endif
     }
 
-    void send_fan(uint8_t fan_speed){
+    void send_fan(uint8_t fan_speed) {
         // 1. Create JSON
         #ifdef USE_IR_UART_WS4_HW
             // Create object
             JSON_Value *root_value = json_value_init_object();
             JSON_Object *root_object = json_value_get_object(root_value);
 
+
             // Add key: power=state
-            json_object_set_number(root_object, "power", true);
+            json_object_set_number(root_object, "power", device_info[0].device_state);
 
             // Add key: temp=device_info[0].ac_temperature
             json_object_set_number(root_object, "fan", fan_speed);
@@ -187,7 +178,33 @@
             send_ac_flag = true;
         #endif
     }
-    extern "C" void nuos_zb_init_hardware(){
+
+
+    void send_ac_model(uint8_t model_num) {
+        // 1. Create JSON
+        #ifdef USE_IR_UART_WS4_HW
+            // Create object
+            JSON_Value *root_value = json_value_init_object();
+            JSON_Object *root_object = json_value_get_object(root_value);
+
+            // Add key: temp=device_info[0].ac_temperature
+            json_object_set_number(root_object, "ac_model", model_num);
+
+            // Convert to JSON string (unformatted)
+            char *json_str = json_serialize_to_string(root_value);
+            printf("Generated JSON: %s\n", json_str);
+
+            send_serial(json_str);
+
+            // Free the JSON value (which includes the object) and the serialized string
+            json_value_free(root_value);
+            json_free_serialized_string(json_str);            
+        #else
+            send_ac_flag = true;
+        #endif
+    }
+
+    extern "C" void nuos_zb_init_hardware() {
         gpio_reset_pin(gpio_ir_led_pins[0]);
         /* Set the GPIO as a push/pull output */
         gpio_set_direction(gpio_ir_led_pins[0], GPIO_MODE_OUTPUT);
@@ -195,7 +212,7 @@
     }
 
     static bool state = false;
-    void nuos_zb_set_hardware_led_for_zb_commissioning(uint8_t is_toggle){
+    void nuos_zb_set_hardware_led_for_zb_commissioning(uint8_t is_toggle) {
         #ifdef USE_RGB_LED
             nuos_toggle_rgb_led();
         #else        
@@ -212,7 +229,7 @@
         #endif    
     }
 
-    extern "C" void set_decode_type(int decode_type){
+    extern "C" void set_decode_type(int decode_type) {
         device_info[0].ac_decode_type = decode_type;
         #ifndef USE_IR_UART_WS4_HW  
         ac.next.protocol = (decode_type_t)decode_type;
@@ -221,7 +238,7 @@
         nuos_store_data_to_nvs(0);
     }
 
-    extern "C" void nuos_set_hardware_fan_ctrl(uint8_t index){
+    extern "C" void nuos_set_hardware_fan_ctrl(uint8_t index) {
         #ifndef USE_IR_UART_WS4_HW  
         ac.next.fanspeed = convert_zb_fan_speed_to_esp_ac(device_info[0].fan_speed);
         #endif
@@ -229,11 +246,12 @@
         nuos_store_data_to_nvs(0);
     }
 
-    extern "C" void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
-        if(index == 0){
+    extern "C" void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle) {
+        if(index == 0 || index == 1) {
             if(is_toggle>0) {
                 device_info[0].device_state = !device_info[0].device_state;
             }
+
             // printf("device_state:%d\n", device_info[0].device_state);
             device_info[0].ac_mode = device_info[0].device_state ? ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_COOL : ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_OFF;
             printf("ac_mode:%d\n", device_info[0].ac_mode);
@@ -246,6 +264,11 @@
             #endif
             send_ac(device_info[0].device_state);
         }else{
+            if(!device_info[0].device_state){
+                device_info[1].device_state = false;
+            }else{
+                device_info[1].device_state = true;
+            }
             #ifdef USE_FAN_SPEED
             #ifndef USE_IR_UART_WS4_HW  
                 ac.next.protocol = get_decode_type(device_info[0].ac_decode_type);
@@ -253,8 +276,7 @@
                 ac.next.power = device_info[0].device_state;
                 ac.next.degrees = device_info[0].ac_temperature;
             #endif
-            send_fan(device_info[0].fan_speed);
-            nuos_store_data_to_nvs(0);      
+            send_fan(device_info[0].fan_speed);     
             #endif      
         }
         nuos_store_data_to_nvs(index);
@@ -275,7 +297,7 @@
 
     }
 
-    void nuos_toggle_leds(uint8_t index){
+    void nuos_toggle_leds(uint8_t index) {
         state = !state;
         #ifndef USE_IR_UART_WS4_HW 
         ac.next.power = state;

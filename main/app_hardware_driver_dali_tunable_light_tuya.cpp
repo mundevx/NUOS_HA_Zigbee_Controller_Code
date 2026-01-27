@@ -224,14 +224,12 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
 
 
     void set_dali_fading(){
-
         dali.set_broadcast_fade_rate(12);
         vTaskDelay(20/ portTICK_PERIOD_MS); 
         dali.set_broadcast_fade_time(2);
         vTaskDelay(20 / portTICK_PERIOD_MS);              
         //dali.set_ext_fade_time(dali.BROADCAST_C, 1);
         //vTaskDelay(20 / portTICK_PERIOD_MS);
-  
     }
 
     extern "C" void init_dali_hw(){
@@ -347,46 +345,45 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     //     vTaskDelete(NULL); // Delete the task after executing
     // }
     void set_hardware(uint8_t index, uint8_t is_toggle){
-        printf("control_type:%d\n", scene_group_switch_info.control_type);
-
-            if(index == 0){
-                if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
-                if(!device_info[index].device_state) {
-                    printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
-                    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                        ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
-                        ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-                    #else
-                        gpio_set_level(gpio_touch_led_pins[index], 0);
-                    #endif
-                    //xTaskCreate(esp_dali_off_task, "dali_off_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
-                } else {
-                    printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
-                    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                        ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
-                        ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-                    #else
-                        gpio_set_level(gpio_touch_led_pins[index], 1);
-                    #endif
-                    //xTaskCreate(esp_dali_on_task, "dali_on_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
-                }
-                set_color_temp_only_leds_2();
-                nuos_store_data_to_nvs(0);
-            }else if(index == 1){
-                #ifdef USE_CCT_TIME_SYNC
-                if(device_info[0].device_state){
-                    device_info[0].color_or_fan_state = !device_info[0].color_or_fan_state;
-                    gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
-                }
-                #endif
-            } else {
-                #ifdef USE_CCT_TIME_SYNC
-                    set_color_temp_leds(index);
+        // printf("control_type:%d\n", scene_group_switch_info.control_type);
+        if(index == 0){
+            if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
+            if(!device_info[index].device_state) {
+                printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
+                #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                    ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[index]);
                 #else
-                    if(device_info[0].color_or_fan_state)
-                        set_color_temp_leds(index);
-                #endif    
+                    gpio_set_level(gpio_touch_led_pins[index], 0);
+                #endif
+                //xTaskCreate(esp_dali_off_task, "dali_off_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
+            } else {
+                printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
+                #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                    ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+                #else
+                    gpio_set_level(gpio_touch_led_pins[index], 1);
+                #endif
+                //xTaskCreate(esp_dali_on_task, "dali_on_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
             }
+            set_color_temp_only_leds_2();
+            nuos_store_data_to_nvs(0);
+        }else if(index == 1){
+            #ifdef USE_CCT_TIME_SYNC
+            if(device_info[0].device_state){
+                device_info[0].color_or_fan_state = !device_info[0].color_or_fan_state;
+                gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
+            }
+            #endif
+        } else {
+            #ifdef USE_CCT_TIME_SYNC
+                set_color_temp_leds(index);
+            #else
+                if(device_info[0].color_or_fan_state)
+                    set_color_temp_leds(index);
+            #endif    
+        }
     }
 
     void set_leds(int i, bool state){
@@ -685,7 +682,42 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
 		}
     }  
 
+    uint8_t map_1_255_to_100_255(uint8_t in)
+    {
+        return (uint8_t)((in * dali_range_size) / 254 + dali_min_off_offset);
+    }
 
+    void set_fade_time_all_devices(uint8_t time, uint8_t rate){
+        for(uint8_t index=0; index<TOTAL_ENDPOINTS; index++){
+            for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                printf("Set fade time %d rate %d for %d\n", time, rate, scene_group_switch_info.device_ids[index][i]);
+                dali.set_fade_time(scene_group_switch_info.device_ids[index][i], time);
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+                dali.set_fade_rate(scene_group_switch_info.device_ids[index][i], rate);
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+        }
+    }
+
+    void nuos_set_dali_fade_time(uint8_t time){
+        for(uint8_t index=0; index<TOTAL_ENDPOINTS; index++){
+            for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                printf("Set fade time %d for %d\n", time, scene_group_switch_info.device_ids[index][i]);
+                dali.set_fade_time(scene_group_switch_info.device_ids[index][i], time);
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+        }
+    }
+    
+    void nuos_set_dali_fade_rate(uint8_t rate){
+        for(uint8_t index=0; index<TOTAL_ENDPOINTS; index++){
+            for(int i=0; i<scene_group_switch_info.total_ids[index]; i++){
+                printf("Set fade rate %d for %d\n", rate, scene_group_switch_info.device_ids[index][i]);
+                dali.set_fade_rate(scene_group_switch_info.device_ids[index][i], rate);
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+        }
+    }
     extern "C" void nuos_dali_set_state(uint8_t dali_id, uint8_t state) { 
         //#ifdef IS_USE_DALI_HARDWARE
         if(state == 0) dali.turn_off(dali_id);
@@ -737,12 +769,16 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     
         if(start_dali_led_commissioning_task_flag){
             for(int i=0; i<TOTAL_LEDS; i++){
-                if(!_toggle_){
-                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0);            
-                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                if(i == 0){
+                    if(!_toggle_){
+                        ledc_set_duty(LEDC_MODE, pwm_channels[i], 0);            
+                        ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                    }else{
+                        ledc_set_duty(LEDC_MODE, pwm_channels[i], 0xff);            
+                        ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                    }
                 }else{
-                    ledc_set_duty(LEDC_MODE, pwm_channels[i], 0xff);            
-                    ledc_update_duty(LEDC_MODE, pwm_channels[i]);
+                    gpio_set_level(gpio_touch_led_pins[i], _toggle_);
                 }
             }
             _toggle_ = !_toggle_;
@@ -815,10 +851,11 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     
 
 
-// Add at top with other defines
+    // Add at top with other defines
     #define DALI_TASK_PRIORITY 6  // Higher than webserver tasks
     #define DALI_ADDRESSING_TIMEOUT_MS 30000  // 30 second timeout
     static TaskHandle_t dali_comm_task_handle = NULL;
+
     static void esp_dali_commissioning_led_blink_task(void *pvParameters){
         // printf("On Task esp_commissioning_detect_task\n");
         bool _toggle = false;
@@ -839,6 +876,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         vTaskDelete(NULL);
     }
 
+    
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;
         
@@ -855,6 +893,9 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
         #endif
         
+        wifi_webserver_active_flag = 0;
+        esp_stop_timer();
+        switch_driver_gpios_intr_enabled(false); 
         // Perform DALI addressing with increased priority
         vTaskPrioritySet(NULL, DALI_TASK_PRIORITY);
         uint8_t total_addr = (numAddresses-startAddresses)+1;
@@ -862,18 +903,41 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
 
         printf("Found nodes: %d\n", totalfoundnodes);
-
+        for (int i = 0; i < totalfoundnodes; i++) {
+            printf("Node number %d, node address %d\n", i, global_dali_id[startAddresses+i]);
+        }
         
         // Signal completion
         if (recordsSemaphore != NULL) {
             xSemaphoreGive(recordsSemaphore);
         }
-
+        switch_driver_gpios_intr_enabled(true); 
         ESP_LOGI("DALI", "=== DALI addressing complete ===");
-        
+        wifi_webserver_active_flag = true;  
+                            
+        setNVSCommissioningFlag(0);
+        setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
+        esp_restart();	
         vTaskDelete(NULL);
     }
 
+     extern "C" void nuos_dali_set_state_group(uint8_t group_id, bool _state) { 
+        //#ifdef IS_USE_DALI_HARDWARE
+        if(!_state) dali.set_group_off(group_id);
+        else dali.set_group_on(group_id);
+        //#endif
+    }
+   
+    extern "C" void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp) {
+        dali.set_color_scene(device_id, scene_id, scene_level, cct_temp);
+    }
+    extern "C" void nuos_dali_remove_device_from_scene(uint8_t device_id, uint8_t scene_id) {
+        dali.remove_from_scene(device_id, scene_id);
+    }
+
+    extern "C" void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id) {
+        dali.add_to_scene(device_id, scene_id);
+    }
     extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
         recordsSemaphore = xSemaphoreCreateBinary();
         if (recordsSemaphore == NULL) {

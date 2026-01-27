@@ -92,7 +92,7 @@
     extern size_t store_new_nodes(void* new_node, uint8_t index);
     extern size_t load_nodes_info_from_nvs(uint8_t index) ;
     extern void save_nodes_info_to_nvs(uint8_t index);
-    extern esp_err_t update_attr_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, void* new_attr_data);
+    // extern esp_err_t update_attr_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, void* new_attr_data);
     extern void prepare_array_string(int itemCount, char* Items);
     extern void prepare_selected_array_string(int itemCount, char* Items);
     extern void nuos_enable_ap_mode();
@@ -105,7 +105,7 @@
     // uint32_t read_curtain_cal_time();
     // esp_err_t update_binding_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, void* new_binding_data);
     esp_err_t update_binding_data_in_nvs(uint16_t target_short_addr, uint8_t scene_index, uint8_t ep_index, uint8_t binding_val);
-    void save_specific_ep_data(int scene_index, int node_index, int ep_index);
+    // void save_specific_ep_data(int scene_index, int node_index, int ep_index);
     void init_nvs_for_zb_devices();
 
     extern uint8_t getNVSStartCommissioningFlag();
@@ -121,6 +121,21 @@
 
     void setNVSDaliNodesStartAddrCounts(uint8_t value);
     uint8_t getNVSDaliNodesStartAddrCounts();
+
+    void read_motion_disable_timeout_value();
+    void store_motion_disable_timeout_value(int32_t val);
+
+    
+    void read_motion_auto_enable_value();
+    void store_motion_auto_enable_value(int32_t val);
+
+    extern uint8_t getNVSDaliMinDimOffset();
+    extern void setNVSDaliMinDimOffset(uint8_t value);
+
+    extern uint8_t getNVSDaliFadeTime();
+    extern void setNVSDaliFadeTime(uint8_t value);
+    extern uint8_t getNVSDaliFadeRate();
+    extern void setNVSDaliFadeRate(uint8_t value);
 
 #endif
     
