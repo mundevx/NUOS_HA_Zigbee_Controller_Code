@@ -402,16 +402,48 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     <pre id="result"></pre>
   </div>
   <div class="overlay" id="overlay" style="display: none;"></div>
+  
   <div class="popup" id="popup" style="display: none;">
+  <h3>Select IDs</h3>
+
+  <!-- Add to Group dropdown -->
+  <label style="margin-top:10px; display:block; color:#2193b0; font-weight:bold;">
+    Select Group ID
+  </label>
+  <select id="groupDropdown" style="width:100%; margin-bottom:12px;">
+    <option value="">-- Select Group --</option>
+  </select>
+  
+  <div class="two-buttons" style="margin-bottom:14px;">
+  <button class="stylish-button" style="margin:0;" onclick="addToGroup()">
+    Add To Group
+  </button>
+  <button class="stylish-button"
+          style="margin:0; background:#ef4444;"
+          onclick="removeFromGroup()">
+    Remove From Group
+  </button>
+</div>
+
+  <h3>Select DALI IDs (0-63)</h3>
+  <div id="toggleGrid"></div>
+  <div style="margin-top: 15px;" class="two-buttons">
+    <button onclick="submitSelection()">Submit</button>
+    <button onclick="closePopup()">Cancel</button>
+  </div>
+</div>
+
+
+  <!--<div class="popup" id="popup" style="display: none;">
     <h3>Select IDs</h3>
     <div id="toggleGrid">
-      <!-- Dynamically filled -->
+     
     </div>
     <div style="margin-top: 15px;">
       <button style="padding: 10px 20px;" onclick="submitSelection()">Submit</button>
       <button style="padding: 10px 20px;" onclick="closePopup()">Cancel</button>
     </div>
-  </div>
+  </div> -->
   <div id="toast"></div>
   <p></p>
 </div>
@@ -722,21 +754,30 @@ function toggleBtn(id) {
   const btn = document.getElementById(`btn${id}`);
   btn.classList.toggle('selected');
 }
+
 function submitSelection() {
   if (currentInput === null) return;
 
-  const selected = popupSelections[currentInput]
+  const selected = (popupSelections[currentInput] || [])
     .slice()
     .sort((a, b) => a - b);
 
-  // 👉 SHOW selected IDs in the input field
+  const groupId = document.getElementById('groupDropdown').value;
+
+  if (!groupId) {
+    showToast("Please select a Group ID", "error");
+    return;
+  }
+
+  // Show selected IDs in input
   const inputId = ['scene1', 'scene2'][currentInput];
   document.getElementById(inputId).value = selected.join(',');
 
-  // Send to backend (unchanged)
+  // 🔥 Group membership JSON
   const payload = {
-    fxn: '41',
+    fxn: 41,                // <-- Group Membership function
     input_id: currentInput,
+    group_id: parseInt(groupId, 10),
     selected_ids: selected
   };
 
@@ -745,12 +786,17 @@ function submitSelection() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
-  .then(() => closePopup())
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    showToast(`Added ${selected.length} device(s) to Group ${groupId}`, "success");
+    closePopup();
+  })
   .catch(() => {
-    showToast("Error sending data!", "error");
+    showToast("Error sending group data!", "error");
     closePopup();
   });
 }
+
 
 function closePopup() {
   document.getElementById('popup').style.display = 'none';
@@ -840,10 +886,18 @@ if (data && data.fade_rate !== undefined) {
     }
 }
 
+
+if (data && data.group_id !== undefined) {
+    const group_id = document.getElementById('groupDropdown');
+    if (group_id) {
+        group_id.value = data.group_id;
+    }
+}
+
     }).catch(console.error);
 
     // Tab3 Group membership saved (fxn=21) -> returns { group_id: N, selected_ids: [1,2,3] }
-    fetch('/items?fxn=21').then(r => r.json()).then(data => {
+    /*fetch('/items?fxn=21').then(r => r.json()).then(data => {
         if (data && data.selected_ids && Array.isArray(data.selected_ids)) {
             // mark selected ids in group grid
             data.selected_ids.forEach(id => {
@@ -852,8 +906,32 @@ if (data && data.fade_rate !== undefined) {
             });
             if (data.group_id !== undefined) document.getElementById('groupSelect').value = data.group_id;
         }
-    }).catch(console.error);
+    }).catch(console.error);*/
+fetch('/items?fxn=21')
+  .then(r => {
+    if (!r.ok) return null;
+    return r.json();
+  })
+  .then(data => {
+    if (!data) return;
 
+    // Restore selected group in dropdown
+    if (data.group_id !== undefined) {
+      const dropdown = document.getElementById('groupDropdown');
+      if (dropdown) {
+        dropdown.value = String(data.group_id);
+      }
+    }
+
+    // Restore selected DALI IDs
+    if (Array.isArray(data.selected_ids)) {
+      data.selected_ids.forEach(id => {
+        const b = document.getElementById('btn' + id);
+        if (b) b.classList.add('selected');
+      });
+    }
+  })
+  .catch(() => console.warn('fxn=21 skipped'));
     // Tab4 Scene membership saved (fxn=22) -> returns { group_id: N, scene_selections: [[..], ..] } or { selected_scenes: [..] }
     fetch('/items?fxn=22').then(r => r.json()).then(data => {
         if (data && Array.isArray(data)) {
@@ -1121,6 +1199,94 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });  
 });
+
+function populateGroupDropdown() {
+  const sel = document.getElementById('groupDropdown');
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">-- Select Group --</option>';
+  for (let i = 1; i <= 15; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = i;
+    sel.appendChild(opt);
+  }
+}
+
+//document.addEventListener('DOMContentLoaded', populateGroupDropdown);
+document.addEventListener('DOMContentLoaded', function() {
+  populateGroupDropdown();
+});
+
+function getGroupPayload(fxnCode) {
+  if (currentInput === null) {
+    showToast("No scene input selected", "error");
+    return null;
+  }
+
+  const groupId = document.getElementById('groupDropdown').value;
+  if (!groupId) {
+    showToast("Please select a Group ID", "error");
+    return null;
+  }
+
+  const selected = (popupSelections[currentInput] || [])
+    .slice()
+    .sort((a, b) => a - b);
+
+  if (!selected.length) {
+    showToast("Please select at least one DALI ID", "error");
+    return null;
+  }
+
+  return {
+    fxn: fxnCode,                 // 38 or 39
+    input_id: currentInput,
+    group_id: parseInt(groupId, 10),
+    selected_ids: selected
+  };
+}
+
+function addToGroup() {
+  const payload = getGroupPayload(38);
+  if (!payload) return;
+
+  fetch('/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error();
+    showToast(
+      `Added ${payload.selected_ids.length} device(s) to Group ${payload.group_id}`,
+      "success"
+    );
+  })
+  .catch(() => {
+    showToast("Failed to add devices to group", "error");
+  });
+}
+function removeFromGroup() {
+  const payload = getGroupPayload(39);
+  if (!payload) return;
+
+  fetch('/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error();
+    showToast(
+      `Removed ${payload.selected_ids.length} device(s) from Group ${payload.group_id}`,
+      "success"
+    );
+  })
+  .catch(() => {
+    showToast("Failed to remove devices from group", "error");
+  });
+}
 
 </script>
 </body></html>

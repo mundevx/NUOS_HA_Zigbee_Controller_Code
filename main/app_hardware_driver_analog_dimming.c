@@ -166,9 +166,7 @@
     void set_harware(uint8_t index, uint8_t is_toggle){
         if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
         if(is_init_done){
-           // printf("State:%d Level:%d\n", device_info[index].device_state, device_info[index].device_level);
             #ifdef USE_FADING
-                //xTaskCreate(nuos_set_hw_task, "nuos_set_hw_task", 4096, &index, 28, NULL); 
                 if(is_init_done){
                     if(!device_info[index].device_state) {
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+index], level));
@@ -206,40 +204,64 @@
         #endif               
     }
 
-    void set_leds(int i, bool state){
-        if(is_init_done){
+    void set_leds(int i, bool _state_){
+        if(is_init_done) {
             if(i == 0){
                 if(gpio_touch_led_pins[0] == gpio_load_pins[0]){
-                    if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[i].device_level));
+                    if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[i].device_level));
                     else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], 0));
                     ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
                 }else{
-                    if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
+                    if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
                     else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], 0));
                     ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i]));
                 }
             }else{
-                if(state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
+                if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
                 else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], 0));
                 ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i]));
+            }            
+        }
+    }
+
+    void set_all_leds_to_original_state() {
+        if(is_init_done) {
+            for(int i=0; i<TOTAL_LEDS; i++){
+                if(i == 0){
+                    if(gpio_touch_led_pins[0] == gpio_load_pins[0]){
+                        if(device_info[i].device_state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[i].device_level));
+                        else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], 0));
+                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
+                    }else{
+                        if(device_info[i].device_state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
+                        else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], 0));
+                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i]));
+                    }
+                }else{
+                    if(device_info[i].device_state) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], device_info[i].device_level));
+                    else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i], 0));
+                    ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[LED_INDEX_START+i]));
+                }
             }
         }
     }
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
         //set touch led pins
-        if(timer3_running_flag){
-            //toggle pins on button press
-            set_harware(index, is_toggle);
-        }else{
-            if(nuos_check_state_touch_leds()){
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    set_leds(i, device_info[i].device_state);                       
-                }
-            }else{
-                //toggle pins on button press
-                set_harware(index, is_toggle);               
-            }
-        }
+        call_common_check_auto_off();
+        set_harware(index, is_toggle);
+        // if(timer3_running_flag){
+        //     //toggle pins on button press
+        //     set_harware(index, is_toggle);
+        // }else{
+        //     if(nuos_check_state_touch_leds()){
+        //         for(int i=0; i<TOTAL_LEDS; i++){
+        //             set_leds(i, device_info[i].device_state);                       
+        //         }
+        //     }else{
+        //         //toggle pins on button press
+        //         set_harware(index, is_toggle);               
+        //     }
+        // }
 
         #ifdef USE_NVS_STORE          
         nuos_store_data_to_nvs(index);
@@ -291,6 +313,7 @@
     bool nuos_set_hardware_brightness(uint32_t pin){
         uint8_t index = nuos_get_button_press_index(pin);
         //if(global_switch_state == SWITCH_PRESS_DETECTED){ 
+        call_common_check_auto_off();
             if(!device_info[index].device_state){
                 device_info[index].device_state = true;
                 device_info[index].device_level = MIN_DIM_LEVEL_VALUE;

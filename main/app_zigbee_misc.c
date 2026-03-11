@@ -999,9 +999,9 @@ void nuos_init_rgb_led(){
 void nuos_switch_single_click_task(uint32_t io_num) {
 
     button_index = nuos_get_button_press_index(io_num);
-    printf("SINGLE CLICK Detected!!: index:%d\n", button_index);
+    printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
     brightness_control_flag = false;
-    recheckTimer();
+    //recheckTimer();
     #ifndef DONT_USE_ZIGBEE
     if(!is_my_device_commissionned){
         start_commissioning = true;
@@ -1027,9 +1027,14 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
         nuos_set_scene_button_attribute(button_index);
     #else
+        
         // Added by Nuos
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            #ifdef USE_TWO_SWITCH_MODE
+            if(button_index == 0){
+            #else
             if(button_index == 0 || button_index == 1){
+            #endif    
                 nuos_zb_set_hardware(button_index, true);
                 #ifdef USE_CCT_TIME_SYNC
                 if(button_index == 0) set_state(button_index);
@@ -1037,8 +1042,15 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 set_state(button_index);
                 #endif
             }else{
+                #ifndef USE_TWO_SWITCH_MODE
+                
                 nuos_zb_set_hardware(button_index, false);
-                set_color_temp();
+                if(device_info[0].color_or_fan_state){
+                    set_color_temp();
+                }else{
+                    set_level(0); 
+                }
+                #endif
             }
         #else
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
@@ -1069,9 +1081,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     set_color_temp();
                     set_level(3);                
                 #else
-                // set_color_flag = true;
-                
-                // set_level_flag = true;
                 set_color_temp();
                 if(button_index < 3){
                     set_state(4);
@@ -1158,7 +1167,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
 void nuos_switch_long_press_brightness_task(uint32_t io_num){
     //printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
-    recheckTimer();
+    //recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 
     #ifndef DONT_USE_ZIGBEE 
        if((is_my_device_commissionned == true) && (wifi_webserver_active_flag == false)){
@@ -1166,11 +1175,14 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
             switch(button_index){
                 case 0:
                     #ifdef USE_TUYA_BRDIGE
-                        nuos_set_color_temp_level_attribute(0); //
+                        nuos_set_color_temp_level_attribute(0);
                     #else                    
                         nuos_set_level_attribute(0);
                     #endif
                 break;
+                #ifdef USE_TWO_SWITCH_MODE
+                case 1:
+                #endif
                 case 2:
                 case 3:
                     nuos_set_color_temperature_attribute(0); //

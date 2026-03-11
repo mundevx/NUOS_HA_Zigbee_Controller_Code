@@ -128,7 +128,7 @@ void nuos_stop_commissioning(unsigned char timeout){
 		#endif	
 	}
 
-    esp_start_timer_3();
+    // esp_start_timer_3();
 	
 }
 
@@ -145,10 +145,11 @@ void start_wifi_webserver_timer_task(){
 			//restart devices
 			esp_restart();
 		}else{
-			if(timer_counts_enable_webserver%2 == 0){
+			if(timer_counts_enable_webserver%TIMER_COMMISSIONING_LED_BLINK_COUNTS == 0){
 				#ifdef USE_RGB_LED
 					toggle_status_led = !toggle_status_led;
 					light_driver_set_power(toggle_status_led);
+					//printf("BLINK_STATE:%d\n", toggle_status_led);
 				#else
 					nuos_zb_set_hardware_led_for_zb_commissioning(true);
 				#endif
@@ -354,11 +355,12 @@ void commissioning_timeout_handler(TimerHandle_t xTimer)
 	printf("Commissioning Timeout Handler called!\n");
 	start_commissioning = false;
 	ready_commisioning_flag = false;
-	setNVSStartCommissioningFlag(0);
-	setNVSPanicAttack(0);
+
 	if (xTimerIsTimerActive(commissioning_timeout_timer) != pdFALSE) {
 		xTimerStop(commissioning_timeout_timer, 0);
 	}
+	setNVSStartCommissioningFlag(0);
+	setNVSPanicAttack(0);
 }
 
 
@@ -450,6 +452,17 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 	    #endif			
 				switch_pressed_counts_to_enter_commissioning = 0;
 				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+					#ifdef USE_TWO_SWITCH_MODE
+					if(first_button_pressed && second_button_pressed){
+						printf("set_commissioning\n");
+						if(!ready_commisioning_flag){
+							ready_commisioning_flag = true;
+							setNVSStartCommissioningFlag(1);
+							setNVSCommissioningFlag(0);
+						} 
+						
+					}
+					#else
 					if(first_button_pressed && third_button_pressed){
 						printf("set_commissioning\n");
 						if(!ready_commisioning_flag){
@@ -461,6 +474,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 					}else if(second_button_pressed && fourth_button_pressed){
 
 					}
+					#endif
 				#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)					
 					if(first_button_pressed){
 						printf("set_commissioning\n");
@@ -497,62 +511,80 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 	#endif
 }
 
-void timer_callback_3(void* arg) {  
-	if(touchLedsOffAfter1MinuteEnable){
-		if(timer_3_counts++ >= TOUCH_LEDS_ALL_OFF_TIMEOUT){   //1 minute count-up
-			timer_3_counts = 0;
-			timer3_running_flag = false;
-			printf("TIMER3 STOP!!\n");
+// void timer_callback_3(void* arg) {  
+// 	if(touchLedsOffAfter1MinuteEnable){
+// 		if(timer_3_counts++ >= TOUCH_LEDS_ALL_OFF_TIMEOUT){   //1 minute count-up
+// 			timer_3_counts = 0;
+// 			timer3_running_flag = false;
+// 			printf("TIMER3 STOP!!\n");
 			
-			nuos_set_state_touch_leds(false);
+// 			nuos_set_state_touch_leds(false);
 		
-			esp_stop_timer_3();  
-		}
-	}
-}
+// 			esp_stop_timer_3();  
+// 		}
+// 	}
+// }
 
-void init_timer_3() {
-	// Create a timer
-	const esp_timer_create_args_t timer_args = {
-		.callback = &timer_callback_3,
-		.name = "timer_3"
-	};
-	ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle_3));
-	start_timer3_flag = false;
+// void init_timer_3() {
+// 	// Create a timer
+// 	const esp_timer_create_args_t timer_args = {
+// 		.callback = &timer_callback_3,
+// 		.name = "timer_3"
+// 	};
+// 	ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle_3));
+// 	start_timer3_flag = false;
 	
-}
+// }
 
-void esp_start_timer_3(){
-	if(touchLedsOffAfter1MinuteEnable){
-		// Start the timer
-		if(!start_timer3_flag){
-			start_timer3_flag = true;
-			if(my_timer_handle_3 != NULL)
-			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle_3, 1000000)); // 1 second period
-		}
-		timer_3_counts = 0;	
-	}
-}
+// void esp_start_timer_3(){
+// 	if(touchLedsOffAfter1MinuteEnable){
+// 		// Start the timer
+// 		if(!start_timer3_flag){
+// 			start_timer3_flag = true;
+// 			if(my_timer_handle_3 != NULL)
+// 			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle_3, 1000000)); // 1 second period
+// 		}
+// 		timer_3_counts = 0;	
+// 	}
+// }
 
-void esp_stop_timer_3(){
-	if(touchLedsOffAfter1MinuteEnable){
-		if(start_timer3_flag){
-			start_timer3_flag = false;
-			if(my_timer_handle_3 != NULL)
-				esp_timer_stop(my_timer_handle_3);	
-		}	
-	}
-}
+// void esp_stop_timer_3(){
+// 	if(touchLedsOffAfter1MinuteEnable){
+// 		if(start_timer3_flag){
+// 			start_timer3_flag = false;
+// 			if(my_timer_handle_3 != NULL)
+// 				esp_timer_stop(my_timer_handle_3);	
+// 		}	
+// 	}
+// }
 
 void recheckTimer(){
-	if(!timer3_running_flag){
-		timer3_running_flag = true;
-		if(touchLedsOffAfter1MinuteEnable){
-			esp_start_timer_3();
-		}
-	} 
+	timer_3_counts = 0;	
 }
 
+bool flag = false;
+void nuos_check_and_start_timer_for_touch_leds_off_after_1_minute(){
+	if(touchLedsOffAfter1MinuteEnable){
+		if(timer_3_counts++ >= 6000){   //1 minute count-up
+			timer_3_counts = 0;
+			if(!flag){ 
+				flag = true;
+				printf("All LEDs OFF\n");
+				nuos_set_state_touch_leds(false);
+			}
+		}
+	}
+}
+
+void call_common_check_auto_off() {
+	if(touchLedsOffAfter1MinuteEnable) {
+		timer_3_counts = 0;
+		if(flag){
+			flag = false;
+			set_all_leds_to_original_state(); 
+		}
+	}
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_CCT_TIME_SYNC
@@ -561,18 +593,18 @@ void recheckTimer(){
 
 #define UPDATE_INTERVAL 						(10 * 60 * 1000)  		// 10 minutes in milliseconds
 
-#define PI 										3.141592653589793
+// #define PI 										3.141592653589793
 
-// Function to calculate daylight-saving color temperature
-double calculate_CCT(double t, double CCT_min, double CCT_max, double T, double t_peak) {
-    return CCT_min + (CCT_max - CCT_min) * (1 + cos((2 * PI / T) * (t - t_peak))) / 2;
-}
+// // Function to calculate daylight-saving color temperature
+// double calculate_CCT(double t, double CCT_min, double CCT_max, double T, double t_peak) {
+//     return CCT_min + (CCT_max - CCT_min) * (1 + cos((2 * PI / T) * (t - t_peak))) / 2;
+// }
 
 
-double calculate_sinusoidal_value(double current_time, double min_val, double max_val, double period, double peak_time) {
-    // Sinusoidal brightness and CCT curve based on time of day
-    return min_val + (max_val - min_val) * (0.5 * (1 + cos((M_PI / period) * (current_time - peak_time))));
-}
+// double calculate_sinusoidal_value(double current_time, double min_val, double max_val, double period, double peak_time) {
+//     // Sinusoidal brightness and CCT curve based on time of day
+//     return min_val + (max_val - min_val) * (0.5 * (1 + cos((M_PI / period) * (current_time - peak_time))));
+// }
 
 #define MIN_CCT_VALUE 2000    // Warm evening light (candle-like)
 #define MAX_CCT_VALUE 6500    // Cool daylight (noon sun)
@@ -582,19 +614,19 @@ double calculate_sinusoidal_value(double current_time, double min_val, double ma
 #define SUNRISE_START 6       // 6 AM
 #define DAYLIGHT_END 18       // 6 PM
 
-double human_centric_brightness(double current_time, double min, double max) {
-    const double CYCLE = 24.0;
-    const double PEAK_TIME = 12.0; // Peak at noon
+// double human_centric_brightness(double current_time, double min, double max) {
+//     const double CYCLE = 24.0;
+//     const double PEAK_TIME = 12.0; // Peak at noon
 
-    // Shift time to center cosine wave at noon
-    double shifted_time = fmod(current_time - PEAK_TIME + CYCLE, CYCLE);
+//     // Shift time to center cosine wave at noon
+//     double shifted_time = fmod(current_time - PEAK_TIME + CYCLE, CYCLE);
 
-    // Cosine wave ranging from -1 to 1, shifted to 0-1 range
-    double wave = 0.5 * (1 - cos(2 * M_PI * shifted_time / CYCLE));
-    //       ^ note the minus sign here!
+//     // Cosine wave ranging from -1 to 1, shifted to 0-1 range
+//     double wave = 0.5 * (1 - cos(2 * M_PI * shifted_time / CYCLE));
+//     //       ^ note the minus sign here!
 
-    return min + wave * (max - min);
-}
+//     return min + wave * (max - min);
+// }
 
 // double human_centric_sinusoid(double current_time, double min, double max) {
 //     const double CYCLE = 24.0;
@@ -610,18 +642,77 @@ double human_centric_brightness(double current_time, double min, double max) {
 // }
 
 
-double human_centric_cct(double current_time) {
-    // Two-stage piecewise function for natural transition
-    if (current_time >= SUNRISE_START && current_time < DAYLIGHT_END) {
-        // Daylight hours: full sinusoidal curve
-        const double CYCLE = DAYLIGHT_END - SUNRISE_START;
-        double normalized = (current_time - SUNRISE_START) / CYCLE;
-        return MIN_CCT_VALUE + (MAX_CCT_VALUE - MIN_CCT_VALUE) * 
-               (1 - cos(M_PI * normalized)) / 2;
-    } else {
-        // Evening/Night: maintain warm light
-        return MIN_CCT_VALUE;
+
+
+// double human_centric_cct(double current_time) {
+//     // Two-stage piecewise function for natural transition
+//     if (current_time >= SUNRISE_START && current_time < DAYLIGHT_END) {
+//         // Daylight hours: full sinusoidal curve
+//         const double CYCLE = DAYLIGHT_END - SUNRISE_START;
+//         double normalized = (current_time - SUNRISE_START) / CYCLE;
+//         return MIN_CCT_VALUE + (MAX_CCT_VALUE - MIN_CCT_VALUE) * 
+//                (1 - cos(M_PI * normalized)) / 2;
+//     } else {
+//         // Evening/Night: maintain warm light
+//         return MIN_CCT_VALUE;
+//     }
+// }
+
+//static uint32_t zigbee_time = 0; // Stores the last synced Zigbee time
+// Callback when time attribute is received
+// void zigbee_time_received(uint32_t received_time) {
+//     zigbee_time = received_time + 946684800; // Convert Zigbee time to Unix time
+// }
+
+// Function to calculate dynamic color temperature
+// uint16_t get_dynamic_color_temp() {
+//     if (zigbee_time == 0) {
+//         return MIN_MIREDS; // Default to warm light if no time sync
+//     }
+
+//     time_t now = zigbee_time; // Use synced time
+//     struct tm *tm_info = localtime(&now);
+//     int hour = tm_info->tm_hour;
+
+//     float factor;
+//     if (hour < 6) {
+//         factor = 0.0;  // Night - Warmest
+//     } else if (hour < 12) {
+//         factor = (hour - 6) / 6.0;  // Morning - Gradually cooler
+//     } else if (hour < 18) {
+//         factor = 1.0;  // Daylight - Coolest
+//     } else {
+//         factor = (18 - hour) / 6.0;  // Evening - Gradually warmer
+//     }
+
+//     uint16_t color_temp_mireds = MIN_MIREDS + factor * (MAX_MIREDS - MIN_MIREDS);
+//     return color_temp_mireds;
+// }
+
+#define SUNRISE_START   					6.0   // 06:00 – biological morning activation
+#define MIDDAY_PEAK   						12.5   // 12:30 – peak alertness (not exactly 12:00)
+#define SUNSET_START  						18.0   // 18:00 – start of melatonin protection
+#define EVENING_CCT     					3000  // Early evening warm transition
+
+static double smoothstep(double x) {
+    return x * x * (3 - 2 * x);
+}
+
+double human_centric_cct(double t)
+{
+    if (t < SUNRISE_START) return MIN_CCT_VALUE;
+
+    if (t < MIDDAY_PEAK) {
+        double x = (t - SUNRISE_START) / (MIDDAY_PEAK - SUNRISE_START);
+        return MIN_CCT_VALUE + (MAX_CCT_VALUE - MIN_CCT_VALUE) * smoothstep(x);
     }
+
+    if (t < SUNSET_START) {
+        double x = (t - MIDDAY_PEAK) / (SUNSET_START - MIDDAY_PEAK);
+        return MAX_CCT_VALUE - (MAX_CCT_VALUE - EVENING_CCT) * smoothstep(x);
+    }
+
+    return EVENING_CCT;
 }
 
 void get_cct_and_brightness(uint16_t *CCT, uint8_t *brightness) {
@@ -636,50 +727,11 @@ void get_cct_and_brightness(uint16_t *CCT, uint8_t *brightness) {
     double current_time = timeinfo->tm_hour + (timeinfo->tm_min / 60.0);
 
     // Calculate CCT and brightness
-    // *CCT = (uint16_t)calculate_sinusoidal_value(current_time, MIN_CCT_VALUE, MAX_CCT_VALUE, T, t_peak);
-    // *brightness = (uint8_t)calculate_sinusoidal_value(current_time, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, T, t_peak);
-	// printf("Time: %.2f hrs -> CCT: %dK, Brightness: %d%%\n", current_time, *CCT, *brightness);
     *CCT = (uint16_t)human_centric_cct(current_time);
-    //*brightness = (uint8_t)human_centric_sinusoid(current_time, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE);
-    *brightness = (uint8_t)human_centric_brightness(current_time, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE);
-
-	printf("Time: %.2f hrs -> CCT: %dK (%.1f%% cool), Brightness: %d%%\n", 
-           current_time, *CCT, 
-           100.0 * (*CCT - MIN_CCT_VALUE) / (MAX_CCT_VALUE - MIN_CCT_VALUE),
-           *brightness);
-
-}
-
-static uint32_t zigbee_time = 0; // Stores the last synced Zigbee time
-
-// Callback when time attribute is received
-void zigbee_time_received(uint32_t received_time) {
-    zigbee_time = received_time + 946684800; // Convert Zigbee time to Unix time
-}
-
-// Function to calculate dynamic color temperature
-uint16_t get_dynamic_color_temp() {
-    if (zigbee_time == 0) {
-        return MIN_MIREDS; // Default to warm light if no time sync
-    }
-
-    time_t now = zigbee_time; // Use synced time
-    struct tm *tm_info = localtime(&now);
-    int hour = tm_info->tm_hour;
-
-    float factor;
-    if (hour < 6) {
-        factor = 0.0;  // Night - Warmest
-    } else if (hour < 12) {
-        factor = (hour - 6) / 6.0;  // Morning - Gradually cooler
-    } else if (hour < 18) {
-        factor = 1.0;  // Daylight - Coolest
-    } else {
-        factor = (18 - hour) / 6.0;  // Evening - Gradually warmer
-    }
-
-    uint16_t color_temp_mireds = MIN_MIREDS + factor * (MAX_MIREDS - MIN_MIREDS);
-    return color_temp_mireds;
+	double cct_ratio = (*CCT - MIN_CCT_VALUE) / (MAX_CCT_VALUE - MIN_CCT_VALUE);
+	// Brightness automatically limited for warm light
+	*brightness = MIN_DIM_LEVEL + 
+				(MAX_DIM_LEVEL - MIN_DIM_LEVEL) * (0.4 + 0.6 * cct_ratio);
 }
 
 // Send color temperature to Zigbee light
@@ -687,10 +739,7 @@ void send_color_temperature() {
 	is_long_press_brightness = false;
 	nuos_set_hardware_brightness_2(1);
 	nuos_zb_set_hardware(0, false);
-	// if(!device_info[0].device_state){
-	// 	device_info[0].device_state = true;
-		set_state(0);
-	// }
+	set_state(0);
 	set_level(0);                                              
 	set_color_temp();	
 	
@@ -699,7 +748,9 @@ void send_color_temperature() {
 static uint8_t time_sync_counts = 0;
 // Timer callback: Sync time and update color temperature
 void update_color_temp_timer_callback(void* arg) {
-	if(set_cct_time_sync_request_flag){
+	//printf("set_cct_time_sync_request_flag:%d device_info[0].color_or_fan_state:%d \n", 
+	//				set_cct_time_sync_request_flag, device_info[0].color_or_fan_state);
+	//if(set_cct_time_sync_request_flag){
 		if(device_info[0].color_or_fan_state && device_info[0].device_state){
 			read_zigbee_time(); // Sync time
 			// uint16_t new_color_temp = get_dynamic_color_temp();
@@ -708,9 +759,10 @@ void update_color_temp_timer_callback(void* arg) {
 			printf("NEW_LEVEL:%d", device_info[0].device_level);
 			send_color_temperature();
 		}
-    }
+    //}
 }
 
+static bool is_hce_timer_running = false;
 // Start a periodic timer to update color temp every 10 minutes
 void init_color_temp_timer() {
 	// Create a timer
@@ -720,14 +772,23 @@ void init_color_temp_timer() {
 		.name = "color_temp_timer"
 	};
 	ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle));
-	ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, UPDATE_INTERVAL * 100)); // 1 minute milli second period
 }
 void start_color_temp_timer() {
 	// Start the timer
-	//ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, UPDATE_INTERVAL * 100)); // 1 minute milli second period	
+	#ifdef USE_CCT_TIME_SYNC
+	if(!is_hce_timer_running){
+		is_hce_timer_running = true;
+		ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, UPDATE_INTERVAL * 100)); // 1 minute milli second period
+	}
+	#endif	
 }
 void stop_color_temp_timer(){
-	//esp_timer_stop(my_timer_handle);
+	#ifdef USE_CCT_TIME_SYNC
+	if(is_hce_timer_running){
+		is_hce_timer_running = false;
+		if(my_timer_handle != NULL)	esp_timer_stop(my_timer_handle);
+	}
+	#endif
 }
 #endif
 

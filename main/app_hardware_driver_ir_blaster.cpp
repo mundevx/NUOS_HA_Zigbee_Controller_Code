@@ -128,7 +128,6 @@
     void send_ac(bool state) {
         // 1. Create JSON
         #ifdef USE_IR_UART_WS4_HW
-           
             // Create object
             JSON_Value *root_value = json_value_init_object();
             JSON_Object *root_object = json_value_get_object(root_value);
@@ -250,26 +249,31 @@
         if(index == 0 || index == 1) {
             if(is_toggle>0) {
                 device_info[0].device_state = !device_info[0].device_state;
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+                device_info[1].device_state = device_info[0].device_state;
+                #endif
             }
-
-            // printf("device_state:%d\n", device_info[0].device_state);
+            // printf("device_state:%d\n", device_info[index].device_state);
             device_info[0].ac_mode = device_info[0].device_state ? ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_COOL : ESP_ZB_ZCL_THERMOSTAT_SYSTEM_MODE_OFF;
-            printf("ac_mode:%d\n", device_info[0].ac_mode);
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+            device_info[1].ac_mode = device_info[0].ac_mode;
+            #endif
+            printf("ac_mode:%d\n", device_info[index].ac_mode);
             #ifndef USE_IR_UART_WS4_HW  
-                ac.next.protocol = get_decode_type(device_info[0].ac_decode_type);
+                ac.next.protocol = get_decode_type(device_info[index].ac_decode_type);
                 ac.next.mode = stdAc::opmode_t::kCool;
                 ac.next.fanspeed = stdAc::fanspeed_t::kMedium;
-                ac.next.power = device_info[0].device_state;
-                ac.next.degrees = device_info[0].ac_temperature;
+                ac.next.power = device_info[index].device_state;
+                ac.next.degrees = device_info[index].ac_temperature;
             #endif
-            send_ac(device_info[0].device_state);
+            send_ac(device_info[index].device_state);
         }else{
+            #ifdef USE_FAN_SPEED
             if(!device_info[0].device_state){
                 device_info[1].device_state = false;
             }else{
                 device_info[1].device_state = true;
             }
-            #ifdef USE_FAN_SPEED
             #ifndef USE_IR_UART_WS4_HW  
                 ac.next.protocol = get_decode_type(device_info[0].ac_decode_type);
                 ac.next.fanspeed = stdAc::fanspeed_t::kMedium;

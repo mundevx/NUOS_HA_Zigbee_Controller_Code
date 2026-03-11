@@ -11,11 +11,13 @@
     void esp_stop_timer();
     void init_timer();
     void start_color_temp_timer();
-    void stop_color_temp_timer();    
+    void stop_color_temp_timer();   
+    void call_common_check_auto_off(); 
     #ifdef __cplusplus
     }
     #endif
-
+    extern void nuos_check_and_start_timer_for_touch_leds_off_after_1_minute();
+    
     extern uint8_t get_button_pressed_mode();
     extern void actionOnTwoSwitchPressed(int64_t timeout);
     extern uint32_t IdentifyTwoSwitchPressed();

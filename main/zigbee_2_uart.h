@@ -1,9 +1,10 @@
 #ifndef CJSON_H
 #define CJSON_H
-
-    #ifdef USE_IR_UART_WS4HW
+    //#include "app_config.h"
+    //#include "app_constants.h"
+    //#ifdef USE_IR_UART_WS4HW
     void uart_init(void);
-    #endif
+   // #endif
 
     #ifdef __cplusplus
     extern "C" {

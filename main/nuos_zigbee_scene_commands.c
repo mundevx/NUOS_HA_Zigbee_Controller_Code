@@ -115,7 +115,7 @@ void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8
         esp_zb_zcl_scenes_add_scene_cmd_t cmd = {
             .zcl_basic_cmd.dst_addr_u.addr_short = dst_addr_short,
             .zcl_basic_cmd.dst_endpoint = dst_ep,
-            .zcl_basic_cmd.src_endpoint = 0,
+            .zcl_basic_cmd.src_endpoint = src_ep,
             .group_id = group_id,
             .scene_id = scene_id,
             .transition_time = 0,
@@ -125,7 +125,30 @@ void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8
         
         // esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
         //                                     &on_off_extension_field);
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
 
+        esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
+            .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, // Cluster ID for Level Control Cluster
+            .length = sizeof(uint8_t),
+            .extension_field_attribute_value_list = &brightness_value,
+            .next = NULL //Initially, No Next Extension Field
+        };
+        esp_zb_zcl_scenes_extension_field_t on_off_extension_field = {
+            .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, // Cluster ID for On/Off cluster
+            .length = sizeof(uint8_t),
+            .extension_field_attribute_value_list = &on_off_value,
+            .next = &level_control_extension_field // Link to the Level Control Extension Field
+        };
+        esp_zb_zcl_scenes_add_scene_cmd_t cmd = {
+            .zcl_basic_cmd.dst_addr_u.addr_short = dst_addr_short,
+            .zcl_basic_cmd.dst_endpoint = dst_ep,
+            .zcl_basic_cmd.src_endpoint = 0,
+            .group_id = group_id,
+            .scene_id = scene_id,
+            .transition_time = 0,
+            .extension_field = &on_off_extension_field,
+        };        
+        esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
         
         if(brightness_value > 64) brightness_value = 64;
@@ -641,11 +664,20 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                                 esp_zb_get_short_address(), 
                                 device_info[index].device_state, device_info[index].device_level, 
                                 device_info[index].light_color_x, device_info[index].light_color_y);
-        #endif            
+        #endif  
+        
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+        printf("message->group_id:%d  scene_id:%d\n", message->group_id, message->scene_id);
+        uint8_t index = message->info.dst_endpoint-1;
+        nuos_zb_scenes_add_scene_request(message->group_id, message->scene_id, 
+                0, ENDPOINTS_LIST[index], 
+                esp_zb_get_short_address(), 
+                device_info[1].device_state, device_info[0].ac_temperature, 
+                device_info[0].light_color_x, device_info[0].light_color_y);     
     #else
 
         uint8_t index = message->info.dst_endpoint-1;
-
+        printf("STORE SCENE REQ DST_EP:%d  index:%d\n", message->info.dst_endpoint, index);
         #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
                 #ifdef TUYA_ATTRIBUTES
@@ -698,11 +730,13 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                     ep_cnts = 0;
                 } 
                 #else
+                //printf("---->ep_index: %d %d  dst:%d \n", index, ENDPOINTS_LIST[index], message->info.dst_endpoint);
+                printf("message->group_id:%d  scene_id:%d\n", message->group_id, message->scene_id);
                 nuos_zb_scenes_add_scene_request(message->group_id, message->scene_id, 
-                                        0, ENDPOINTS_LIST[index], 
-                                        esp_zb_get_short_address(), 
-                                        device_info[index].device_state, device_info[index].device_level, 
-                                        device_info[index].light_color_x, device_info[index].light_color_y);                
+                        0, ENDPOINTS_LIST[index], 
+                        esp_zb_get_short_address(), 
+                        device_info[index].device_state, device_info[index].device_level, 
+                        device_info[index].light_color_x, device_info[index].light_color_y);                
                 #endif
             /////////////////////////////////////////////////////////////                            
             #endif
@@ -723,7 +757,7 @@ esp_err_t zb_get_scene_store_resp_handler(const esp_zb_zcl_store_scene_message_t
 }
 
 void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
-    recheckTimer();
+    //recheckTimer();
     // printf("cluster_id:0x%x\n", cluster_id);
     if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
@@ -734,7 +768,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             index_1 = 0;               
         #endif
         device_info[index_1].device_state = *(bool*)value;    
-        // printf("index_1:%d  device_state :%d\n", index_1, device_info[index_1].device_state);
+        printf("index_1:%d  device_state :%d\n", index_1, device_info[index_1].device_state);
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
             if(index_1 == 0){
                 if(device_info[index_1].device_state){ 
@@ -744,7 +778,6 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                     nuos_zb_set_hardware(index_1, false);
                 }
             }
-            // ESP_LOGI(TAG, "ac mode %d", device_info[index_1].ac_mode);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
             nuos_zb_set_hardware_curtain(index_1, false);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
@@ -770,12 +803,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                 #endif
            }
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)  
-            // #ifdef DALI_DIRECT_ADDRESSING
-
-            // #else
-            nuos_zb_set_hardware(index_1, false);
-            // #endif  
-                       
+            nuos_zb_set_hardware(index_1, false);             
         #else
             nuos_zb_set_hardware(index_1, false);
             //set_load(index_1);
@@ -924,6 +952,16 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
 
             #endif
         #endif
+    }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL) {
+
+    }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT) {
+        uint8_t val = *(uint8_t *)value;
+        //if(index_1 == 0){
+            printf("====SCENE val:%d \n", val);    
+        //}else{
+        //    device_info[0].ac_temperature = ac_temp_values[device_info[0].device_level];
+        //    printf("====SCENE level:%d,   ac_temp:%d \n", device_info[0].device_level, device_info[0].ac_temperature);              
+        //}
     }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         // printf("index_1:%d My device_state:%d \n", index_1, device_info[index_1].device_state);
@@ -1067,9 +1105,6 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             }
         #endif    
     #endif    
-    }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL) {
-
-    }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT) {
 
     }else if (cluster_id == 5) {
         uint8_t data = *(uint8_t*)value;
@@ -1181,7 +1216,7 @@ esp_err_t zb_get_scene_recall_resp_handler(const esp_zb_zcl_recall_scene_message
     printf("*************************************\n");
     // printf("group_id: %d  scene_id: %d\n", message->group_id, message->scene_id);
     // printf("cluster: %d  dst_endpoint: %d\n", message->info.cluster, message->info.dst_endpoint); 
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         nuos_set_scene(message);
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
         #ifdef DALI_DIRECT_ADDRESSING

@@ -1,11 +1,11 @@
 {
     "write_flash_args" : [ "--flash_mode", "dio",
                            "--flash_size", "4MB",
-                           "--flash_freq", "48m" ],
+                           "--flash_freq", "80m" ],
     "flash_settings" : {
         "flash_mode": "dio",
         "flash_size": "4MB",
-        "flash_freq": "48m"
+        "flash_freq": "80m"
     },
     "flash_files" : {
         "0x0" : "bootloader/bootloader.bin",
@@ -21,6 +21,6 @@
         "after"  : "hard_reset",
         "before" : "default_reset",
         "stub"   : true,
-        "chip"   : "esp32h2"
+        "chip"   : "esp32c6"
     }
 }

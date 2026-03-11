@@ -9,7 +9,7 @@
  */
 /**
 
- *                    ESP32-H2 Linker Script Memory Layout
+ *                    ESP32-C6 Linker Script Memory Layout
 
  * This file describes the memory layout (memory blocks) by virtual memory addresses.
 
@@ -91,16 +91,16 @@ MEMORY
    * Enabling Bluetooth & Trace Memory features in menuconfig will decrease the amount of RAM available.
 
    */
-  sram_seg (RWX) : org = (0x40800000), len = 0x4083EFD0 - (0x40800000)
+  sram_seg (RWX) : org = (0x40800000), len = 0x4086E610 - (0x40800000)
   /* Flash mapped instruction data */
   drom_seg (R) : org = 0x42000020, len = (0x10000 << 8) - 0x20
   /* (See irom_seg for meaning of 0x20 offset in the above.) */
   /**
 
-   * lp ram memory (RWX). Persists over deep sleep.
+   * lp ram memory (RWX). Persists over deep sleep. // TODO: IDF-5667
 
    */
-  lp_ram_seg(RW) : org = 0x50000000, len = 0x1000 - (0 + (24))
+  lp_ram_seg(RW) : org = 0x50000000, len = 0x4000 - (0 + (24))
   /* We reduced the size of lp_ram_seg by RESERVE_RTC_MEM value.
 
      It reserves the amount of LP memory that we use for this memory segment.
@@ -114,7 +114,7 @@ MEMORY
      The aim of this is to keep data that will not be moved around and have a fixed address.
 
   */
-  lp_reserved_seg(RW) : org = 0x50000000 + 0x1000 - (0 + (24)), len = (0 + (24))
+  lp_reserved_seg(RW) : org = 0x50000000 + 0x4000 - (0 + (24)), len = (0 + (24))
 }
 /* Heap ends at top of sram_seg */
 _heap_end = 0x40000000;
@@ -123,7 +123,9 @@ _data_seg_org = ORIGIN(rtc_data_seg);
 
  *  The lines below define location alias for .rtc.data section
 
- *  As H2 only has RTC fast memory, this is not configurable like on other targets
+ *  C6 has no distinguished LP(RTC) fast and slow memory sections, instead, there is a unified LP_RAM section
+
+ *  Thus, the following region segments are not configurable like on other targets
 
  */
 REGION_ALIAS("rtc_iram_seg", lp_ram_seg );

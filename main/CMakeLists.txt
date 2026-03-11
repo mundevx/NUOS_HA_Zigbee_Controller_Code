@@ -19,6 +19,7 @@ idf_component_register(
     "app_hardware_driver_sensor_motion.c"
     "app_hardware_driver_sensor_gas_leak.cpp"
     "app_hardware_driver_sensor_temperature_humidity.cpp"
+    "dali_receiver.cpp"
     "app_hardware_driver_sensor_illuminance.cpp"
     "app_hardware_driver_scene_switch.c"
     "app_hardware_driver_wireless_scene_switch.c"

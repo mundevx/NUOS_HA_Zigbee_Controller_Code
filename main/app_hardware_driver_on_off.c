@@ -70,16 +70,19 @@
         nuos_on_off_led(index, state);
     }
 
+    void set_all_leds_to_original_state(){
+        for(int i=0; i<TOTAL_LEDS; i++){
+            gpio_set_level(gpio_touch_led_pins[i], device_info[i].device_state);
+        }
+       
+    }
     void set_harware(uint8_t index, uint8_t is_toggle){
         //toggle pins on button press
         if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
         //set led pins
         if(index < TOTAL_LEDS){
-            //printf("STATE:%d\n", device_info[index].device_state);
-            //gpio_set_direction(gpio_touch_led_pins[index], GPIO_MODE_OUTPUT);
             gpio_set_level(gpio_touch_led_pins[index], device_info[index].device_state);
             //set load pins
-            //gpio_set_direction(gpio_load_pins[index], GPIO_MODE_OUTPUT);
             gpio_set_level(gpio_load_pins[index], device_info[index].device_state);
         } 
         printf("STARE:%d\n", device_info[index].device_state);
@@ -90,18 +93,8 @@
 
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
         //set touch led pins
-
-        if(timer3_running_flag){
-            set_harware(index, is_toggle);
-        }else{
-            if(nuos_check_state_touch_leds()){
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    gpio_set_level(gpio_touch_led_pins[i], device_info[i].device_state);
-                }
-            }else{
-                set_harware(index, is_toggle);               
-            }
-        }      
+        call_common_check_auto_off();
+        set_harware(index, is_toggle);   
         nuos_store_data_to_nvs(index);
     }
 

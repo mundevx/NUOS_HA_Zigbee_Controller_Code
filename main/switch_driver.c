@@ -13,8 +13,7 @@
 #include "light_driver.h"
 #include "nvs_flash.h"
 
-extern void nuos_zb_group_send_light_level_groupcast(uint16_t group_id, uint8_t level);
-
+// extern void nuos_zb_group_send_light_level_groupcast(uint16_t group_id, uint8_t level);
 
 /**
  * @brief:
@@ -46,20 +45,18 @@ extern void nuos_zb_group_send_light_level_groupcast(uint16_t group_id, uint8_t 
 #define MAX_COUNTS_FOR_TRIPLE_CLICK             6
 
 static uint64_t brightness_count                = 0;
-extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
-switch_func_pair_t button_func_pair;
+
 volatile uint16_t total_press_in_secs           = 0;
 static uint32_t last_press_time                 = 0;
 static uint32_t press_duration                  = 0;
 static uint32_t last_release_time               = 0;
 static uint32_t double_release_time             = 0;
 static bool double_click_detected               = false;
-
 // Timer handle
 static TimerHandle_t click_timer                = NULL;
-
 bool  longpress_detected                        = false;
 static int click_count                          = 0;
+
 #define CLICK_ARRAY_SIZE                        50
 gpio_num_t switch_num_pressed[CLICK_ARRAY_SIZE];
 /// /////////////////////////////////////////
@@ -77,23 +74,24 @@ static esp_switch_callback_t func_ptr;
 /* which button is pressed */
 static uint8_t switch_num;
 static const char *TAG                          = "ESP_ZB_SWITCH";
-extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode);
-void switch_driver_gpios_intr_enabled(bool enabled);
-static void esp_commissioning_detect_task(void *pvParameters);
-extern uint32_t timer_commissioning_ready_counts;
-extern uint32_t timer_led_blink_ready_counts;
+
 bool bool_button_pressed                        = false;
 bool bool_button_pressed_backup_ready           = false;
 bool is_121212                                  = false;
 bool is_212121                                  = false;
 bool is_122112                                  = false;
 bool is_211221                                  = false;
-
 bool is_11221122                                = false;
 bool is_22112211                                = false;
 
 static bool toggle_status_led_long_press        = false;
 
+
+void switch_driver_gpios_intr_enabled(bool enabled);
+extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode);
+#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
+#endif
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     // Critical section entry
@@ -103,6 +101,25 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); 
 }
 
+// static uint32_t last_isr_time[SWITCH_MAX];
+
+// static void IRAM_ATTR gpio_isr_handler(void *arg)
+// {
+//     switch_func_pair_t *btn = (switch_func_pair_t *)arg;
+//     uint32_t now = esp_timer_get_time();
+
+//     if ((now - last_isr_time[btn->pin]) < 5000) { // 5 ms debounce
+//         return;
+//     }
+
+//     last_isr_time[btn->pin] = now;
+//     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//     //xQueueSendFromISR(gpio_evt_queue, btn, NULL);
+//     if (xQueueSendFromISR(gpio_evt_queue, arg, &xHigherPriorityTaskWoken) != pdTRUE) {
+//         // optional: set overflow flag
+//     }
+//     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); 
+// }
 /**
  * @brief Enable GPIO (switchs refer to) isr
  *
@@ -167,37 +184,111 @@ void button_click_handler(TimerHandle_t xTimer)
             // Check if all presses were on the same button
             
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-            is_121212 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-    
-            is_212121 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+                
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 
-            is_122112 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-    
-            is_211221 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[0]);                
+                  #ifdef USE_TWO_SWITCH_MODE
+                is_121212 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[1]);
+        
+                is_212121 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+
+                is_122112 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[1]);
+        
+                is_211221 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+
+                  #else
+
+                is_121212 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
+        
+                is_212121 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+
+                is_122112 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
+        
+                is_211221 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+                  #endif
+
+                #else
+                
+                is_121212 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
+        
+                is_212121 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
+
+                is_122112 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
+        
+                is_211221 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);   
+                #endif                 
             #else
                 is_122112 = 
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
@@ -244,8 +335,6 @@ void button_click_handler(TimerHandle_t xTimer)
                     setNVSStartCommissioningFlag(1);
                     setNVSCommissioningFlag(1);
                     setNVSPanicAttack(0);
-                    //esp_zb_scheduler_alarm_cancel(esp_zb_callback, 0);
-                    // xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
                     if (esp_zb_bdb_dev_joined()) {
                          printf("ready_commisioning_flag: 2\n");
                         esp_zb_bdb_reset_via_local_action();
@@ -270,40 +359,84 @@ void button_click_handler(TimerHandle_t xTimer)
                     #else    
                     #endif 
                 } else {
-                    //#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                        #ifdef USE_WIFI_WEBSERVER
-                            if(wifi_webserver_active_flag){
-                                wifi_webserver_active_flag = false;
-                            }else{
-                                wifi_webserver_active_flag = true;  
-                            }
-                            setNVSCommissioningFlag(0);
-                            setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
-                            esp_restart();			
-                        #endif
-                    //#endif
+
+                    #ifdef USE_WIFI_WEBSERVER
+                        if(wifi_webserver_active_flag){
+                            wifi_webserver_active_flag = false;
+                        }else{
+                            wifi_webserver_active_flag = true;  
+                        }
+                        setNVSCommissioningFlag(0);
+                        setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
+                        esp_restart();			
+                    #endif
+                   
                 }             
             }
         }else if (local_clicks == 8) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-            is_11221122 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[6] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[7] == gpio_touch_btn_pins[2]);    
-            is_22112211 = 
-                (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[5] == gpio_touch_btn_pins[2]) &&
-                (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
-                (switch_num_pressed[7] == gpio_touch_btn_pins[0]);                   
+            
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+                    #ifndef USE_TWO_SWITCH_MODE
+                is_11221122 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[2]);    
+                is_22112211 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[0]);    
+                    #else
+                is_11221122 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[1]);    
+                is_22112211 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[1]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[0]); 
+                    #endif
+                #else
+                is_11221122 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[2]);    
+                is_22112211 = 
+                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]) &&
+                    (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
+                    (switch_num_pressed[7] == gpio_touch_btn_pins[0]);    
+                
+                #endif
             #else
             is_11221122 = 
                 (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
@@ -323,7 +456,6 @@ void button_click_handler(TimerHandle_t xTimer)
                 (switch_num_pressed[5] == gpio_touch_btn_pins[1]) &&
                 (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
                 (switch_num_pressed[7] == gpio_touch_btn_pins[0]);
-
             #endif
 
             if(is_11221122 || is_22112211){
@@ -362,6 +494,7 @@ void button_click_handler(TimerHandle_t xTimer)
 #endif // USE_TRIPLE_CLICK
 
 #ifdef USE_DOUBLE_PRESS
+    switch_func_pair_t button_func_pair;
     // Read the last button event from the queue (non-blocking)
     if (xQueueReceive(gpio_evt_queue, &button_func_pair, 0) == pdTRUE) {
         button_func_pair.func = SWITCH_ONOFF_TOGGLE_CONTROL;
@@ -393,18 +526,6 @@ void button_click_handler(TimerHandle_t xTimer)
     
 }
 
-static void esp_commissioning_detect_task(void *pvParameters){
-    // printf("On Task esp_commissioning_detect_task\n");
-    // for(int j=0; j<4; j++){
-    //     nuos_set_state_touch_leds();
-    //     vTaskDelay(pdMS_TO_TICKS(500));    
-    // }
-    // for(int i=0; i<TOTAL_ENDPOINTS; i++){
-    //     nuos_zb_set_hardware(i, false);
-    // }
-    // printf("Deleting Task esp_commissioning_detect_task\n");
-    vTaskDelete(NULL); // Delete the task after executing
-}
 
 static void create_timers_at_init(void)
 {
@@ -440,11 +561,9 @@ void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_tim
                 #ifdef USE_RGB_LED
                     light_driver_set_power(false);
                 #endif 
-                //xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
             }else if(total_press_in_secs > compare_time_in_secs){  
 
             }else{
-                //wifi_webserver_active_flag = true;
                 #ifdef USE_RGB_LED
                     toggle_status_led_long_press = !toggle_status_led_long_press;
                     if(toggle_status_led_long_press) light_driver_set_color_RGB(0, 0, 0xff);  //red
@@ -452,22 +571,21 @@ void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_tim
                 #endif  
             }
         }  else if(get_button_pressed_mode() == 2){
-                if(total_press_in_secs == compare_time_in_secs){
-                    #ifdef USE_RGB_LED
-                        light_driver_set_power(false);
-                    #endif 
-                    //xTaskCreate(esp_commissioning_detect_task, "Comm_detect_task", 4096, NULL, 22, NULL);
-                }else if(total_press_in_secs > compare_time_in_secs){  
+            if(total_press_in_secs == compare_time_in_secs){
+                #ifdef USE_RGB_LED
+                    light_driver_set_power(false);
+                #endif 
+    
+            }else if(total_press_in_secs > compare_time_in_secs){  
 
-                }else{
-                    //wifi_webserver_active_flag = true;
-                    #ifdef USE_RGB_LED
-                        toggle_status_led_long_press = !toggle_status_led_long_press;
-                        if(toggle_status_led_long_press) light_driver_set_color_RGB(0x00, 0xff, 0x00);  //green
-                        light_driver_set_power(toggle_status_led_long_press);
-                    #endif  
-                }   
-            }
+            }else{
+                #ifdef USE_RGB_LED
+                    toggle_status_led_long_press = !toggle_status_led_long_press;
+                    if(toggle_status_led_long_press) light_driver_set_color_RGB(0x00, 0xff, 0x00);  //green
+                    light_driver_set_power(toggle_status_led_long_press);
+                #endif  
+            }   
+        }
                              
     }
 }
@@ -554,20 +672,24 @@ void brightness_control_tasks(uint32_t io_num){
         brightness_count++;
     #endif
 }
-/*********************************************************************** */
+
+
+/* ********************************************************************** */
 static void switch_driver_button_detected(void *arg) {
     gpio_num_t io_num = GPIO_NUM_NC;
+    static bool start_comm_flag = false;
     uint32_t reduced_bounce_time = DEBOUNCE_TIME_MS;
-    bool curtain_mode_bit = false;
     static switch_state_t switch_state = SWITCH_IDLE;
     bool evt_flag = false;
     uint32_t switch_pressed_cnts = 0;
     bool two_switch_pressed_flag = false;
-    bool instant_two_switch_pressed_flag = false;
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        bool instant_two_switch_pressed_flag = false;
+    #endif
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
     bool switch_keep_pressed_once_flag = true;
-    TickType_t last_click_time = 0;
-    //bool save_is_my_device_commissionned = start_commissioning;
-    //start_commissioning = false;
+    #endif
+
     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
         if (click_timer == NULL) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
@@ -595,19 +717,24 @@ static void switch_driver_button_detected(void *arg) {
     #endif
 
     for (;;) {
+        switch_func_pair_t button_func_pair;
         if (xQueueReceive(gpio_evt_queue, &button_func_pair, portMAX_DELAY)) {
-            io_num = button_func_pair.pin;
+            printf("Button ISR received for pin %ld\n", button_func_pair.pin);
             switch_driver_gpios_intr_enabled(false);
+            recheckTimer();
+            io_num = button_func_pair.pin;
             evt_flag = true;
             longpress_detected = false;
             total_press_in_secs = 0;
             two_switch_pressed_flag = false; 
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             instant_two_switch_pressed_flag = false;
+            #endif
             initTwoSwitchPressedPins();
             #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                nuos_init_hardware_dimming_up_down(io_num);
             #endif
-            esp_start_timer_3();
+            // esp_start_timer_3();
 
             #ifndef USE_DOUBLE_PRESS
                 button_func_pair.keypressed = SINGLE_PRESS;
@@ -616,7 +743,9 @@ static void switch_driver_button_detected(void *arg) {
             brightness_count = 0;
             switch_pressed_cnts = 0;
             reduced_bounce_time = DEBOUNCE_TIME_MS;
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
             switch_keep_pressed_once_flag = true;
+            #endif
         }
 
         while (evt_flag) {
@@ -654,6 +783,14 @@ static void switch_driver_button_detected(void *arg) {
                                 #else
                                     button_func_pair.keypressed = LONG_PRESS_INC_DEC_LEVEL;                      
                                 #endif
+                                
+                                if(wifi_webserver_active_flag){
+                                    if(start_commissioning){
+                                        start_comm_flag = true;
+                                        start_commissioning = false;
+                                    }
+                                    
+                                }
                                 brightness_control_tasks(io_num);
                                 switch_pressed_cnts = IdentifyTwoSwitchPressed();
                                 if (!two_switch_pressed_flag) {
@@ -699,6 +836,10 @@ static void switch_driver_button_detected(void *arg) {
 
                 case SWITCH_RELEASE_DETECTED:
                     switch_state = SWITCH_IDLE;
+                    if(wifi_webserver_active_flag){
+                        start_commissioning = start_comm_flag;
+                    }
+
                     //start_commissioning = save_is_my_device_commissionned;
                     reduced_bounce_time = 10;
                     if (two_switch_pressed_flag) {
@@ -717,8 +858,10 @@ static void switch_driver_button_detected(void *arg) {
                     /* ... inside SWITCH_RELEASE_DETECTED ... */
                     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
                         if (click_count < CLICK_ARRAY_SIZE) {
-                            switch_num_pressed[click_count] = io_num;
-                            click_count++;
+                            if(!longpress_detected){
+                                switch_num_pressed[click_count] = io_num;
+                                click_count++;
+                            }
                         } else {
                             // Saturated — ignore further clicks until handler runs
                             ESP_LOGW(TAG, "click_count saturated, ignoring additional clicks");
@@ -747,10 +890,11 @@ static void switch_driver_button_detected(void *arg) {
                 case SWITCH_LONG_PRESS_DETECTED:
                     switch_state = SWITCH_IDLE;
                     button_func_pair.keypressed = LONG_PRESS;
-
                     break;
 
                 default:
+                    switch_state = SWITCH_IDLE;
+                    switch_driver_gpios_intr_enabled(true);
                     break;
             }
 
@@ -760,7 +904,7 @@ static void switch_driver_button_detected(void *arg) {
                     button_func_pair.func = SWITCH_ONOFF_TOGGLE_CONTROL;
                     button_func_pair.pin = io_num;
                     if (func_ptr != NULL) {
-                        (*func_ptr)(&button_func_pair);
+                        (*func_ptr)(&button_func_pair); // Call the callback function
                     }
                 #endif
                 switch_driver_gpios_intr_enabled(true);
@@ -793,15 +937,22 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
     gpio_config(&io_conf);
 
     /* create a queue to handle gpio event from isr */
-    gpio_evt_queue = xQueueCreate(10, sizeof(switch_func_pair_t));
+    gpio_evt_queue = xQueueCreate(20, sizeof(switch_func_pair_t));
     if ( gpio_evt_queue == 0) {
         ESP_LOGE(TAG, "Queue was not created and must not be used");
         return false;
     }
+    //zb_event_queue = xQueueCreate(10, sizeof(zb_button_event_t));
+   // assert(zb_event_queue);
     /* start gpio task */
     xTaskCreate(switch_driver_button_detected, "button_detected", TASK_STACK_SIZE_SWITCH, NULL, TASK_PRIORITY_SWITCH, NULL);
+
     /* install gpio isr service */
-    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    if (!isr_service_installed) {
+        ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT));
+        isr_service_installed = true;
+    }
+   
     for (int i = 0; i < button_num; ++i) {
         gpio_isr_handler_add((button_func_pair + i)->pin, gpio_isr_handler, (void *) (button_func_pair + i));
     }

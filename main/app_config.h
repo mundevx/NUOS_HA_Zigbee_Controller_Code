@@ -10,7 +10,6 @@
 
     #define DEVICE_1_LIGHT_1_FAN                                    7
     #define DEVICE_IR_BLASTER                                       8
-
     #define DEVICE_WIRELESS_SCENE_SWITCH                            9
   
     #define DEVICE_1_LIGHT_1_FAN_CUSTOM                             10 // customized clusters for Tuya
@@ -34,7 +33,7 @@
     #define DEVICE_WIRELESS_GROUP_SWITCH                            24 // Currently Running Remote Switch
     #define DEVICE_SCENE_DALI                                       25 // SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_WIRELESS_SCENE_SWITCH
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_CCT_DALI_CUSTOM
 
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
     //#define USE_NVS_INIT
@@ -55,6 +54,7 @@
     #else
         #define USE_TUYA_BRDIGE
     #endif
+
     //#define WRITE_NVS_CONFIG
     //#define ZB_FACTORY_RESET
     #define USE_TRIPLE_CLICK
@@ -64,12 +64,9 @@
         #define COLOR_RGBW                                          2   //4 channels
         #define COLOR_RGB_CW_WW                                     3   //5 channels
 
-
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
-
             #define USE_COLOR_DEVICE                                    COLOR_RGB_ONLY
         #else
-
             #define USE_COLOR_DEVICE                                    COLOR_RGB_CW_WW  
 
             #define COMM_MODE_BROADCAST                                 1

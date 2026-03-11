@@ -66,6 +66,7 @@ private:
     } GROUP_COMMANDS;
 
 public:
+
     typedef enum {
         BROADCAST_DP = 0b11111110,
         BROADCAST_C = 0b11111111,
@@ -81,7 +82,7 @@ public:
     explicit DaliCommands(gpio_num_t txPin, gpio_num_t rxPin);
 
     // Basic control functions
-    void begin();
+    void begin(bool* is_isr, QueueHandle_t rxFrameQueue);
     int initNodes(const uint8_t* addresses, uint8_t numAddresses);
     void turn_off(uint8_t nodeAddress);
     void turn_on_to_max(uint8_t nodeAddress);
@@ -149,17 +150,22 @@ public:
     // Scene functions
     void set_scene(uint8_t addr, uint8_t scene, uint8_t level);
     void set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp);
+    void set_level_scene(uint8_t addr, uint8_t scene , uint8_t scene_level);
+    
     void remove_from_scene(uint8_t addr, uint8_t scene);
     void go_to_scene(uint8_t addr, uint8_t scene);
     void add_to_scene(uint8_t addr, uint8_t scene);
     void go_to_group_scene(uint8_t group_id, uint8_t scene);    
     // Scanning function
     int scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses);
-
+    void enableReceiver(bool enable);
+    void query(uint8_t shortAddress, uint8_t queryCommand);
+    
 private:
     gpio_num_t txPin;
     gpio_num_t rxPin;
     DALI daliCore;
+    
 };
 
 #endif // __DALICOMP_H__

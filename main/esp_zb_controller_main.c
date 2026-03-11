@@ -15,6 +15,7 @@
 #define DECLARE_MAIN
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include "esp_system.h"
 #include <esp_zigbee_core.h>
 #include "freertos/FreeRTOS.h"
@@ -158,90 +159,92 @@ void set_time(int year, int mon, int day, int hour, int min, int sec){
     printf("Time (%02d:%02d:%02d)\n", t->tm_hour, t->tm_min, t->tm_sec);
 }
 #endif
+uint8_t bt_index=255;
 static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 {
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
         uint32_t* io_index = &button_func_pair->pin;
-        uint32_t button_index = *io_index;
-        printf("button_index:%ld", button_index);
+        bt_index = (uint8_t)(*io_index);
+        // printf("button_index:%d", bt_index);
         //for curtain only
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-            #ifdef TUYA_ATTRIBUTES
-            if(bCalMode){
-                //printf("bCalMode:%d vtaskMode:%d \n", bCalMode, vTaskMode);
-                if(vTaskMode == TASK_CURTAIN_CAL_INIT){
-                    if(button_index == 0){  //if 1st switch pressed
-                        //printf("INIT\n");
-                        vTaskMode = TASK_CURTAIN_CAL_START;
-                        gpio_set_level(gpio_touch_led_pins[0], 0);
-                        start_time = esp_timer_get_time();
-                        pause_curtain_timer();
-                         device_info[0].device_state = CURTAIN_OPEN;
-                        nuos_zb_set_hardware_curtain(0, false);
-                        // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_RUN_IN_CALIBRATION_MODE;
-                        // esp_zb_zcl_set_attribute_val(1,
-                        //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-                        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                        //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
-                        //     &calibration_mode,
-                        //     false);
-                        // uint8_t cal_started = 0;
-                        // esp_zb_zcl_set_attribute_val(1,
-                        //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-                        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                        //     0xF001,
-                        //     &cal_started,
-                        //     false);                            
-                    }
-                }else if(vTaskMode == TASK_CURTAIN_CAL_START){
-                    if(button_index == 1){  //if 2nd switch pressed
-                        vTaskMode = TASK_CURTAIN_CAL_END;
-                        device_info[0].device_val = (esp_timer_get_time() - start_time) / 1000;
-                        device_info[0].device_val = device_info[0].device_val / 1000;
-                        device_info[0].device_state = CURTAIN_CLOSE;
-                        nuos_zb_set_hardware_curtain(1, false);
-                        // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_MOTOR_IS_RUNNING_IN_MAINTENANCE_MODE;
-                        // esp_zb_zcl_set_attribute_val(1,
-                        //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-                        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                        //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
-                        //     &calibration_mode,
-                        //     false);    
+        // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
+        //     #ifdef TUYA_ATTRIBUTES
+        //     if(bCalMode){
+        //         //printf("bCalMode:%d vtaskMode:%d \n", bCalMode, vTaskMode);
+        //         if(vTaskMode == TASK_CURTAIN_CAL_INIT){
+        //             if(bt_index == 0){  //if 1st switch pressed
+        //                 //printf("INIT\n");
+        //                 vTaskMode = TASK_CURTAIN_CAL_START;
+        //                 gpio_set_level(gpio_touch_led_pins[0], 0);
+        //                 start_time = esp_timer_get_time();
+        //                 pause_curtain_timer();
+        //                  device_info[0].device_state = CURTAIN_OPEN;
+        //                 nuos_zb_set_hardware_curtain(0, false);
+        //                 // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_RUN_IN_CALIBRATION_MODE;
+        //                 // esp_zb_zcl_set_attribute_val(1,
+        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //                 //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
+        //                 //     &calibration_mode,
+        //                 //     false);
+        //                 // uint8_t cal_started = 0;
+        //                 // esp_zb_zcl_set_attribute_val(1,
+        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //                 //     0xF001,
+        //                 //     &cal_started,
+        //                 //     false);                            
+        //             }
+        //         }else if(vTaskMode == TASK_CURTAIN_CAL_START){
+        //             if(bt_index == 1){  //if 2nd switch pressed
+        //                 vTaskMode = TASK_CURTAIN_CAL_END;
+        //                 device_info[0].device_val = (esp_timer_get_time() - start_time) / 1000;
+        //                 device_info[0].device_val = device_info[0].device_val / 1000;
+        //                 device_info[0].device_state = CURTAIN_CLOSE;
+        //                 nuos_zb_set_hardware_curtain(1, false);
+        //                 // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_MOTOR_IS_RUNNING_IN_MAINTENANCE_MODE;
+        //                 // esp_zb_zcl_set_attribute_val(1,
+        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //                 //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
+        //                 //     &calibration_mode,
+        //                 //     false);    
                         
-                        // uint8_t cal_started = 1;
-                        // esp_zb_zcl_set_attribute_val(1,
-                        //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-                        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                        //     0xF001,
-                        //     &cal_started,
-                        //     false);  
+        //                 // uint8_t cal_started = 1;
+        //                 // esp_zb_zcl_set_attribute_val(1,
+        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //                 //     0xF001,
+        //                 //     &cal_started,
+        //                 //     false);  
 
-                        // esp_zb_zcl_status_t state = esp_zb_zcl_set_attribute_val(
-                        // ENDPOINTS_LIST[0],
-                        // ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-                        // ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                        // 0xF003,
-                        // &device_info[0].device_val,
-                        // false);                        
-                    }
-                }
-            }
-            #endif 
-        #endif
+        //                 // esp_zb_zcl_status_t state = esp_zb_zcl_set_attribute_val(
+        //                 // ENDPOINTS_LIST[0],
+        //                 // ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
+        //                 // ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //                 // 0xF003,
+        //                 // &device_info[0].device_val,
+        //                 // false);                        
+        //             }
+        //         }
+        //     }
+        //     #endif 
+        // #endif
+
         uchKeypressed = button_func_pair->keypressed;
         switch(uchKeypressed){
             case SINGLE_PRESS:
-                nuos_switch_single_click_task(button_index);
+                nuos_switch_single_click_task(bt_index);
                 break;
             case DOUBLE_PRESS:
-                nuos_switch_double_click_task(button_index);
+                nuos_switch_double_click_task(bt_index);
                 break;
             case LONG_PRESS:
-            printf("LONGPRESSED1!!\n");
-                nuos_switch_long_press_task(button_index); 
+                //printf("LONGPRESSED1!!\n");
+                nuos_switch_long_press_task(bt_index); 
                 break;
             case LONG_PRESS_INC_DEC_LEVEL:
-                nuos_switch_long_press_brightness_task(button_index);
+                nuos_switch_long_press_brightness_task(bt_index);
                 break;    
             default: 
                 printf("Invalid Switch Pressed!!\n");
@@ -256,15 +259,18 @@ static esp_err_t deferred_driver_init(void)
     // //Added by Nuos  commented on 04-02-2025
     ESP_RETURN_ON_FALSE(switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), zb_buttons_handler), ESP_FAIL, TAG,
                         "Failed to initialize switch driver");
-
+    // #ifdef USE_WIFI_WEBSERVER 
+    // #else
+    nuos_get_data_from_nvs(); 
+    // #endif
     //Added by Nuos                    
     nuos_driver_init(); 
     //Added by Nuos 
     nuos_zb_init_motion_sensor();                
  
     //Added by Nuos 
-    init_timer_3(); 
-    esp_start_timer_3();
+    //init_timer_3(); 
+    //esp_start_timer_3();
     //Added by Nuos
     nuos_check_nvs_start_commissioning();
 
@@ -365,74 +371,6 @@ static void zb_zdo_match_desc_handler(esp_zb_zdp_status_t zdo_status, uint16_t a
 }
 
 static bool network_steering_mode_flag = false;
-// void esp_zb_app_signal_handler111(esp_zb_app_signal_t *signal_struct)
-// {
-//     uint32_t *p_sg_p     = signal_struct->p_app_signal;
-//     esp_err_t err_status = signal_struct->esp_err_status;
-//     esp_zb_app_signal_type_t sig_type = *p_sg_p;
-//     esp_zb_zdo_signal_device_annce_params_t *dev_annce_params = NULL;
-//     switch (sig_type) {
-//     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
-//         ESP_LOGI(TAG, "Initialize Zigbee stack");
-//         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-//         break;
-//     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
-//     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
-//         if (err_status == ESP_OK) {
-//             ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "failed" : "successful");
-//             ESP_LOGI(TAG, "Device started up in%s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : " non");
-//             if (esp_zb_bdb_is_factory_new()) {
-//                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_TOUCHLINK_TARGET);
-//             } else {
-//                 ESP_LOGI(TAG, "Device rebooted");
-//                 ESP_LOGI(TAG, "My Short Address : 0x%x", esp_zb_get_short_address());
-//             }
-//         } else {
-//             ESP_LOGW(TAG, "%s failed with status: %s, retrying", esp_zb_zdo_signal_to_string(sig_type),
-//                      esp_err_to_name(err_status));
-//             esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-//         }
-//         break;
-//     case ESP_ZB_BDB_SIGNAL_TOUCHLINK_TARGET:
-//         ESP_LOGI(TAG, "Touchlink target is ready, awaiting commissioning");
-
-//         break;
-//     case ESP_ZB_BDB_SIGNAL_TOUCHLINK_NWK:
-//         if (err_status == ESP_OK) {
-//             esp_zb_ieee_addr_t extended_pan_id;
-//             esp_zb_get_extended_pan_id(extended_pan_id);
-//             ESP_LOGI(TAG,
-//                      "Commissioning successfully, network information (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, "
-//                      "Channel:%d, Short Address: 0x%04hx)",
-//                      extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3], extended_pan_id[2],
-//                      extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
-//         }
-//         break;
-//     case ESP_ZB_BDB_SIGNAL_TOUCHLINK_TARGET_FINISHED:
-//         if (err_status == ESP_OK) {
-//             ESP_LOGI(TAG, "Touchlink target commissioning finished");
-//         } else {
-//             ESP_LOGI(TAG, "Touchlink target commissioning failed");
-//         }
-//         break;
-//     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
-//         dev_annce_params = (esp_zb_zdo_signal_device_annce_params_t *)esp_zb_app_signal_get_params(p_sg_p);
-//         ESP_LOGI(TAG, "New device commissioned or rejoined (short: 0x%04hx)", dev_annce_params->device_short_addr);
-//         break;
-//     case ESP_ZB_NWK_SIGNAL_PERMIT_JOIN_STATUS:
-//         if (err_status == ESP_OK) {
-//             if (*(uint8_t *)esp_zb_app_signal_get_params(p_sg_p)) {
-//                 ESP_LOGI(TAG, "Network(0x%04hx) is open for %d seconds", esp_zb_get_pan_id(), *(uint8_t *)esp_zb_app_signal_get_params(p_sg_p));
-//             } else {
-//                 ESP_LOGW(TAG, "Network(0x%04hx) closed, devices joining not allowed.", esp_zb_get_pan_id());
-//             }
-//         }
-//         break;
-//     default:
-//         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
-//         break;
-//     }
-// }
 bool joining_signal_received = false;
 
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
@@ -758,6 +696,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
     ESP_LOGI(TAG, "fc(0x%x) manuf_code(0x%x)\n", message->info.header.fc, message->info.header.manuf_code);
 
+    recheckTimer();
     // 0x0 0x32 0x1 0x4 0x0 0x1 0x0 0x42 0x1a 0x0 0x0 0x0 0xf 0x0 0x0
     // 0x0 0x33 0x1 0x4 0x0 0x1 0x0 
     // 0x0 0x34 0x2 0x2 0x0 0x4 0x0 0x42 0x1a 0x0
@@ -829,8 +768,6 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
             printf("ep: %d | group: 0x%x |  scene:%d\n", zb_scene_info[index].dst_ep, zb_scene_info[index].group_id, zb_scene_info[index].scene_id);
             
-           
-
             esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
                 .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
                 .cluster_id = message->info.cluster,
@@ -1036,8 +973,6 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
     }else if(message->info.command.id == 0x00){
         
-
-
         scene_counts = 0; 
         if(ep_cnts > TOTAL_ENDPOINTS) ep_cnts = 0;
  
@@ -1108,9 +1043,6 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 printf("0x%x ", thermostat_temp.bytes[i]);
             }
             printf("\n");  
-
-
-
 
             uint8_t payload[9];
             payload[0] = thermostat_temp.bytes[1];         // 1 byte sequence number
@@ -1193,14 +1125,11 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
     return ESP_OK;
 }
 
-
-
-// static uint16_t last_cmd = 0;
 extern bool is_running, was_paused, timer_stop_flag;
-static uint8_t last_percentage_val = 255;
+static uint8_t last_percentage_val                = 255;
 
-#define ADD_HOURS    9
-#define ADD_MINUTES  30
+#define ADD_HOURS                                   9
+#define ADD_MINUTES                                 30
 
 time_t add_9h30m_to_time(time_t current_time)
 {
@@ -1208,18 +1137,6 @@ time_t add_9h30m_to_time(time_t current_time)
     time_t added_seconds = (ADD_HOURS * 3600) + (ADD_MINUTES * 60);
     return current_time + added_seconds;
 }
-
-// void send_window_covering_command(uint16_t dst_addr, uint8_t dst_ep, uint8_t src_ep, uint8_t command, void *payload)
-// {
-//     esp_zb_zcl_window_covering_cluster_send_cmd_req_t cmd_req = {0};
-//     cmd_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_addr; // Coordinator
-//     cmd_req.zcl_basic_cmd.dst_endpoint = dst_ep; // Coordinator's endpoint (often 1, but check your gateway)
-//     cmd_req.zcl_basic_cmd.src_endpoint = src_ep; // Your device's endpoint
-//     cmd_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-//     cmd_req.cmd_id = command;
-//     cmd_req.value = payload;
-//     esp_zb_zcl_window_covering_cluster_send_cmd_req(&cmd_req);  
-// }
 
 // Revised target generation and finding function
 void generate_targets(int* targets, int size) {
@@ -1271,6 +1188,7 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                         message->info.status);
     ESP_LOGI(TAG, "COMMAND(%d) CLUSTER(%d) DST_Ep(%d)\n", message->command, message->info.cluster, message->info.dst_endpoint);
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
+        //if(message->command == 8) return ESP_OK;
         #ifdef TUYA_ATTRIBUTES
         if(message->command < 3){
             uint8_t cmd_val = message->command;
@@ -1299,7 +1217,23 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                     device_info[0].device_state = 1; 
                     device_info[0].curtain_state = 0;  
                     device_info[1].device_state = 0; 
-                    nuos_zb_set_hardware(0, false);                       
+                    nuos_zb_set_hardware(0, false);  
+                    
+                    uint8_t val = 0;
+                    if(device_info[0].curtain_state == 0){
+                        if(!device_info[0].device_state){
+                            val = CURTAIN_STOP;
+                        }else{
+                            val = CURTAIN_OPEN;
+                        }
+                    }else if(device_info[0].curtain_state == 1){
+                        if(!device_info[1].device_state){
+                            val = CURTAIN_STOP;
+                        }else{
+                            val = CURTAIN_CLOSE;
+                        }
+                    }
+                    nuos_report_curtain_blind_state(0, val);
                 }
                 break;        
             case  ESP_ZB_ZCL_CMD_WINDOW_COVERING_DOWN_CLOSE:
@@ -1310,6 +1244,22 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                     device_info[0].curtain_state = 1;
                     device_info[0].device_state = 0;    
                     nuos_zb_set_hardware(1, false);
+
+                    uint8_t val = 0;
+                    if(device_info[0].curtain_state == 0){
+                        if(!device_info[0].device_state){
+                            val = CURTAIN_STOP;
+                        }else{
+                            val = CURTAIN_OPEN;
+                        }
+                    }else if(device_info[0].curtain_state == 1){
+                        if(!device_info[1].device_state){
+                            val = CURTAIN_STOP;
+                        }else{
+                            val = CURTAIN_CLOSE;
+                        }
+                    }
+                    nuos_report_curtain_blind_state(0, val);
                 }
                 break;        
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_STOP:
@@ -1323,14 +1273,19 @@ static esp_err_t zb_cmd_window_covering_handler(const esp_zb_zcl_window_covering
                         device_info[0].device_state = 0;
                         device_info[1].device_state = 0; 
                     }
-                    curtain_cmd_stop();                   
+
+                    uint8_t val = CURTAIN_STOP;
+                    nuos_report_curtain_blind_state(0, val);                    
+                    curtain_cmd_stop();   
                 }
                 break;
 
+            case ESP_ZB_ZCL_CMD_WINDOW_COVERING_GO_TO_TILT_PERCENTAGE:    
             case ESP_ZB_ZCL_CMD_WINDOW_COVERING_GO_TO_LIFT_PERCENTAGE:  
                 ESP_LOGI("WINDOW", "Go To Lift Percentage: %d%%\n", message->payload.percentage_lift_value);
                 set_curtain_percentage(message->payload.percentage_lift_value, true);                              
                 break;
+
             default:
                 break;
         }
@@ -1352,8 +1307,7 @@ static esp_err_t zb_cmd_read_attribute_handler(const esp_zb_zcl_cmd_read_attr_re
     #ifdef USE_CCT_TIME_SYNC
     if (message && message->variables) {
         esp_zb_zcl_read_attr_resp_variable_t *variable = message->variables;
-        if(message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_TIME){  
-            #ifdef USE_CCT_TIME_SYNC                        
+        if(message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_TIME){                     
             while (variable) {
                 if (variable->attribute.id == ESP_ZB_ZCL_ATTR_TIME_LOCAL_TIME_ID || variable->attribute.id == ESP_ZB_ZCL_ATTR_TIME_STANDARD_TIME_ID) { // Assuming 0x0000 is the Time attribute ID
                     printf("On Attribute ZB_ZCL_ATTR_TIME_LOCAL_TIME_ID Callback\n");
@@ -1391,14 +1345,13 @@ static esp_err_t zb_cmd_read_attribute_handler(const esp_zb_zcl_cmd_read_attr_re
     
                         set_time(year, month, mday, ist_hour, minute, second);
    
-                        set_cct_time_sync_request_flag = true;
+                        //set_cct_time_sync_request_flag = true;
                     } else {
                         printf("Invalid attribute value (NULL)\n");
                     }
                 }
                 variable = variable->next;
             }
-            #endif
         }
     } else {
         printf("Invalid message or empty attribute response\n");
@@ -1444,11 +1397,12 @@ static esp_err_t zb_attribute_reporting_handler(const esp_zb_zcl_report_attr_mes
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH) 
     #else
-    for(int i=0; i<TOTAL_ENDPOINTS; i++){
-        if(ENDPOINTS_LIST[i] == message->dst_endpoint){
-            nuos_set_zigbee_attribute(i);   
-        }
-    }
+    // for(int i=0; i<TOTAL_ENDPOINTS; i++){
+    //     if(ENDPOINTS_LIST[i] == message->dst_endpoint){
+            //nuos_set_zigbee_attribute(i);   
+            nuos_set_attribute_cluster_3(message);
+    //     }
+    // }
     #endif
     return ESP_OK;
 }
@@ -1822,9 +1776,7 @@ bool zb_apsde_data_indication_handler(esp_zb_apsde_data_ind_t ind)
 
 static void esp_zb_task(void *pvParameters)
 {
-    //  ESP_ERROR_CHECK(esp_zb_io_buffer_size_set(64)); 
-    // esp_zb_scheduler_queue_size_set(150); 
-    printf("---------esp_zb_task---------\n");
+
     const uint16_t table_size = 64;
     ESP_ERROR_CHECK(esp_zb_aps_src_binding_table_size_set(32));
     ESP_ERROR_CHECK(esp_zb_aps_dst_binding_table_size_set(32));
@@ -1841,10 +1793,7 @@ static void esp_zb_task(void *pvParameters)
     ESP_ERROR_CHECK(esp_zb_zcl_scenes_table_set_size(table_size));
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM    \
         || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT                              \
-        || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)   
-        // esp_zb_set_channel_mask(ESP_ZB_TOUCHLINK_CHANNEL_MASK);
-        // esp_zb_set_rx_on_when_idle(true);
-        // esp_zb_zdo_touchlink_target_set_timeout(TOUCHLINK_TARGET_TIMEOUT);
+        || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
     #endif
     // Wait for stack to be ready before starting network steering
     //Added by Nuos 
@@ -1852,16 +1801,6 @@ static void esp_zb_task(void *pvParameters)
     nuos_init_privilege_commands(); 
     // esp_zb_aps_data_indication_handler_register(zb_apsde_data_indication_handler); 
     esp_zb_core_action_handler_register(zb_action_handler);
-
-//    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER )
-//     esp_zb_zcl_custom_cluster_handlers_t custom_handler = {
-//         .cluster_id = 0xFC31,
-//         .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-//         .check_value_cb = zb_zcl_custom_cluster_check_value_handler,
-//         .write_attr_cb = zb_zcl_custom_cluster_write_attr_handler,
-//     };
-//     esp_zb_zcl_custom_cluster_handlers_update(custom_handler);
-//     #endif
     esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK);
 
     #ifdef IS_END_DEVICE

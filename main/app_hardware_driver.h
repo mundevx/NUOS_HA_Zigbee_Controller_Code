@@ -183,18 +183,17 @@
     } zb_binding_data_t;
 
     typedef struct {
-        // uint8_t selected_switch;
-        // uint8_t group_id;
-        // uint8_t scene_ids[4];
-        // uint8_t control_type;
-        // uint8_t scn_ctrl_type;
         uint8_t selected_id;
         uint8_t group_id;
         uint8_t scene_ids[4];
         uint8_t control_type;
         uint8_t scn_ctrl_type;
         uint8_t total_ids[4];
-        uint16_t device_ids[4][64];
+        uint16_t device_ids[4][30];  //==>20, you can increase number of dali_ids upto 64
+        bool device_state[16][30];
+        uint8_t device_level[16][30];
+        uint16_t device_color[16][30];
+        uint8_t device_scene[16][30];
     } scene_switch_s;
 
 
@@ -220,12 +219,15 @@
 
     // } commissioning_info_handle_t;
 // Default values for curtain motor
-#define DEFAULT_OFFSET_TIME 2000
-#define DEFAULT_CALIBRATION_TIME 30000
+    #define DEFAULT_OFFSET_TIME                                                 2000
+    #define DEFAULT_CALIBRATION_TIME                                            30000
 //  https://yatyyt4jowdyyswqkog4i42helmwilyu.ui.nabu.casa/lovelace/0
 ////////////////////////////////////////////////////////////////////////
     #define MAX_BINDINGS                                                        40  // adjust this based on how many you expect
     #ifdef DECLARE_MAIN
+
+        bool isr_service_installed                                              = false;
+
         bool rgb_led_blink_flag                                                 = false;
         const uint32_t blink_intervals[3]                                       = {200, 500, 1000}; // Fast, Medium, Slow
         //SemaphoreHandle_t postHandlerSemaphore                                  = NULL;
@@ -279,15 +281,21 @@
 
         uint16_t cb_requests_counts                                             = 0;
         uint16_t cb_response_counts                                             = 0;
-        #ifdef USE_CCT_TIME_SYNC
-        bool set_cct_time_sync_request_flag                                     = false;
-        #endif
+        // #ifdef USE_CCT_TIME_SYNC
+        // bool set_cct_time_sync_request_flag                                     = false;
+        // #endif
         bool is_reporting[MAX_DST_EP][MAX_NODES];
          
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" }; 
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #ifdef DALI_DIRECT_ADDRESSING
+                const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" };
+            #else
+                const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control"};
+            #endif
         #else
-        const char* switch_ctrl_type[4] = { "Individual Control", "Group Control", "Scene Control", "Broadcast Control" };
+            const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control" };
         #endif
         const char* scene_ctrl_type[3] = { "Broadcast Control", "Group Control", "Individual Control"};     
         //scene_switch_s scene_switch_t[4];
@@ -326,7 +334,7 @@
         stt_scene_switch_t nodes_info;
         zigbee_zcene_info_t zb_scene_info[4];
         wifi_info_handle_t wifi_info;
-        bool timer3_running_flag                                                = true;
+        //bool timer3_running_flag                                                = true;
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
@@ -1060,10 +1068,15 @@
                 char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '4', 'B'};     
             #endif
 
+            #ifdef USE_TWO_SWITCH_MODE
+            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2};
+            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2};
+            #else
             const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_4};
+            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4};
+            #endif
+ 
             const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
-            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4}; 
-           
         /*************GROUP DALI************* */  
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #ifdef USE_HOME_ASSISTANT
@@ -1275,6 +1288,9 @@
         extern bool is_bt_start_pressed;
         extern bool is_bt_end_pressed;
         #endif
+
+        extern bool isr_service_installed;
+     
         extern bool rgb_led_blink_flag;
         extern const uint32_t blink_intervals[3];
         //extern SemaphoreHandle_t postHandlerSemaphore;
@@ -1337,7 +1353,7 @@
         extern stt_scene_switch_t nodes_info;        
         extern zigbee_zcene_info_t zb_scene_info[4];
         extern wifi_info_handle_t wifi_info;
-        extern bool timer3_running_flag;
+        // bool timer3_running_flag;
         
         extern uint8_t target_percentage; 
         extern bool is_long_press_brightness;
@@ -1356,9 +1372,9 @@
 
         extern uint16_t cb_requests_counts;
         extern uint16_t cb_response_counts;
-        #ifdef USE_CCT_TIME_SYNC
-        extern bool set_cct_time_sync_request_flag;
-        #endif
+        // #ifdef USE_CCT_TIME_SYNC
+        // extern bool set_cct_time_sync_request_flag;
+        // #endif
         extern bool is_reporting[MAX_DST_EP][MAX_NODES];
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
@@ -1517,6 +1533,8 @@ extern "C" {
 
     extern void nuos_set_dali_fade_time(uint8_t time);
     extern void nuos_set_dali_fade_rate(uint8_t rate);
+    extern void call_common_check_auto_off();
+    extern void set_all_leds_to_original_state();
 #ifdef __cplusplus
 }
 #endif 
@@ -1541,6 +1559,8 @@ extern void nuos_set_level_to_rgb(uint8_t index);
 extern void nuos_zb_set_scene_switch_click(uint32_t io_num, uint8_t state);
 extern void nuos_zb_convert_xy_to_rgb(uint8_t index, float red_f, float blue_f, float green_f);
 extern void nuos_zb_set_leds_only(uint8_t index, uint8_t is_toggle);
+
+
 extern void pause_curtain_timer();
 extern void resume_curtain_timer(uint8_t index);
 extern void curtain_cmd_open(void);

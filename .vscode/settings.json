@@ -2,10 +2,10 @@
   "idf.flashType": "UART",
   "idf.portWin": "COM14",
   "idf.openOcdConfigs": [
-    "board/esp32h2-builtin.cfg"
+    "board/esp32c6-builtin.cfg"
   ],
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32h2"
+    "IDF_TARGET": "esp32c6"
   },
   "clangd.path": "c:\\esp\\esp-zigbee-sdk\\tools\\esp-clang\\esp-19.1.2_20250312\\esp-clang\\bin\\clangd.exe",
   "clangd.arguments": [
@@ -15,5 +15,6 @@
   ],
   "idf.espIdfPathWin": "C:\\Users\\procu\\esp\\v5.5\\esp-idf",
   "idf.toolsPathWin": "c:\\esp\\esp-zigbee-sdk",
-  "idf.pythonInstallPath": "c:\\esp\\esp-zigbee-sdk\\tools\\idf-python\\3.11.2\\python.exe"
+  "idf.pythonInstallPath": "c:\\esp\\esp-zigbee-sdk\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.currentSetup": "C:\\Users\\procu\\esp\\v5.5\\esp-idf"
 }

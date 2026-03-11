@@ -61,10 +61,11 @@
     #define CLOSE_COVER_LEVEL                                       0
 
     #define TASK_PRIORITY_ZIGBEE                                    5
+    #define TASK_PRIORITY_DALI_TASK                                 8
     #define TASK_PRIORITY_SWITCH                                    10
     #define TASK_PRIORITY_SCENE_RECALL                              15
-    #define TASK_PRIORITY_RGB                                       20
     #define TASK_PRIORITY_ATTR                                      18
+    #define TASK_PRIORITY_RGB                                       20
     #define TASK_PRIORITY_PRIVILEGE                                 21
     #define TASK_PRIORITY_IR_BLASTER_SEND                           21
     #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           20
@@ -108,7 +109,7 @@
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT  
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254
-        #define CHANGE_LOAD_PIN                                    /*disable for Triac and enable for Relay*/
+        //#define CHANGE_LOAD_PIN                                    /*disable for Triac and enable for Relay*/
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       2
@@ -123,12 +124,13 @@
         #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254        
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
-        #define CHANGE_LOAD_PIN                                     /* enable for Relay and disable for Triac */
+        #define CHANGE_LOAD_PIN                                     /* disable for Relay and enable for Triac */
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
         #define TOTAL_ENDPOINTS                                     2
         #define TOTAL_BUTTONS                                       4
         #define TOTAL_LEDS                                          4
         #define TOTAL_LOADS                                         4
+        #define USE_RGB_LED
         //#define USE_ADD_GROUP_SCENE_CLUSTERS
         //#define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4
         #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
@@ -349,7 +351,7 @@
         #define TOTAL_BUTTONS                                       1
         #define TOTAL_LEDS                                          1
         #define TOTAL_LOADS                                         0
-        //#define USE_RGB_LED
+        #define USE_RGB_LED
         #define USE_IR_UART_WS4_HW
         
         #define USE_ADD_GROUP_SCENE_CLUSTERS
@@ -453,7 +455,7 @@
         #ifndef DONT_USE_ZIGBEE
         #define USE_RGB_LED
         #endif
-        #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
+        #define MIN_DIM_LEVEL_VALUE                                 25 //(0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 254    
         #define FAN_INDEX                                           1
         #define LIGHT_INDEX                                         0           
@@ -566,24 +568,30 @@
         #define MAX_DIM_LEVEL_VALUE                                 254
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_DALI_LIGHT
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        #define USE_TWO_SWITCH_MODE
         #define TOTAL_ENDPOINTS                                     1
-        #define TOTAL_BUTTONS                                       4
-        #define TOTAL_LEDS                                          4
+        #ifndef USE_TWO_SWITCH_MODE
+            #define TOTAL_BUTTONS                                       4
+            #define TOTAL_LEDS                                          4
+        #else
+            #define TOTAL_BUTTONS                                       2
+            #define TOTAL_LEDS                                          2
+        #endif
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4      
         #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
         #define FAN_INDEX                                           1 
         #define ENABLE_PWM_DIMMING
         #define USE_RGB_LED
-        #define USE_CCT_TIME_SYNC
+       
+        // #ifndef USE_TWO_SWITCH_MODE
+        // #define USE_CCT_TIME_SYNC
+        // #endif
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
-
 
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
             #define USE_WIFI_WEBSERVER
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
-            
-
             #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
 
             #define TIME_PERIOD_IN_MS                                   100
@@ -593,7 +601,6 @@
             #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
             
             #define ESP_WIFI_SSID                                       "NUOS DALI CCT SWITCH"
-
             #define ESP_WIFI_PASS                                       "NUOS1234"
         #endif 
 
@@ -615,7 +622,7 @@
             #define TUYA_ATTRIBUTES
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-        //#define DALI_DIRECT_ADDRESSING 
+        #define DALI_DIRECT_ADDRESSING 
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             #define TOTAL_ENDPOINTS                                     MAX_DALI_ADDRESSES
             #define TOTAL_BUTTONS                                       2

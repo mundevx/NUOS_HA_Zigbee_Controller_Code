@@ -568,7 +568,7 @@ void pause_curtain_timer()
     #else
 
         void nuos_zb_set_hardware_curtain(uint8_t index, uint8_t device_state){
-            printf("index:%d  device_state:%d\n", index, device_state);
+            call_common_check_auto_off();
             //if(index == 0){
             if(device_state == CURTAIN_OPEN){
                 device_info[0].device_state = true;
@@ -628,6 +628,38 @@ void pause_curtain_timer()
         
     // #endif
 
+    void set_all_leds_to_original_state(){
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+            if(device_info[0].device_state == CURTAIN_OPEN){
+                gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
+                gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
+            }else if(device_info[0].device_state == CURTAIN_CLOSE){
+                gpio_set_level(gpio_touch_led_pins[0], CURTAIN_CLOSE);
+                gpio_set_level(gpio_touch_led_pins[1], CURTAIN_OPEN);
+            }
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
+            for(int i=0; i<TOTAL_ENDPOINTS; i++){
+                if(i == 0){
+                    if(device_info[0].device_state == CURTAIN_OPEN){
+                        gpio_set_level(gpio_touch_led_pins[0], CURTAIN_OPEN);
+                        gpio_set_level(gpio_touch_led_pins[1], CURTAIN_CLOSE);
+                    }else if(device_info[0].device_state == CURTAIN_CLOSE){
+                        gpio_set_level(gpio_touch_led_pins[0], CURTAIN_CLOSE);
+                        gpio_set_level(gpio_touch_led_pins[1], CURTAIN_OPEN);
+                    }
+                }else if(i == 1){
+                    if(device_info[1].device_state == CURTAIN_OPEN){
+                        gpio_set_level(gpio_touch_led_pins[2], CURTAIN_OPEN);
+                        gpio_set_level(gpio_touch_led_pins[3], CURTAIN_CLOSE);
+                    }else if(device_info[1].device_state == CURTAIN_CLOSE){
+                        gpio_set_level(gpio_touch_led_pins[2], CURTAIN_CLOSE);
+                        gpio_set_level(gpio_touch_led_pins[3], CURTAIN_OPEN);
+                    }
+                }
+            }
+        #endif
+    }
+
     void nuos_zb_set_leds_only(uint8_t index, uint8_t is_toggle){
 
         if(is_toggle>0) state = !state;
@@ -667,18 +699,20 @@ void pause_curtain_timer()
 
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
         // //set touch led pins
-        if(timer3_running_flag){
-            set_harware(index, is_toggle);
-        }else{
-            timer3_running_flag = true;
-            if(nuos_check_state_touch_leds()){
-                for(int i=0; i<TOTAL_ENDPOINTS; i++){
-                    nuos_zb_set_leds_only(i, false);
-                }
-            }else{
-                set_harware(index, is_toggle);         
-            }
-        }
+        call_common_check_auto_off();
+        set_harware(index, is_toggle);
+        // if(timer3_running_flag){
+        //     set_harware(index, is_toggle);
+        // }else{
+        //     timer3_running_flag = true;
+        //     if(nuos_check_state_touch_leds()){
+        //         for(int i=0; i<TOTAL_ENDPOINTS; i++){
+        //             nuos_zb_set_leds_only(i, false);
+        //         }
+        //     }else{
+        //         set_harware(index, is_toggle);         
+        //     }
+        // }
         nuos_store_data_to_nvs(index);
     }
 

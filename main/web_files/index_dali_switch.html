@@ -594,6 +594,25 @@
     <!-- Popup for DALI ID Selection -->
     <div class="overlay" id="overlay"></div>
     <div class="popup" id="popup">
+
+          <!-- Add to Group dropdown -->
+        <label style="margin-top:10px; display:block; color:#2193b0; font-weight:bold;">
+            Add to Group
+        </label>
+        <select id="groupDropdown" style="width:100%; margin-bottom:12px;">
+            <option value="">-- Select Group --</option>
+        </select>
+
+<div class="two-buttons" style="margin-bottom:14px;">
+  <button class="stylish-button" style="margin:0;" onclick="addToGroup()">
+    Add To Group
+  </button>
+  <button class="stylish-button"
+          style="margin:0; background:#ef4444;"
+          onclick="removeFromGroup()">
+    Remove From Group
+  </button> </div>
+
         <h3>Select DALI IDs (0-63)</h3>
         <div id="toggleGrid"></div>
         <div class="popup-buttons">
@@ -669,11 +688,20 @@
         // Submit popup selection
         function submitSelection() {
             if (currentInput === null) return;
+
     
             const selected = popupSelections[currentInput].slice().sort((a, b) => a - b);
+
+            const groupId = document.getElementById('groupDropdown').value;
+
+            if (!groupId) {
+                showToast("Please select a Group ID", "error");
+                return;
+            }            
             const payload = {
                 fxn: '41',
                 input_id: currentInput,
+                group_id: parseInt(groupId, 10),
                 selected_ids: selected,
                 control_type: document.getElementById('control_type').value === 'Individual Control' ? 0 : 1
             };
@@ -982,7 +1010,12 @@ if (data && data.fade_rate !== undefined) {
         fadeRateInput.value = data.fade_rate;
     }
 }
-
+if (data && data.group_id !== undefined) {
+    const group_id = document.getElementById('groupDropdown');
+    if (group_id) {
+        group_id.value = data.group_id;
+    }
+}
     }).catch(console.error);
 
 
@@ -1095,7 +1128,95 @@ document.addEventListener('DOMContentLoaded', function () {
       showToast('ESP server not reachable', 'error');
     }
   });  
-});        
-    </script>
+});
+
+
+function populateGroupDropdown() {
+  const sel = document.getElementById('groupDropdown');
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">-- Select Group --</option>';
+  for (let i = 1; i <= 15; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = i;
+    sel.appendChild(opt);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', populateGroupDropdown);
+
+
+function getGroupPayload(fxnCode) {
+  if (currentInput === null) {
+    showToast("No scene input selected", "error");
+    return null;
+  }
+
+  const groupId = document.getElementById('groupDropdown').value;
+  if (!groupId) {
+    showToast("Please select a Group ID", "error");
+    return null;
+  }
+
+  const selected = (popupSelections[currentInput] || [])
+    .slice()
+    .sort((a, b) => a - b);
+
+  if (!selected.length) {
+    showToast("Please select at least one DALI ID", "error");
+    return null;
+  }
+
+  return {
+    fxn: fxnCode,                 // 38 or 39
+    input_id: currentInput,
+    group_id: parseInt(groupId, 10),
+    selected_ids: selected
+  };
+}
+
+function addToGroup() {
+  const payload = getGroupPayload(38);
+  if (!payload) return;
+
+  fetch('/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error();
+    showToast(
+      `Added ${payload.selected_ids.length} device(s) to Group ${payload.group_id}`,
+      "success"
+    );
+  })
+  .catch(() => {
+    showToast("Failed to add devices to group", "error");
+  });
+}
+function removeFromGroup() {
+  const payload = getGroupPayload(39);
+  if (!payload) return;
+
+  fetch('/action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error();
+    showToast(
+      `Removed ${payload.selected_ids.length} device(s) from Group ${payload.group_id}`,
+      "success"
+    );
+  })
+  .catch(() => {
+    showToast("Failed to remove devices from group", "error");
+  });
+}
+
+</script>
 </body>
 </html>

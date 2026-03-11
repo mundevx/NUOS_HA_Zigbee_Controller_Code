@@ -40,6 +40,7 @@
     esp_err_t nuos_zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message);
     void setup_reporting_for_thermostat_system_mode_id() ;
     void nuos_set_attribute_cluster(const esp_zb_zcl_set_attr_value_message_t *message);
+    void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *message);
     void nuos_set_scene_group_cluster(const esp_zb_zcl_recall_scene_message_t *message);
     void nuos_set_scene_store_cluster(const esp_zb_zcl_store_scene_message_t *message);
     
@@ -53,5 +54,6 @@
     void send_report(int index, uint16_t cluster_id, uint16_t attr_id);
     void nuos_start_bootloader();    
     void nuos_init_privilege_commands();
-    bool nuos_init_sequence();    
+    bool nuos_init_sequence(); 
+    esp_err_t nuos_set_thermostat_attribute(uint8_t index);   
 #endif

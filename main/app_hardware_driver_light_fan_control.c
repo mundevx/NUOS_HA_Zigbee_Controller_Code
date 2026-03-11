@@ -7,21 +7,6 @@
     bool nuos_check_state_touch_leds();
 
 	void nuos_zb_init_hardware(){
-        // uint32_t pins = 0; 
-        // for(int i=0; i<TOTAL_LEDS; i++){
-        //     pins |= 1ULL << gpio_touch_led_pins[i];
-        // }  
-        // for(int j=0; j<TOTAL_LOADS; j++){
-        //     pins |= 1ULL << gpio_load_pins[j];
-        // }         
-        // gpio_config_t io_conf;
-        // // Configure the output pin
-        // io_conf.intr_type = GPIO_INTR_DISABLE;       // Disable interrupt
-        // io_conf.mode = GPIO_MODE_OUTPUT;             // Set as output mode
-        // io_conf.pin_bit_mask = pins;                 // Bit mask for the output pin
-        // io_conf.pull_down_en = 0;                    // Disable pull-down mode
-        // io_conf.pull_up_en = 0;                      // Disable pull-up mode
-        // gpio_config(&io_conf);
 
 		for(int index=0; index<TOTAL_LEDS; index++){
             gpio_reset_pin(gpio_touch_led_pins[index]);
@@ -84,6 +69,7 @@
 			device_info[FAN_INDEX].device_level = fan_speed_values[device_info[FAN_INDEX].fan_speed];
 			nuos_set_hardware_fan_ctrl(FAN_INDEX);
 			//nuos_store_data_to_nvs(FAN_INDEX);
+			printf("Fan Speed: %d, Device Level: %d\n", device_info[FAN_INDEX].fan_speed, device_info[FAN_INDEX].device_level);
 		}
         #ifdef USE_RGB_LED
             nuos_rgb_trigger_blink(); 
@@ -99,24 +85,22 @@
         nuos_on_off_led(index, state);
     }
 
-
-void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
-        //set touch led pins
-		if(timer3_running_flag){
-			set_hardware(index, is_toggle);
-		}else{
-			if(nuos_check_state_touch_leds()){
-				#if(TOTAL_ENDPOINTS == 2)
-					gpio_set_level(gpio_touch_led_pins[LIGHT_INDEX], device_info[LIGHT_INDEX].device_state);
-					nuos_set_hardware_fan_touch_leds_ctrl_only(FAN_INDEX);
-				#else
-					nuos_set_hardware_fan_touch_leds_ctrl_only(FAN_INDEX);
-				#endif
-			}else{
-				set_hardware(index, is_toggle);              
+	void set_all_leds_to_original_state(){
+		for(int i=0; i<TOTAL_ENDPOINTS; i++){
+			if(i == LIGHT_INDEX) {
+				//set touch led pins
+				gpio_set_level(gpio_touch_led_pins[0], device_info[LIGHT_INDEX].device_state);
+			} else if(i == FAN_INDEX) {
+				nuos_set_hardware_fan_touch_leds_ctrl_only(i);
 			}
 		}
-        //nuos_store_data_to_nvs(index);
+	}
+
+	void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
+        //set touch led pins
+		call_common_check_auto_off();
+		set_hardware(index, is_toggle);
+		nuos_store_data_to_nvs(index);
     }
 
     void nuos_set_state_touch_leds(bool state){
@@ -195,9 +179,9 @@ void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
 	void nuos_set_hardware_fan_touch_leds_ctrl_only(uint8_t index){
 		if(device_info[index].fan_speed == 0){
 			if(device_info[index].device_state == 0){
-			gpio_set_level(gpio_touch_led_pins[1], 0); //fan on-off touch led
-			gpio_set_level(gpio_touch_led_pins[2], 0); //fan inc touch led
-			gpio_set_level(gpio_touch_led_pins[3], 0); //fan dec touch led
+				gpio_set_level(gpio_touch_led_pins[1], 0); //fan on-off touch led
+				gpio_set_level(gpio_touch_led_pins[2], 0); //fan inc touch led
+				gpio_set_level(gpio_touch_led_pins[3], 0); //fan dec touch led
 			}
 		}else{
 			if(device_info[index].device_state == 1){

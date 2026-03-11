@@ -1330,6 +1330,27 @@ void nuos_get_data_from_nvs() {
 void get_nvs_dali_scene_switch_webpage_data(){
     size_t required_length = sizeof(scene_switch_s);
     nuos_read_dali_scene_switch_data_to_nvs((scene_switch_s*)&scene_group_switch_info, &required_length);
+
+    printf("-----------DALI Webpage data------------\n");
+    printf("CTRL_TYPE:%d  ", scene_group_switch_info.control_type);
+    printf("SCN_CTRL_TYPE:%d \n", scene_group_switch_info.scn_ctrl_type);
+    printf("Group_Id:%d  ", scene_group_switch_info.group_id);
+    printf(" Scene_Ids: { %d %d %d %d } \n ", scene_group_switch_info.scene_ids[0], 
+        scene_group_switch_info.scene_ids[1], 
+        scene_group_switch_info.scene_ids[2], 
+        scene_group_switch_info.scene_ids[3]);
+    for(int k=0; k<4; k++){
+        printf("{");
+        for(int i=0; i<scene_group_switch_info.total_ids[k]; i++){
+            printf(" %d", scene_group_switch_info.device_ids[k][i]);
+            if(i<scene_group_switch_info.total_ids[k]-1){
+                printf(",");
+            }
+        }
+        printf("}, \n");
+
+    }
+    
 }
 
 void init_nvs_for_zb_devices(){

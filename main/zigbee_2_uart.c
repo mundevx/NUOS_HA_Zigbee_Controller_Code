@@ -28,28 +28,66 @@ void json_parse_data_light(const char* data) {
     JSON_Object *root_object = json_value_get_object(parsed);
     
     if (root_object != NULL) {
-        // Extract "power"
-        JSON_Value *powerItem = json_object_get_value(root_object, "power");
-        if (powerItem != NULL && json_value_get_type(powerItem) == JSONNumber) {
-            int power = (int)json_value_get_number(powerItem);
-            printf("Power = %d\n", power);
-            device_info[0].device_state = power > 0 ? true : false;
-        }
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+            // Extract "power"
+            JSON_Value *powerItem = json_object_get_value(root_object, "power");
+            if (powerItem != NULL && json_value_get_type(powerItem) == JSONNumber) {
+                int power = (int)json_value_get_number(powerItem);
+                printf("Power = %d\n", power);
+                device_info[0].device_state = power > 0 ? true : false;
+            }
 
-        // Extract "temp"
-        JSON_Value *tempItem = json_object_get_value(root_object, "temp");
-        if (tempItem != NULL && json_value_get_type(tempItem) == JSONNumber) {
-            int temp = (int)json_value_get_number(tempItem);
-            printf("Temp = %d\n", temp);
-            device_info[0].ac_temperature = temp;
+            // Extract "temp"
+            JSON_Value *tempItem = json_object_get_value(root_object, "temp");
+            if (tempItem != NULL && json_value_get_type(tempItem) == JSONNumber) {
+                int temp = (int)json_value_get_number(tempItem);
+                printf("Temp = %d\n", temp);
+                device_info[0].ac_temperature = temp;
 
-            for (int i = 0; i < 17; i++) {
-                if (ac_temp_values[i] == device_info[0].ac_temperature) {
-                    device_info[0].device_level = i;
-                    break;
+                for (int i = 0; i < 17; i++) {
+                    if (ac_temp_values[i] == device_info[0].ac_temperature) {
+                        device_info[0].device_level = i;
+                        break;
+                    }
                 }
             }
-        }
+            nuos_set_zigbee_attribute(0);
+            nuos_store_data_to_nvs(0);
+        #else
+            // Extract "power"
+            JSON_Value *powerItem = json_object_get_value(root_object, "power");
+            if (powerItem != NULL && json_value_get_type(powerItem) == JSONNumber) {
+                int power = (int)json_value_get_number(powerItem);
+                printf("Power = %d\n", power);
+                device_info[0].device_state = power > 0 ? true : false;
+                device_info[1].device_state = device_info[0].device_state;
+                if(is_my_device_commissionned){ 
+                    nuos_set_thermostat_attribute(1);
+                }
+                
+            }
+
+            // Extract "temp"
+            JSON_Value *tempItem = json_object_get_value(root_object, "temp");
+            if (tempItem != NULL && json_value_get_type(tempItem) == JSONNumber) {
+                int temp = (int)json_value_get_number(tempItem);
+                printf("Temp = %d\n", temp);
+                device_info[0].ac_temperature = temp;
+                device_info[1].ac_temperature = temp;
+                for (int i = 0; i < 17; i++) {
+                    if (ac_temp_values[i] == device_info[0].ac_temperature) {
+                        device_info[0].device_level = i;
+                        device_info[1].device_level = i;
+                        break;
+                    }
+                }
+                if(is_my_device_commissionned){ 
+                    nuos_set_thermostat_temp_attribute(0);
+                }
+            }
+            nuos_store_data_to_nvs(0);
+            nuos_store_data_to_nvs(1);
+        #endif
         #ifdef USE_FAN_SPEED
         JSON_Value *fanItem = json_object_get_value(root_object, "fan");
         if (fanItem != NULL && json_value_get_type(fanItem) == JSONNumber) {
@@ -114,10 +152,9 @@ void json_parse_data_light(const char* data) {
                 const char* m_data = (const char*)data;
                 printf("As string: %s len:%d\n", m_data, len);
                 if(m_data != NULL){
-                    //json_parse_data((char*)data);
                     json_parse_data_light(m_data);
-                    nuos_set_zigbee_attribute(0);
-                    nuos_store_data_to_nvs(0);
+
+
                 }
             }
             vTaskDelay(10 / portTICK_PERIOD_MS);
