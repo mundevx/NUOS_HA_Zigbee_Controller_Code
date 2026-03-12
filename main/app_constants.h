@@ -568,7 +568,7 @@
         #define MAX_DIM_LEVEL_VALUE                                 254
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_DALI_LIGHT
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-        #define USE_TWO_SWITCH_MODE
+        //#define USE_TWO_SWITCH_MODE
         #define TOTAL_ENDPOINTS                                     1
         #ifndef USE_TWO_SWITCH_MODE
             #define TOTAL_BUTTONS                                       4
@@ -622,7 +622,7 @@
             #define TUYA_ATTRIBUTES
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-        #define DALI_DIRECT_ADDRESSING 
+        //#define DALI_DIRECT_ADDRESSING
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             #define TOTAL_ENDPOINTS                                     MAX_DALI_ADDRESSES
             #define TOTAL_BUTTONS                                       2

@@ -1150,6 +1150,8 @@ void nuos_switch_double_click_task(uint32_t io_num){
 
     #else
         double_press_click_enable = !double_press_click_enable;
+
+    //printf("DOUBLE PRESSED!!\n");
     #endif
 }
 
@@ -1170,7 +1172,7 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
     //recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 
     #ifndef DONT_USE_ZIGBEE 
-       if((is_my_device_commissionned == true) && (wifi_webserver_active_flag == false)){
+       if((is_my_device_commissionned) && (!wifi_webserver_active_flag)){
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             switch(button_index){
                 case 0:
@@ -1198,6 +1200,7 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                 
             #endif    
             nuos_set_zigbee_attribute(0);
+            switch_driver_gpios_intr_enabled(true);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             #ifdef DALI_DIRECT_ADDRESSING

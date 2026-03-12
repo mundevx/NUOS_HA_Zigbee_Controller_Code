@@ -921,10 +921,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         uint8_t level = *(uint8_t *)value;
-        // device_info[index_1].device_level = map_1000(level, 0, 1000, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE);
-        // if(is_my_device_commissionned){                                  
-        //     nuos_set_level_attribute(index_1);                            
-        // }         
+       
         #else
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
@@ -976,8 +973,6 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             
             is_long_press_brightness = false;
             nuos_set_hardware_brightness_2(1); 
-            //nuos_zb_set_hardware(0, false);
-            // printf("My device_level1:%d device_val1:%d\n", device_info[0].device_level, device_info[0].device_val);
             set_color_temp();
             set_level(0);               
         }

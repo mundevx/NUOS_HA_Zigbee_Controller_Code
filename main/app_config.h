@@ -33,7 +33,7 @@
     #define DEVICE_WIRELESS_GROUP_SWITCH                            24 // Currently Running Remote Switch
     #define DEVICE_SCENE_DALI                                       25 // SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_CCT_DALI_CUSTOM
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_RGB_DALI
 
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
     //#define USE_NVS_INIT

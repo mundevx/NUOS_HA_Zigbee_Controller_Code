@@ -1524,7 +1524,7 @@ case 40:
                     int brightness = (j_brightness && cJSON_IsNumber(j_brightness)) ? j_brightness->valueint : 0;
                     uint8_t brightness_1 = map(brightness, 0, 100, 0, 255);
                     int cct = (j_cct && cJSON_IsNumber(j_cct)) ? j_cct->valueint : 0;
-
+                    printf("==>CCT Value: %d", cct);
                     if (is_add) {
                         ESP_LOGI(TAG, "fxn202(devices): ADD device %d to scene %d (p=%d, br=%d, cct=%d)", did, sid, power, brightness_1, cct);
        

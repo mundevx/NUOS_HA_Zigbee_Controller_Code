@@ -144,6 +144,23 @@
 #define CCT_MIN_LVL 1
 #define CCT_MAX_LVL 255
 
+uint16_t map_level_to_cct_k(uint8_t level)
+{
+    /* Clamp input */
+    if (level <= CCT_MIN_LVL)
+        return CCT_MIN_K;
+
+    if (level >= CCT_MAX_LVL)
+        return CCT_MAX_K;
+
+    /* Linear map */
+    uint32_t num = (uint32_t)(level - CCT_MIN_LVL) * (CCT_MAX_K - CCT_MIN_K);
+
+    uint32_t den = (CCT_MAX_LVL - CCT_MIN_LVL);
+
+    return (uint16_t)(CCT_MIN_K + (num / den));
+}
+
 uint8_t map_cct_k_to_level(uint16_t kelvin)
 {
     /* Clamp input */
@@ -370,7 +387,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 gpio_set_level(gpio_touch_led_pins[2], 0);
                 #else
                     if(device_info[0].device_val >= MIN_CCT_VALUE){
-                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE-device_info[0].device_val)));
+                        ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(device_info[0].device_val)));
                     }else{
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE)));                   
                     }
@@ -549,7 +566,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                     #else
                     ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[0]);                    
-                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE-device_info[0].device_val)));
+                    ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(device_info[0].device_val)));
                     ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[1]));
                     #endif
                 #else
@@ -630,7 +647,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], device_info[i].device_level));
                 else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
             }else{
-                if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], map_cct_k_to_level(MAX_CCT_VALUE-device_info[0].device_val)));
+                if(_state_) ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], map_cct_k_to_level(device_info[0].device_val)));
                 else ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
             }
             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
@@ -737,6 +754,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         }
         
     }
+
 
 
    void convert_dimming_to_index(bool is_long_press){
@@ -872,27 +890,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 }
                 nuos_store_data_to_nvs(0);                      
             }else{
-                // convert_colors_to_index(is_long_press_brightness);
-
-                // if(scene_group_switch_info.control_type == 0) { 
-                //     // for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
-                //     //     dali.set_color_temperature(scene_group_switch_info.device_ids[0][i], device_info[0].device_val);
-                //     // }
-                //     dali.set_group_color_cct(scene_group_switch_info.scene_ids[0], device_info[0].device_val);
-                // }else{
-                //     #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                //         dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
-                //     #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-                //         dali.set_group_color_cct(global_group_id[0], device_info[0].device_val);
-                //     #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-                //         dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
-                //     #endif 
-                // }
-                // if(counts_color++ >= 10){
-                //     counts_color = 0;
-                //     nuos_set_color_temperature_attribute(0);
-                // }                  
-                // nuos_store_data_to_nvs(0);                     
+                         
             }
             #else
                 else if(index == 1){
@@ -919,7 +917,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
 
                             if(device_info[0].device_val >= MIN_CCT_VALUE){
-                                ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE-device_info[0].device_val)));
+                                ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(device_info[0].device_val)));
                             }else{
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE)));                   
                             }
@@ -986,7 +984,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level));                
             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
         }else if(index == 1){
-            ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], map_cct_k_to_level(MAX_CCT_VALUE-device_info[0].device_val)));              
+            ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], map_cct_k_to_level(device_info[0].device_val)));              
             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
         }
         #endif
@@ -1162,15 +1160,9 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     uint8_t cct_counts = 0;
     extern "C" void nuos_dali_set_color_temperate(uint8_t index){
         device_info[index].device_val = cct_values[cct_counts];
-        //#ifdef IS_USE_DALI_HARDWARE
-        //dali.set_group_color_cct(dali_nvs_stt[index].group_id, cct_values[cct_counts]); //
-
         dali.set_color_temperature(dali.BROADCAST_C, cct_values[cct_counts]);  
         //#endif
         nuos_store_data_to_nvs(0);
-        // if(wifi_webserver_active_flag == 0){
-        //     nuos_set_zigbee_attribute(index);
-        // }
     }
 
 
@@ -1351,68 +1343,65 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     } dali_cmd_t;
 
 
-    #define MAX_DEVICES 64
-    #define MAX_SCENES 16
-    #define MAX_GROUPS 16
 
-    uint8_t last_dtr0 = 0;
-    uint8_t scene_table[MAX_DEVICES][MAX_SCENES];
 
 
     void interpret_frame(uint8_t b1, uint8_t b2)
     {
+        static uint8_t last_dtr0 = 0;
+        static uint8_t last_color_dtr0 = 0;
+        static uint8_t last_color_dtr1 = 0;
+
         uint8_t addr;
-        uint8_t scene;
+        uint16_t scene;
 
         // ---------------------------
         // SET_DTR0
         // ---------------------------
-        if(b1 == 0xC3)
-        {
-            // last_dtr0 = b2;
-            // printf("SET_DTR0 = %d\n", last_dtr0);
+        if(b1 == 0xC3){
+            last_color_dtr0 = last_dtr0;
+            last_color_dtr1 = b2;
+            //printf("SET_DTR1 = %d\n", ((last_color_dtr1<<8 ) | last_color_dtr0));
             return;
         }
-
         // ---------------------------
         // ENABLE DEVICE TYPE
         // ---------------------------
-        if(b1 == 0xC1 && b2 == 0x08)
-        {
-            printf("ENABLE DEVICE TYPE 8\n");
+        if(b1 == 0xC1 && b2 == 0x08){
+            //printf("ENABLE DEVICE TYPE 8\n");
             return;
         }
-
         // ---------------------------
         // SET COLOR TEMPERATURE (DT8)
         // ---------------------------
-        if(b2 == 0xE7)
-        {
+        if(b2 == 0xE7){
             addr = (b1 >> 1) & 0x3F;
-            printf("SET COLOR TEMP → Device %d\n", addr);
+            //printf("SET COLOR TEMP → Device %d\n", addr);
             return;
         }
 
         // ---------------------------
         // STORE SCENE
         // ---------------------------
-        if(b2 >= 0x40 && b2 <= 0x4F)
-        {
+        if(b2 >= 0x40 && b2 <= 0x4F){
             addr = (b1 >> 1) & 0x3F;
             scene = b2 - 0x40;
 
-            scene_table[addr][scene] = last_dtr0;
-
-            printf("STORE SCENE %d → Device %d  Level=%d\n",
-                scene, addr, last_dtr0);
+            // printf("STORE SCENE %d → Device %d  Level=%d Color=%d\n",
+            //     scene, addr, last_dtr0, last_color_dtr0);
 
             for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
                 if(addr == scene_group_switch_info.device_ids[0][i]){
-                    scene_group_switch_info.device_scene[scene-1][i] = scene;  
-                    scene_group_switch_info.device_level[scene-1][i] = last_dtr0; 
-                    if(last_dtr0 == 0) scene_group_switch_info.device_state[scene-1][i]  = false;
-                    else scene_group_switch_info.device_state[scene-1][i]  = true;
-                    printf("=======DATA SAVED SUCCESSFULLY=======");
+                    scene_group_switch_info.device_scene[scene][i] = scene;  
+                    scene_group_switch_info.device_level[scene][i] = last_dtr0;
+
+                    uint16_t color_temp_mirek = ((last_color_dtr1 << 8) & 0xff00) | last_color_dtr0;
+                    uint16_t kelvin_cct = 1000000 / color_temp_mirek;
+                    //2000 to 6500
+                    scene_group_switch_info.device_color[scene][i] = kelvin_cct;  
+                    if(last_dtr0 == 0) scene_group_switch_info.device_state[scene][i]  = false;
+                    else scene_group_switch_info.device_state[scene][i]  = true;
+                    //printf("============DATA SAVED SUCCESSFULLY============\n");
                     nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
                     break;
                 }
@@ -1423,26 +1412,30 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         // ---------------------------
         // BROADCAST SCENE RECALL
         // ---------------------------
-        if(b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F)
-        {
+        if(b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F){
             scene = b2 - 0x10;
-            printf("BROADCAST RECALL SCENE %d\n", scene);
+            //printf("BROADCAST RECALL SCENE %d\n", scene);
             scene_group_switch_info.scene_ids[0] = scene;
             bool all_off = true;
             uint8_t max_level = 0;
-            printf("records:%d\n", scene_group_switch_info.total_ids[0]);
+            uint16_t max_cct = 2000;
+
+            //printf("records:%d\n", scene_group_switch_info.total_ids[0]);
             if(scene_group_switch_info.total_ids[0] > 0){
                 for(int j=0; j<scene_group_switch_info.total_ids[0]; j++){
-                    printf("Device %d found in Records!!\n", scene_group_switch_info.device_ids[0][j]);
-                    if(scene_group_switch_info.device_scene[scene-1][j] == scene){
-                        printf("Scene %d found in Records!!\n", scene);
-                        
-                        if(scene_group_switch_info.device_state[scene-1][j]){
+                    //printf("Device %d found in Records!!\n", scene_group_switch_info.device_ids[0][j]);
+                    if(scene_group_switch_info.device_scene[scene][j] == scene){
+                        //printf("Scene %d found in Records!!\n", scene);
+                        if(scene_group_switch_info.device_state[scene][j]){
                             all_off = false;
                         }
-                        if(scene_group_switch_info.device_level[scene-1][j] > max_level)
-                            max_level = scene_group_switch_info.device_level[scene-1][j];
+                        if(scene_group_switch_info.device_level[scene][j] > max_level)
+                            max_level = scene_group_switch_info.device_level[scene][j];
 
+                        if(scene_group_switch_info.device_color[scene][j] > max_cct)
+                            max_cct = scene_group_switch_info.device_color[scene][j]; 
+
+                        //printf("max_cct %d\n", max_cct);        
                     }
                 }  
                 if(all_off){
@@ -1452,7 +1445,72 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 }else{
                     device_info[0].device_state = true;
                     device_info[0].device_level = max_level;
-                    set_hardware(0, false);
+                    device_info[0].device_val = max_cct;  //2000 to 6500
+                    //printf("max_level:%d max_cct:%d\n", max_level, max_cct);
+                    #ifndef USE_TWO_SWITCH_MODE
+                    device_info[0].fan_speed = find_closest_index(device_info[0].device_val);
+                    device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
+                    #endif
+                    // set_hardware(0, false);
+
+                    if(!device_info[0].device_state) {
+                        #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                            #ifndef USE_TWO_SWITCH_MODE
+                            ledc_set_duty(LEDC_MODE, pwm_channels[0], 0);            
+                            ledc_update_duty(LEDC_MODE, pwm_channels[0]);
+                            #else
+                            ledc_set_duty(LEDC_MODE, pwm_channels[0], 0);            
+                            ledc_update_duty(LEDC_MODE, pwm_channels[0]);
+
+                            ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], 0));
+                            ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[1]));       
+                            #endif             
+                        #else
+                            gpio_set_level(gpio_touch_led_pins[index], 0);
+                        #endif
+                        #ifdef USE_CCT_TIME_SYNC
+                        if(device_info[0].color_or_fan_state){
+                            device_info[0].color_or_fan_state = false;
+                            gpio_set_level(gpio_touch_led_pins[1], 0);
+                            stop_color_temp_timer();
+                        }    
+                        #endif 
+                        nuos_set_state_attribute(0); 
+                        //nuos_set_color_temp_level_attribute(0);          
+                    } else {
+                        #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+                            #ifndef USE_TWO_SWITCH_MODE
+                            ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
+                            ledc_update_duty(LEDC_MODE, pwm_channels[0]);
+                            #else
+                            ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
+                            ledc_update_duty(LEDC_MODE, pwm_channels[0]);                    
+                            ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(device_info[0].device_val)));
+                            ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[1]));
+                            #endif
+                        #else
+                            gpio_set_level(gpio_touch_led_pins[index], 1);
+                        #endif
+
+                        gpio_set_level(gpio_touch_led_pins[1], device_info[0].color_or_fan_state);
+
+                        #ifdef USE_CCT_TIME_SYNC
+                        if(device_info[0].color_or_fan_state){
+                            start_color_temp_timer();
+                        }else{
+                            stop_color_temp_timer();
+                        }
+                        #else
+                        if(device_info[0].color_or_fan_state){
+                            set_color_temp_leds(1);
+                        }else{
+                            set_dimming_control_leds(1);
+                        }
+                        #endif
+                        nuos_set_state_attribute(0);
+                        nuos_set_color_temp_level_attribute(0);
+                        nuos_set_color_temperature_attribute(0);
+                    }   
                 }   
             }          
             return;
@@ -1461,31 +1519,30 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
         // ---------------------------
         // COLOR ACTIVATE
         // ---------------------------
-        if(b1 == 0xA3)
-        {
-            //printf("COLOR ACTIVATE\n");
+        if(b1 == 0xA3){
+            // printf("COLOR ACTIVATE\n");
             last_dtr0 = b2;
-            printf("SET_DTR0 = %d\n", last_dtr0);
+            //printf("SET_DTR0 = %d\n", last_dtr0);
             return;
         }
 
         // ---------------------------
         // ARC POWER CONTROL (DAPC)
         // ---------------------------
-        if(b2 <= 0xFE)
-        {
+        if(b2 <= 0xFE) {
             // Broadcast
             if(b1 == 0xFE)
             {
                 if(b2 == 0){
-                    printf("BROADCAST → OFF\n");
+                    //printf("BROADCAST → OFF\n");
                     device_info[0].device_state = false;
                     set_hardware(0, false);
                 }else{
-                    printf("BROADCAST → LEVEL %d\n", b2);
+                    //printf("BROADCAST → LEVEL %d\n", b2);
                     device_info[0].device_state = true;
                     device_info[0].device_level = b2;
-                    set_hardware(0, false);                    
+                    set_hardware(0, false);        
+                                 
                 }
                 return;
             }
@@ -1510,35 +1567,6 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             }else{
                 printf("DEVICE %d → LEVEL %d\n", addr, b2);
             }
-
-            // bool all_off = true;
-            // uint8_t max_level = 0;
-            // for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
-            //     if(addr == scene_group_switch_info.device_ids[0][i]){
-            //         if(b2 == 0){
-            //             scene_group_switch_info.device_state[0][i] = false;
-            //             printf("device OFF\n");
-            //         }else{
-            //             scene_group_switch_info.device_state[0][i] = true;
-            //             printf("device ON\n");
-            //         }
-            //         scene_group_switch_info.device_level[0][i] = b2;
-            //     }
-            //     if(scene_group_switch_info.device_state[0][i]){
-            //         all_off = false;
-            //     }
-            //     if(scene_group_switch_info.device_level[0][i] > max_level)
-            //         max_level = level;
-            // }
-            // if(all_off){
-            //     device_info[0].device_state = false;
-            //     device_info[0].device_level = 0;
-            //     set_hardware(0, false);
-            // }else{
-            //     device_info[0].device_state = true;
-            //     device_info[0].device_level = max_level;
-            //     set_hardware(0, false);
-            // }
             return;
         }
 

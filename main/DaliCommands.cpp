@@ -558,9 +558,7 @@ uint8_t DaliCommands::get_group_addr(uint8_t group_id)
 }
 
 void DaliCommands::set_group_level(uint8_t group_id, uint8_t value){
-    //
     daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
-    //
 }
 
 void DaliCommands::set_group_color_cct(uint8_t group_id, uint16_t color_temp_kelvin){
@@ -583,7 +581,6 @@ void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, u
     }
     
 }
-
 
 void DaliCommands::set_broadcast_level(uint8_t value){
     

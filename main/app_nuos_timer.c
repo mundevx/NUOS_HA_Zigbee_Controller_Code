@@ -156,7 +156,7 @@ void start_wifi_webserver_timer_task(){
 			}			
 			if(timer_counts_enable_webserver%TIME_COUNTS_FOR_1_SEC == 0){	
 				wifi_webserver_active_counts++;
-				printf("wifi_webserver_active_counts:%ld\n", wifi_webserver_active_counts);		
+				//printf("wifi_webserver_active_counts:%ld\n", wifi_webserver_active_counts);		
 			}
             timer_counts_enable_webserver++; 
 		}
