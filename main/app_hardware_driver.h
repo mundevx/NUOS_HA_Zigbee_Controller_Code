@@ -181,19 +181,22 @@
         uint8_t dst_ep;
         uint16_t short_addr;
     } zb_binding_data_t;
-
+    #define MAX_DALI_DEVICES_IN_SCENES          30
     typedef struct {
         uint8_t selected_id;
-        uint8_t group_id;
+        uint8_t group_id[4];
         uint8_t scene_ids[4];
         uint8_t control_type;
         uint8_t scn_ctrl_type;
         uint8_t total_ids[4];
-        uint16_t device_ids[4][30];  //==>20, you can increase number of dali_ids upto 64
-        bool device_state[16][30];
-        uint8_t device_level[16][30];
-        uint16_t device_color[16][30];
-        uint8_t device_scene[16][30];
+        uint16_t device_ids[4][MAX_DALI_DEVICES_IN_SCENES];  //==>20, you can increase number of dali_ids upto 64
+        bool device_state[16][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t device_level[16][MAX_DALI_DEVICES_IN_SCENES];
+        uint16_t device_color[16][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t device_scene[16][MAX_DALI_DEVICES_IN_SCENES];
+        #ifdef ENABLE_DALI_RECEIVER
+            uint8_t device_color_mode[16];
+        #endif
     } scene_switch_s;
 
 
@@ -1478,6 +1481,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    void dali_enable_query_mode();
+    void dali_disable_query_mode();
+    void dali_query_send(uint8_t id, uint8_t command);
     void switch_driver_gpios_intr_enabled(bool enabled);
     void set_state(uint8_t index);
     void set_level(uint8_t index);
@@ -1485,6 +1491,9 @@ extern "C" {
     void set_color_temp_args(uint16_t color);
     esp_err_t nuos_set_state_attribute(uint8_t index);
     esp_err_t nuos_set_state_attribute_rgb(uint8_t index);
+    esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_);
+    esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level);
+    esp_err_t nuos_set_color_temp_level_attribute_on_dali_rx(uint8_t index, uint8_t level);
     extern void nuos_zb_init_hardware();
     extern void nuos_zb_set_hardware(uint8_t index, uint8_t value);
     extern void nuos_zb_set_hardware_led_for_zb_commissioning(uint8_t is_toggle);
@@ -1498,6 +1507,7 @@ extern "C" {
     extern void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
     extern void nuos_dali_set_color_temperate(uint8_t index);
     extern void nuos_dali_set_group_color_temperature(uint8_t group_id, uint8_t index, uint16_t value);
+    extern void nuos_dali_set_group_rgb_temperature(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b);
     extern void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value);
     extern void nuos_set_state_touch_leds(bool state);
     extern void nuos_set_state_touch_leds_to_original();
@@ -1516,7 +1526,7 @@ extern "C" {
     extern void nuos_dali_set_state(uint8_t dali_id, uint8_t state);
     extern void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level);
     extern void nuos_dali_set_cct_color(uint8_t did, uint16_t value);
-
+    extern void nuos_dali_set_rgb_color(uint8_t did, uint8_t r, uint8_t g, uint8_t b);
     extern void start_dali_led_blink_task();
  
     extern void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp);
@@ -1535,6 +1545,8 @@ extern "C" {
     extern void nuos_set_dali_fade_rate(uint8_t rate);
     extern void call_common_check_auto_off();
     extern void set_all_leds_to_original_state();
+
+    extern void nuos_dali_rgb_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint8_t r, uint8_t g, uint8_t b);
 #ifdef __cplusplus
 }
 #endif 

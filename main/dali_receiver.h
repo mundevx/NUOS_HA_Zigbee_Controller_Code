@@ -33,7 +33,12 @@ public:
 
     /** Stop receiver, free resources. */
     void end();
-
+    // New method to set query mode (true = expecting 8-bit response)
+    void set_query_mode(bool query_mode) {
+        portENTER_CRITICAL(&spinlock_);
+        query_mode_ = query_mode;
+        portEXIT_CRITICAL(&spinlock_);
+    }
 private:
     // Receiver state machine
     enum class RxState {
@@ -64,6 +69,8 @@ private:
     esp_timer_handle_t  idle_timer_;
     uint8_t             idle_te_cnt_;        // counts TE periods while bus is idle
     portMUX_TYPE        spinlock_;           // critical section guard
+
+    bool query_mode_;  // true = expecting 8-bit response frame
 };
 
 } // namespace dali

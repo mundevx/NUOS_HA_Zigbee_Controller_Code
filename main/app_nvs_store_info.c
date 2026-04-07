@@ -1199,7 +1199,7 @@ void nuos_get_data_from_nvs() {
         case ESP_RST_PANIC:
             printf("Reset reason        : Software reset due to exception/panic\n");
             panic_toggle = !panic_toggle;
-            setNVSWebServerEnableFlag(0);
+            //setNVSWebServerEnableFlag(0);
             setNVSPanicAttack(1);
             break;
         case ESP_RST_INT_WDT:
@@ -1334,13 +1334,19 @@ void get_nvs_dali_scene_switch_webpage_data(){
     printf("-----------DALI Webpage data------------\n");
     printf("CTRL_TYPE:%d  ", scene_group_switch_info.control_type);
     printf("SCN_CTRL_TYPE:%d \n", scene_group_switch_info.scn_ctrl_type);
-    printf("Group_Id:%d  ", scene_group_switch_info.group_id);
+
+    printf(" Group_Ids: { %d %d %d %d } \n ", scene_group_switch_info.group_id[0], 
+        scene_group_switch_info.group_id[1], 
+        scene_group_switch_info.group_id[2], 
+        scene_group_switch_info.group_id[3]);
+
     printf(" Scene_Ids: { %d %d %d %d } \n ", scene_group_switch_info.scene_ids[0], 
         scene_group_switch_info.scene_ids[1], 
         scene_group_switch_info.scene_ids[2], 
         scene_group_switch_info.scene_ids[3]);
-    for(int k=0; k<4; k++){
+    for(int k=0; k<1; k++){
         printf("{");
+
         for(int i=0; i<scene_group_switch_info.total_ids[k]; i++){
             printf(" %d", scene_group_switch_info.device_ids[k][i]);
             if(i<scene_group_switch_info.total_ids[k]-1){

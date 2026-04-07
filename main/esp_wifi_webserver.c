@@ -45,6 +45,15 @@ cJSON *dcheck                           = NULL;
 cJSON *offset_json                      = NULL;
 cJSON *calibration_json                 = NULL;
 
+#define JSON_QUEUE_SIZE                 80
+#define JSON_MAX_LEN                    2048
+
+typedef struct {
+    char json[JSON_MAX_LEN];
+} json_msg_t;
+
+QueueHandle_t json_queue;
+
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle);
 #endif
@@ -68,12 +77,13 @@ int temp_result_size;
 int final_result[MAX_DALI_ADDRESSES];
 int final_result_size;
 
-uint8_t tmp_selected_ids[64] = {0};
+uint8_t tmp_selected_ids[MAX_DALI_DEVICES_IN_SCENES] = {0};
+const char resp1[] = "Post data received successfully";
+const char resp2[] = "Error Getting Responses!!";
 
 int map(int x, int in_min, int in_max, int out_min, int out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)
     void add_scene_task(void* args);
@@ -149,7 +159,18 @@ void parse_json(const char *json_string) {
             nuos_store_wifi_info_data_to_nvs();
             #endif
             esp_restart();
-        break;        
+        break; 
+        
+        case 4:  //cancel
+            setNVSWebServerEnableFlag(false);
+            nuos_store_wifi_info_data_to_nvs();
+            esp_restart();
+        break;
+
+        case 13:  //reboot
+            esp_restart();
+
+        break;
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
         case 2:
             ac_model = cJSON_GetObjectItem(root, "ac_model");
@@ -179,11 +200,7 @@ void parse_json(const char *json_string) {
             nuos_try_ac(decode_type, state);
         break;
 
-        case 4:  //cancel
-            setNVSWebServerEnableFlag(false);
-            nuos_store_wifi_info_data_to_nvs();
-            esp_restart();
-        break;
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
         case 15:
             selected_items = cJSON_GetObjectItem(root, "selected_items");
@@ -550,7 +567,7 @@ void parse_json(const char *json_string) {
                 //remove 
                 for (int i = 0; i < dali_nvs_stt[index].total_ids; ++i) {
                     nuos_dali_remove_light_from_group(dali_nvs_stt[index].device_ids[i], dali_nvs_stt[index].group_id);
-                    vTaskDelay(5);
+                    vTaskDelay(20);
                 }
                 // Remove duplicates
                 j=0;
@@ -835,7 +852,7 @@ case 40:
                 cJSON_Delete(root);                
                 return;
             }
-            
+
             scene_group_switch_info.control_type = sctrltype->valueint;
             cJSON *sscnctrltype = cJSON_GetObjectItem(root, "scn_ctrl_type");
             if (sscnctrltype == NULL) {
@@ -869,7 +886,7 @@ case 40:
         break;
 
         case 38:
-            //{"fxn":38,"input_id":0,"group_id":1,"selected_ids":[1,2,3,4]}
+            //{"fxn":38,"input_id":0,"group_id":10,"selected_ids":[1,2,3,4]}
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             cJSON * sindex22 = cJSON_GetObjectItem(root, "input_id");
             cJSON *ids = cJSON_GetObjectItem(root, "selected_ids");
@@ -905,8 +922,8 @@ case 40:
                 return;
             }
             printf("index22:%d gid:%d\n", index22, gid);
-            scene_group_switch_info.scene_ids[index22] = gid;
-            scene_group_switch_info.group_id = gid;
+            //scene_group_switch_info.scene_ids[index22] = gid;
+            scene_group_switch_info.group_id[index22] = gid;
             // Iterate over the array and print the values
             int arraySize1 = cJSON_GetArraySize(ids);      
             int jj = 0;  // Remove invalids
@@ -951,14 +968,14 @@ case 40:
                 // if(scene_group_switch_info.control_type == 1 ){
                 // #endif
                    //printf("------Done-------\n");
-                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.scene_ids[index22]);
+                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                    vTaskDelay(60 / portTICK_PERIOD_MS);
                 // #ifndef DALI_DIRECT_ADDRESSING    
                 // }
                 // #endif
             }
             printf("\n");
-            for (int p = scene_group_switch_info.total_ids[index22]; p < 64; p++) {
+            for (int p = scene_group_switch_info.total_ids[index22]; p < MAX_DALI_DEVICES_IN_SCENES; p++) {
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
@@ -990,9 +1007,7 @@ case 40:
             if (gid < 0 || gid >= GROUP_COUNT) {
                 ESP_LOGW(TAG, "fxn201: group_id out of range %d", gid);
                 gid = 255;
-            }
-
-            
+            } 
             
             // Get the values array
             if (!cJSON_IsArray(ids))
@@ -1002,8 +1017,8 @@ case 40:
                 return;
             }
 
-            scene_group_switch_info.scene_ids[index22] = gid;
-            scene_group_switch_info.group_id = gid;
+            //scene_group_switch_info.scene_ids[index22] = gid;
+            scene_group_switch_info.group_id[index22] = gid;
             // Iterate over the array and print the values
             arraySize1 = cJSON_GetArraySize(ids);      
             jj = 0;  // Remove invalids
@@ -1048,14 +1063,14 @@ case 40:
                 #ifndef DALI_DIRECT_ADDRESSING
                 if(scene_group_switch_info.control_type == 1 ){
                 #endif
-                   nuos_dali_remove_light_from_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.scene_ids[index22]);
+                   nuos_dali_remove_light_from_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                    vTaskDelay(60 / portTICK_PERIOD_MS);
                 #ifndef DALI_DIRECT_ADDRESSING    
                 }
                 #endif
             }
             printf("\n");
-            for (int p = scene_group_switch_info.total_ids[index22]; p < 64; p++) {
+            for (int p = scene_group_switch_info.total_ids[index22]; p < MAX_DALI_DEVICES_IN_SCENES; p++) {
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
@@ -1101,7 +1116,7 @@ case 40:
             #ifndef DALI_DIRECT_ADDRESSING
             if(scene_group_switch_info.control_type == 1 ){
             
-                printf("Removed from group: %d the ids: ", scene_group_switch_info.scene_ids[index22]);
+                printf("Removed from group: %d the ids: ", scene_group_switch_info.group_id[index22]);
                 for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                     printf("%d ", scene_group_switch_info.device_ids[index22][i]);
                     nuos_dali_remove_light_from_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.scene_ids[index22]);
@@ -1112,7 +1127,7 @@ case 40:
             }
             #endif
 
-            scene_group_switch_info.scene_ids[index22] = gid;
+            scene_group_switch_info.group_id[index22] = gid;
             // Iterate over the array and print the values
             arraySize1 = cJSON_GetArraySize(ids);      
             jj = 0;  // Remove invalids
@@ -1127,7 +1142,7 @@ case 40:
                     if (temp_result[i] != DALI_INVALID_ADDRESS) {
                         final_result[jj++] = temp_result[i];
                     }
-                    ESP_LOGI(TAG, "Value at index %d: %d", i, temp_result[i]);
+                    //ESP_LOGI(TAG, "Value at index %d: %d", i, temp_result[i]);
                     
                 }
             }
@@ -1155,16 +1170,21 @@ case 40:
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
                 #ifndef DALI_DIRECT_ADDRESSING
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+
+                #else
                 if(scene_group_switch_info.control_type == 1 ){
-                
-                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.scene_ids[index22]);
+                #endif
+                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                    vTaskDelay(50 / portTICK_PERIOD_MS);
-                   
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
+                #else  
                 }
+                #endif
                 #endif
             }
             printf("\n");
-            for (int p = scene_group_switch_info.total_ids[index22]; p < 64; p++) {
+            for (int p = scene_group_switch_info.total_ids[index22]; p < MAX_DALI_DEVICES_IN_SCENES; p++) {
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
@@ -1174,7 +1194,6 @@ case 40:
         break;
         /////////////////////////////////////////////////////////////////////
 
-        // ---- Add near other cases in parse_json() ----
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         case 70:
             cJSON *smin_dim = cJSON_GetObjectItem(root, "min_dimming_offset");
@@ -1274,20 +1293,54 @@ case 40:
             cJSON *dali_id = cJSON_GetObjectItem(root, "dali_id");
             cJSON *sVal  = cJSON_GetObjectItem(root, "val");
             cJSON *g_id    = cJSON_GetObjectItem(root, "group_id");
-            if (!sVal) { cJSON_Delete(root); return; }
-            int cct_val = sVal->valueint;
-            if (g_id) {
-                int group = g_id ? g_id->valueint : 0;
-                printf("Immediate toggle level:%d group:%d\n", cct_val, group);
-                nuos_dali_set_group_color_temperature(group, 0, cct_val);
-            }else{
-                
-                if (dali_id) {
+            cJSON *sRed    = cJSON_GetObjectItem(root, "r");
+            cJSON *sGreen    = cJSON_GetObjectItem(root, "g");
+            cJSON *sBlue    = cJSON_GetObjectItem(root, "b");
+            uint8_t error_cnt = 0;
+            bool colorMode = false;
+            if (!sVal) {
+                //cJSON_Delete(root); 
+                //return;
+                colorMode = true;
+                error_cnt++;
+            }
+            if(!sRed){
+                // cJSON_Delete(root); 
+                // return;
+                error_cnt++;
+            }
+            if(error_cnt >= 2){
+                cJSON_Delete(root); 
+                return;               
+            }
+            if(!colorMode){
+                int cct_val = sVal->valueint;
+                if (g_id) {
+                    int group = g_id ? g_id->valueint : 0;
+                    printf("Immediate toggle level:%d group:%d\n", cct_val, group);
+                    nuos_dali_set_group_color_temperature(group, 0, cct_val);
+                }else{
                     
-                    int did = dali_id ? dali_id->valueint : 0;
-                    printf("Immediate toggle cct:%d did:%d\n", cct_val, did);
-                    nuos_dali_set_cct_color(did, cct_val);
-                } 
+                    if (dali_id) {
+                        int did = dali_id ? dali_id->valueint : 0;
+                        printf("Immediate toggle cct:%d did:%d\n", cct_val, did);
+                        nuos_dali_set_cct_color(did, cct_val);
+                    } 
+                }
+            }else{
+                int r = sRed->valueint;
+                int g = sGreen->valueint;
+                int b = sBlue->valueint;
+
+                if (g_id) {
+                    int group = g_id ? g_id->valueint : 0;
+                    nuos_dali_set_group_rgb_temperature(group, r, g, b);
+                }else{
+                    if (dali_id) {
+                        int did = dali_id ? dali_id->valueint : 0;
+                        nuos_dali_set_rgb_color(did, r, g, b);
+                    } 
+                }                
             }
         }
         break;
@@ -1302,8 +1355,8 @@ case 40:
             int id = dali_id->valueint;
             int state = sstate->valueint;
             int group = g_id ? g_id->valueint : 0;
-            printf("Immediate toggle dali_id:%d state:%d group:%d\n", id, state, group);
 
+            //printf("Immediate toggle dali_id:%d state:%d group:%d\n", id, state, group);
             // Implement immediate action (toggle or select)
             // Example: if state==1 turn ON device id, if state==0 turn OFF, if state==2 treat as longpress selection
             if (state == 1) {
@@ -1460,37 +1513,148 @@ case 40:
         }
         break;
 
-        case 202: // Scene add/remove via fxn in POST body
+        // case 202: // Scene add/remove via fxn in POST body
+        // {
+        // // Expected JSON: { "fxn":202, "action":"add"|"remove", "group_id": <0..15>, "scenes": [0,1,2,...] }
+        // // Attempt to parse new device-array format first
+        //     cJSON *devices = cJSON_GetObjectItem(root, "devices");
+        //     cJSON *action = cJSON_GetObjectItem(root, "action");      // must be "add" or "remove"
+        //     cJSON *scene_id = cJSON_GetObjectItem(root, "scene_id");
+        //     int sid = (scene_id && cJSON_IsNumber(scene_id)) ? scene_id->valueint : 0;
+        //     uint8_t scene_index = 0xff;
+        //     for(int k=0;k<4;k++){
+        //         if(sid == scene_group_switch_info.scene_ids[k]){
+        //             scene_index = k;
+        //             break;
+        //         } 
+        //     }
+
+        //     if (devices && cJSON_IsArray(devices)) {
+        //         // Validate action string
+        //         const char *act = NULL;
+        //         if (action && cJSON_IsString(action)) {
+        //             act = action->valuestring;
+        //         } else {
+        //             ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'action' (expected 'add' or 'remove')");
+        //             // You can choose to return/break here; currently we will skip processing
+        //             break;
+        //         }
+
+        //         bool is_add = (strcmp(act, "add") == 0);
+        //         bool is_remove = (strcmp(act, "remove") == 0);
+        //         if (!is_add && !is_remove) {
+        //             ESP_LOGW(TAG, "fxn202(devices): unknown action '%s' (expected 'add' or 'remove')", act);
+        //             break;
+        //         }
+
+        //         ESP_LOGI(TAG, "fxn202: received devices payload (scene_id=%d, action=%s)", sid, act);
+
+        //         cJSON *dev = NULL;
+        //         int processed = 0;
+        //         cJSON_ArrayForEach(dev, devices) {
+        //             if (!cJSON_IsObject(dev)) {
+        //                 ESP_LOGW(TAG, "fxn202(devices): skipping non-object array entry");
+        //                 continue;
+        //             }
+
+        //             cJSON *j_dali       = cJSON_GetObjectItem(dev, "dali_id");
+        //             cJSON *j_power      = cJSON_GetObjectItem(dev, "power");
+        //             cJSON *j_brightness = cJSON_GetObjectItem(dev, "brightness");
+        //             cJSON *j_cct        = cJSON_GetObjectItem(dev, "cct");
+
+        //             if (!j_dali || !cJSON_IsNumber(j_dali)) {
+        //                 ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'dali_id' - skipping entry");
+        //                 continue;
+        //             }
+
+        //             int did = j_dali->valueint;
+        //             if (did < 0 || did >= 64) {
+        //                 ESP_LOGW(TAG, "fxn202(devices): dali_id out of range %d - skipping", did);
+        //                 continue;
+        //             }
+
+        //             int power = (j_power && cJSON_IsNumber(j_power)) ? j_power->valueint : 0;
+        //             int brightness = (j_brightness && cJSON_IsNumber(j_brightness)) ? j_brightness->valueint : 0;
+        //             uint8_t brightness_1 = map(brightness, 0, 100, 0, 255);
+        //             int cct = (j_cct && cJSON_IsNumber(j_cct)) ? j_cct->valueint : 0;
+        //             printf("==>CCT Value: %d", cct);
+        //             if (is_add) {
+        //                 ESP_LOGI(TAG, "fxn202(devices): ADD device %d to scene %d (p=%d, br=%d, cct=%d)", did, sid, power, brightness_1, cct);
+       
+        //                     if(power==0) brightness_1 = 0; //this is cruicial
+        //                     scene_group_switch_info.device_ids[scene_index][processed] = did;
+        //                     nuos_dali_add_device_to_scene((uint8_t)did, (uint8_t)sid, brightness_1, cct); 
+        //             } else { // remove
+        //                 ESP_LOGI(TAG, "fxn202(devices): REMOVE device %d from scene %d", did, sid);
+        //                 nuos_dali_remove_device_from_scene((uint8_t)did, (uint8_t)sid);
+        //             }
+        //             vTaskDelay(pdMS_TO_TICKS(20));
+        //             processed++;
+        //         } // end foreach device
+
+        //         ESP_LOGI(TAG, "fxn202(devices): processed %d device entries (action=%s)", processed, act);
+        //         if (is_add) {
+        //             if(scene_index != 0xff){ 
+        //                 if(scene_index < 16){
+        //                     scene_group_switch_info.total_ids[scene_index] = processed;
+        //                     nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+        //                 }
+        //             }
+        //         }
+                
+        //         esp_err_t perr = persist_devices_from_cjson_array(devices, sid, act);
+        //         if (perr != ESP_OK) {
+        //             ESP_LOGW(TAG, "persist_devices_from_cjson_array failed: %s", esp_err_to_name(perr));
+        //         } else {
+        //             ESP_LOGI(TAG, "persist_devices_from_cjson_array success");
+        //             // update in-memory global store too:
+        //             if (g_device_scene_store) free(g_device_scene_store);
+        //             g_device_scene_store = NULL;
+        //             g_device_scene_count = 0;
+        //             device_scene_t *tmp = NULL;
+        //             size_t tmp_count = 0;
+        //             if (load_device_scene_store(&tmp, &tmp_count) == ESP_OK && tmp_count > 0) {
+        //                 g_device_scene_store = tmp;
+        //                 g_device_scene_count = tmp_count;
+        //             }
+        //         }               
+        //         break; // handled devices case; skip legacy group handler
+        //     }
+        //     // after processing devices loop:
+        //     /********************* */
+
+        // }//munish
+        // break;
+
+        case 202:
         {
-        // Expected JSON: { "fxn":202, "action":"add"|"remove", "group_id": <0..15>, "scenes": [0,1,2,...] }
-        // Attempt to parse new device-array format first
-            cJSON *devices = cJSON_GetObjectItem(root, "devices");
-            cJSON *action = cJSON_GetObjectItem(root, "action");      // must be "add" or "remove"
+            cJSON *devices  = cJSON_GetObjectItem(root, "devices");
+            cJSON *action   = cJSON_GetObjectItem(root, "action");
             cJSON *scene_id = cJSON_GetObjectItem(root, "scene_id");
+
             int sid = (scene_id && cJSON_IsNumber(scene_id)) ? scene_id->valueint : 0;
             uint8_t scene_index = 0xff;
-            for(int k=0;k<4;k++){
-                if(sid == scene_group_switch_info.scene_ids[k]){
+
+            for (int k = 0; k < 4; k++) {
+                if (sid == scene_group_switch_info.scene_ids[k]) {
                     scene_index = k;
                     break;
                 }
-                
             }
+
             if (devices && cJSON_IsArray(devices)) {
-                // Validate action string
                 const char *act = NULL;
                 if (action && cJSON_IsString(action)) {
                     act = action->valuestring;
                 } else {
-                    ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'action' (expected 'add' or 'remove')");
-                    // You can choose to return/break here; currently we will skip processing
+                    ESP_LOGW(TAG, "fxn202(devices): missing or invalid action");
                     break;
                 }
 
                 bool is_add = (strcmp(act, "add") == 0);
                 bool is_remove = (strcmp(act, "remove") == 0);
                 if (!is_add && !is_remove) {
-                    ESP_LOGW(TAG, "fxn202(devices): unknown action '%s' (expected 'add' or 'remove')", act);
+                    ESP_LOGW(TAG, "fxn202(devices): unknown action '%s'", act);
                     break;
                 }
 
@@ -1498,9 +1662,10 @@ case 40:
 
                 cJSON *dev = NULL;
                 int processed = 0;
+
                 cJSON_ArrayForEach(dev, devices) {
                     if (!cJSON_IsObject(dev)) {
-                        ESP_LOGW(TAG, "fxn202(devices): skipping non-object array entry");
+                        ESP_LOGW(TAG, "fxn202(devices): skipping non-object entry");
                         continue;
                     }
 
@@ -1508,68 +1673,94 @@ case 40:
                     cJSON *j_power      = cJSON_GetObjectItem(dev, "power");
                     cJSON *j_brightness = cJSON_GetObjectItem(dev, "brightness");
                     cJSON *j_cct        = cJSON_GetObjectItem(dev, "cct");
+                    cJSON *j_r          = cJSON_GetObjectItem(dev, "r");
+                    cJSON *j_g          = cJSON_GetObjectItem(dev, "g");
+                    cJSON *j_b          = cJSON_GetObjectItem(dev, "b");
 
                     if (!j_dali || !cJSON_IsNumber(j_dali)) {
-                        ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'dali_id' - skipping entry");
+                        ESP_LOGW(TAG, "fxn202(devices): missing or invalid dali_id");
                         continue;
                     }
 
                     int did = j_dali->valueint;
                     if (did < 0 || did >= 64) {
-                        ESP_LOGW(TAG, "fxn202(devices): dali_id out of range %d - skipping", did);
+                        ESP_LOGW(TAG, "fxn202(devices): dali_id out of range %d", did);
                         continue;
                     }
 
                     int power = (j_power && cJSON_IsNumber(j_power)) ? j_power->valueint : 0;
                     int brightness = (j_brightness && cJSON_IsNumber(j_brightness)) ? j_brightness->valueint : 0;
                     uint8_t brightness_1 = map(brightness, 0, 100, 0, 255);
+
+                    if (power == 0) {
+                        brightness_1 = 0;
+                    }
+
                     int cct = (j_cct && cJSON_IsNumber(j_cct)) ? j_cct->valueint : 0;
-                    printf("==>CCT Value: %d", cct);
+                    int r   = (j_r   && cJSON_IsNumber(j_r))   ? j_r->valueint   : -1;
+                    int g   = (j_g   && cJSON_IsNumber(j_g))   ? j_g->valueint   : -1;
+                    int b   = (j_b   && cJSON_IsNumber(j_b))   ? j_b->valueint   : -1;
+
+                    bool has_rgb = (r >= 0 && g >= 0 && b >= 0);
+
                     if (is_add) {
-                        ESP_LOGI(TAG, "fxn202(devices): ADD device %d to scene %d (p=%d, br=%d, cct=%d)", did, sid, power, brightness_1, cct);
-       
-                            if(power==0) brightness_1 = 0; //this is cruicial
-                            if(scene_index != 0xff) scene_group_switch_info.device_ids[scene_index][processed] = did;
-                            nuos_dali_add_device_to_scene((uint8_t)did, (uint8_t)sid, brightness_1, cct); 
-                    } else { // remove
-                        ESP_LOGI(TAG, "fxn202(devices): REMOVE device %d from scene %d", did, sid);
+                        scene_group_switch_info.device_ids[scene_index][processed] = did;
+
+                        if (has_rgb) {
+                            ESP_LOGI(TAG, "fxn202: ADD RGB device %d to scene %d (br=%d r=%d g=%d b=%d)",
+                                    did, sid, brightness_1, r, g, b);
+                            // Replace this with your actual RGB scene API if available
+                            nuos_dali_rgb_add_device_to_scene((uint8_t)did,
+                                                            (uint8_t)sid,
+                                                            brightness_1,
+                                                            (uint8_t)r,
+                                                            (uint8_t)g,
+                                                            (uint8_t)b);
+                        } else {
+                            ESP_LOGI(TAG, "fxn202: ADD CCT device %d to scene %d (br=%d cct=%d)",
+                                    did, sid, brightness_1, cct);
+
+                            nuos_dali_add_device_to_scene((uint8_t)did,
+                                                        (uint8_t)sid,
+                                                        brightness_1,
+                                                        cct);
+                        }
+                    } else {
+                        ESP_LOGI(TAG, "fxn202: REMOVE device %d from scene %d", did, sid);
                         nuos_dali_remove_device_from_scene((uint8_t)did, (uint8_t)sid);
                     }
 
+                    vTaskDelay(pdMS_TO_TICKS(20));
                     processed++;
-                } // end foreach device
-
-                ESP_LOGI(TAG, "fxn202(devices): processed %d device entries (action=%s)", processed, act);
-                if (is_add) {
-                    if(scene_index != 0xff){ 
-                        scene_group_switch_info.total_ids[scene_index] = processed;
-                        nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
-                    }
                 }
-                
+
+                ESP_LOGI(TAG, "fxn202(devices): processed %d device entries", processed);
+
+                if (is_add && scene_index != 0xff && scene_index < 16) {
+                    scene_group_switch_info.total_ids[scene_index] = processed;
+                    nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+                }
+
                 esp_err_t perr = persist_devices_from_cjson_array(devices, sid, act);
                 if (perr != ESP_OK) {
                     ESP_LOGW(TAG, "persist_devices_from_cjson_array failed: %s", esp_err_to_name(perr));
                 } else {
                     ESP_LOGI(TAG, "persist_devices_from_cjson_array success");
-                    // update in-memory global store too:
                     if (g_device_scene_store) free(g_device_scene_store);
                     g_device_scene_store = NULL;
                     g_device_scene_count = 0;
+
                     device_scene_t *tmp = NULL;
                     size_t tmp_count = 0;
                     if (load_device_scene_store(&tmp, &tmp_count) == ESP_OK && tmp_count > 0) {
                         g_device_scene_store = tmp;
                         g_device_scene_count = tmp_count;
                     }
-                }               
-                break; // handled devices case; skip legacy group handler
+                }
+                break;
             }
-            // after processing devices loop:
-            /********************* */
-
-        }//munish
-        break;
+        }
+        break;        
         #endif
         
         default: break;
@@ -1673,8 +1864,23 @@ char* replaceSubstring(const char* original, const char* toReplace, const char* 
     return result;
 }
 
-const char resp1[] = "Post data received successfully";
-const char resp2[] = "Error Getting Responses!!";
+
+
+void json_worker_task(void *arg)
+{
+    json_msg_t msg;
+
+    while (1) {
+        if (xQueueReceive(json_queue, &msg, portMAX_DELAY)) {
+
+            ESP_LOGI("JSON_WORKER", "Processing JSON in worker task");
+
+            parse_json(msg.json);   // Your existing function
+
+        }
+    }
+}
+
 // Handler to process the form data sent via POST request
 esp_err_t submit_post_handler(httpd_req_t *req) {
     char content[MAX_HTTP_RECV_BUFFER];
@@ -1712,7 +1918,16 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
 	}
    
     ESP_LOGI("content", " : %s", content);
-    parse_json(content); 
+    //parse_json(content);
+    
+    json_msg_t msg;
+    strncpy(msg.json, content, JSON_MAX_LEN - 1);
+    msg.json[JSON_MAX_LEN - 1] = '\0';
+
+    if (xQueueSend(json_queue, &msg, pdMS_TO_TICKS(100)) != pdTRUE) {
+        ESP_LOGE("HTTP", "Queue full, dropping request");
+    }
+
     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
 
     cb_requests_counts = 0;
@@ -1771,16 +1986,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                
             }
         } 
-        // static void callback(){
-
-        // }
-        // for(int node_index=0; node_index<node_counts; node_index++){
-        //     for(int ep_index=0; ep_index<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){   
-        //         if(existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind == 1){
-        //             send_request(callback);
-        //         }
-        //     }
-        // }    
+    
         //start task and wait for all record to be finished
         cJSON *json = cJSON_CreateArray();
         for (size_t i = 0; i < total_item; i++) {
@@ -1903,6 +2109,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
         }
         return response;
     }
+
     esp_err_t http_get_items_handler(httpd_req_t *req) {
 
         char query[128];
@@ -1983,7 +2190,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                     response = cJSON_Print(json);
                     cJSON_Delete(json);
                 }else if(fxn == 12){  // read new dali addresses
-                        uint8_t foundAddresses[64];
+                        uint8_t foundAddresses[MAX_DALI_DEVICES_IN_SCENES];
                         dali_nvs_stt[0].total_ids = get_all_dali_addresses(foundAddresses);
 
                         cJSON *json = cJSON_CreateArray();
@@ -2021,7 +2228,16 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                 }else if(fxn == 15){
                     cJSON *item_json = cJSON_CreateObject();
                     // Add fields to the cJSON object
-                    cJSON_AddNumberToObject(item_json, "group_id", scene_group_switch_info.group_id);
+                    // cJSON_AddNumberToObject(item_json, "group_id", scene_group_switch_info.group_id[0]);
+                    // cJSON_AddNumberToObject(item_json, "group_id_2", scene_group_switch_info.group_id[1]);
+                    int group_ids[2]; //3 5 10,  6 9 11
+                    group_ids[0] = scene_group_switch_info.group_id[0];
+                    group_ids[1] = scene_group_switch_info.group_id[1];
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+                    cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 1);
+                    #else
+                    cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 2);
+                    #endif
                     /* corrected: create int array and use cJSON_CreateIntArray */
                     int scene_ids[4];
                     scene_ids[0] = scene_group_switch_info.scene_ids[0];
@@ -2061,6 +2277,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                         scene_group_switch_info.scn_ctrl_type = 0; 
                         }                     
                     #endif
+                    cJSON_AddItemToObject(item_json, "group_id", group_ids_array);
                     cJSON_AddItemToObject(item_json, "scene_ids", scene_ids_array);
                     cJSON_AddStringToObject(item_json, "control_type", switch_ctrl_type[scene_group_switch_info.control_type]);
                     cJSON_AddStringToObject(item_json, "scn_ctrl_type", scene_ctrl_type[scene_group_switch_info.scn_ctrl_type]);
@@ -2199,19 +2416,19 @@ esp_err_t http_get_handler(httpd_req_t *req) {
         return ESP_OK;
     }
 #endif
-
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
 // Handler for curtain values API - now using /items endpoint
 esp_err_t curtain_values_get_handler(httpd_req_t *req) {
     char json_response[100];
     #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-    snprintf(json_response, sizeof(json_response), 
-             "{\"offset\":%d,\"calibration\":%d}", 
-             device_info[0].curtain_motor_start_offset*10, device_info[0].curtain_motor_total_time*1000);
+        snprintf(json_response, sizeof(json_response), 
+                "{\"offset\":%d,\"calibration\":%d}", 
+                device_info[0].curtain_motor_start_offset*10, device_info[0].curtain_motor_total_time*1000);
     #endif  
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_send(req, json_response, strlen(json_response));
 }
-
+#endif
 void start_webserver() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;  // Increase the stack size
@@ -2274,8 +2491,19 @@ void remove_duplicates(int* array, int size, int* result, int* result_size) {
 
 bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
+        json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
+
+        xTaskCreate(
+            json_worker_task,
+            "json_worker_task",
+            8192,
+            NULL,
+            21,
+            NULL
+        );
         bool station_mode = wifi_station_main();
         start_webserver();
+        
         return station_mode;
     #else
         return true;

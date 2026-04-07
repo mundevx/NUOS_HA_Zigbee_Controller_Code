@@ -1054,19 +1054,65 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             }
         #else
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+                // if(button_index == TOTAL_BUTTONS-1){
+                //     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
+                //     selected_color_mode = 1;
+                //     #else
+                //     selected_color_mode = 0;
+                //     #endif
+                 
+                // }else{
+                //     selected_color_mode = 1;
+                // }
+                // if(last_selected_color_mode != selected_color_mode){
+                //     last_selected_color_mode = selected_color_mode;
+                //     mode_change_flag = true;  
+                // }
+                // store_color_mode_value(selected_color_mode); 
+                // #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
+                // if(button_index == 3){
+                //     device_info[4].device_state = !device_info[4].device_state;
+                // }
+                // #endif                       
+                // global_index = button_index; 
+                // printf("index:%d color_mode:%d\n", button_index, selected_color_mode);
+                // nuos_zb_set_hardware(button_index, true);
+                // bool send_color = true;
+                // if(mode_change_flag){
+                //     send_color = false;
+                //     set_color_temp();
+                // }                
+                // #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
+                //     set_color_temp();
+                //     set_level(3);                
+                // #else
+                
+                // if(button_index < 3){
+                //     set_state(4);
+                //     //set_level(4);
+                //     if(send_color){
+                //         set_color_temp();
+                //     }
+                // }else{
+                //     set_state(3);
+                //     //set_level(3);
+                // }
+
+                // #endif
+
                 if(button_index == TOTAL_BUTTONS-1){
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
                     selected_color_mode = 1;
                     #else
                     selected_color_mode = 0;
                     #endif
-                 
                 }else{
                     selected_color_mode = 1;
                 }
                 if(last_selected_color_mode != selected_color_mode){
                     last_selected_color_mode = selected_color_mode;
                     mode_change_flag = true;  
+
                 }
                 store_color_mode_value(selected_color_mode); 
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
@@ -1083,13 +1129,13 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #else
                 set_color_temp();
                 if(button_index < 3){
-                    set_state(4);
-                    set_level(4);
+                    //set_state(4);
+                    //set_level(4);
                 }else{
-                    set_state(3);
-                    set_level(3);
+                    //set_state(3);
+                    //set_level(3);
                 }
-                #endif
+                #endif                
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)    
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
                 device_info[0].fan_speed = 0xff;
@@ -1150,8 +1196,6 @@ void nuos_switch_double_click_task(uint32_t io_num){
 
     #else
         double_press_click_enable = !double_press_click_enable;
-
-    //printf("DOUBLE PRESSED!!\n");
     #endif
 }
 

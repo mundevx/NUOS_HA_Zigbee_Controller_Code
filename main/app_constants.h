@@ -663,7 +663,7 @@
         #endif
         
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V3
         #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                     254   
         
@@ -749,11 +749,11 @@
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
         #endif
-
+        //#define ENABLE_DALI_RECEIVER
         #define USE_RGB_LED
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1      
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 
@@ -769,6 +769,7 @@
         #else
             #define BRIGHTNESS_SET_CHECKER_COUNTS                       10
             #define DIMMING_STEPS                                       5
+            #define DIMMING_RGB_STEPS                                   20
 
             #define COLOR_SET_CHECKER_COUNTS                            20
             #define COLOR_STEPS                                         200

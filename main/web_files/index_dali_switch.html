@@ -961,6 +961,17 @@
                 .then(data => {
                     document.getElementById('scene1').value = data.scene_ids[0];
                     document.getElementById('control_type').value = data.control_type;
+                    // ⭐ Set group dropdown
+                    if (data.group_id !== undefined) {
+                        const groupDropdown = document.getElementById('groupDropdown');
+                        if (groupDropdown) {
+                            if (Array.isArray(data.group_id)) {
+                                groupDropdown.value = String(data.group_id[0]); // ✅ take first value
+                            } else {
+                                groupDropdown.value = String(data.group_id);
+                            }
+                        }
+                    }
                     updateControlTypeUI();
                 })
                 .catch(err => console.warn('Could not load scene settings:', err));
@@ -1013,7 +1024,11 @@ if (data && data.fade_rate !== undefined) {
 if (data && data.group_id !== undefined) {
     const group_id = document.getElementById('groupDropdown');
     if (group_id) {
-        group_id.value = data.group_id;
+        if (Array.isArray(data.group_id)) {
+            group_id.value = String(data.group_id[0]);
+        } else {
+            group_id.value = String(data.group_id);
+        }
     }
 }
     }).catch(console.error);

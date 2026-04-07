@@ -26,6 +26,7 @@ Receiver::Receiver()
     , last_level_(false)
     , idle_timer_(nullptr)
     , idle_te_cnt_(0)
+    , query_mode_(false)  // Initialize query mode to false (16-bit by default)
 {
     spinlock_ = portMUX_INITIALIZER_UNLOCKED;
     memset(msg_, 0, sizeof(msg_));
@@ -108,9 +109,15 @@ void IRAM_ATTR Receiver::timer_callback(void* arg) {
     if (self->state_ == RxState::BIT && self->idle_te_cnt_ > 4) {
         // Convert half‑bits to bytes
         size_t bits = (self->halfbit_cnt_ + 1) >> 1;   // number of full bits (incl. start)
-        if ((bits & 0x07) == 0) {                      // multiple of 8 bits
-            size_t len = bits >> 3;                     // bytes (max 3)
-            if (self->callback_) {
+        
+        // Auto-detect frame length - accept 8-bit, 16-bit, or 24-bit frames
+        if ((bits & 0x07) == 0) {  // Multiple of 8 bits
+            size_t len = bits >> 3;  // Convert bits to bytes
+            // DALI frames can be: 
+            // - 8 bits (backward frame/response)
+            // - 16 bits (forward frame/command)
+            // - 24 bits (special cases)
+            if (len >= 1 && len <= 3 && self->callback_) {
                 // Callback must be ISR‑safe – it runs in timer ISR context
                 self->callback_(self->msg_, len);
             }
@@ -119,6 +126,28 @@ void IRAM_ATTR Receiver::timer_callback(void* arg) {
     }
     portEXIT_CRITICAL_ISR(&self->spinlock_);
 }
+// void IRAM_ATTR Receiver::timer_callback(void* arg) {
+//     auto* self = static_cast<Receiver*>(arg);
+//     portENTER_CRITICAL_ISR(&self->spinlock_);
+//     if (self->idle_te_cnt_ < 0xff) {
+//         self->idle_te_cnt_++;
+//     }
+
+//     // Check for end of message: at least 2 TE idle while in BIT state
+//     if (self->state_ == RxState::BIT && self->idle_te_cnt_ > 4) {
+//         // Convert half‑bits to bytes
+//         size_t bits = (self->halfbit_cnt_ + 1) >> 1;   // number of full bits (incl. start)
+//         if ((bits & 0x07) == 0) {                      // multiple of 8 bits
+//             size_t len = bits >> 3;                     // bytes (max 3)
+//             if (self->callback_) {
+//                 // Callback must be ISR‑safe – it runs in timer ISR context
+//                 self->callback_(self->msg_, len);
+//             }
+//         }
+//         self->state_ = RxState::IDLE;
+//     }
+//     portEXIT_CRITICAL_ISR(&self->spinlock_);
+// }
 
 void IRAM_ATTR Receiver::handle_pin_change() {
     uint32_t now = esp_timer_get_time();               // µs, ISR‑safe

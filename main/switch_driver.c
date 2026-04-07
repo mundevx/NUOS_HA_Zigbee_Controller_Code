@@ -476,7 +476,7 @@ void button_click_handler(TimerHandle_t xTimer)
                     } 
                 #endif  
             }
-        } else if (local_clicks == 2) {
+        } else if (local_clicks == 5) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             // Double click: check if any button was pressed twice
             for (int i = 0; i < TOTAL_BUTTONS; i++) {
@@ -484,6 +484,7 @@ void button_click_handler(TimerHandle_t xTimer)
                     if (switch_num_pressed[p] == gpio_touch_btn_pins[i]) {
                         // White button pressed 2 times
                         change_cw_ww_color_flag = !change_cw_ww_color_flag;
+                        //printf("double_click_pressed!!\n");
                         break;
                     }
                 }

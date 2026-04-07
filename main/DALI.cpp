@@ -176,7 +176,7 @@ void DALI::sendCommand(uint8_t command, uint8_t data) {
     }
 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(7000);
+    task_delayMicroseconds(2700);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -385,15 +385,12 @@ void DALI::enableRxInterrupt() {
 
 
 void DALI::query(uint8_t address, uint8_t queryCommand) {
-    disableRxInterrupt();
+    
     // Get the upper bit
     uint8_t mask = address & 0x80;
     // Change address to have 1 in LSb to signify 'standard command'
     uint8_t new_address = mask | ((address << 1) + 1);
-    task_delayMicroseconds(2400);
-    sendCommandPublic(new_address, queryCommand);    
-    //task_delayMicroseconds(2400);// Wait for timeout between response
-    enableRxInterrupt(); 
+    sendCommandPublic(new_address, queryCommand);  
 }
 
 #define QUERY_STATUS_2 0xBB

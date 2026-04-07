@@ -6,7 +6,7 @@
 #include "driver/gpio.h"
 
 class DaliCommands {
-private:
+public:
     typedef enum {
         SET_DTR0 = 0xA3,
         SET_DTR1 = 0xC3,
@@ -65,7 +65,7 @@ private:
         PING = 262,
     } GROUP_COMMANDS;
 
-public:
+
 
     typedef enum {
         BROADCAST_DP = 0b11111110,
@@ -82,7 +82,9 @@ public:
     explicit DaliCommands(gpio_num_t txPin, gpio_num_t rxPin);
 
     // Basic control functions
-    void begin(bool* is_isr, QueueHandle_t rxFrameQueue);
+    void begin(bool* is_isr);
+    void begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue);
+
     int initNodes(const uint8_t* addresses, uint8_t numAddresses);
     void turn_off(uint8_t nodeAddress);
     void turn_on_to_max(uint8_t nodeAddress);
@@ -150,8 +152,9 @@ public:
     // Scene functions
     void set_scene(uint8_t addr, uint8_t scene, uint8_t level);
     void set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp);
+    void set_rgb_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint8_t r, uint8_t g, uint8_t b);
     void set_level_scene(uint8_t addr, uint8_t scene , uint8_t scene_level);
-    
+
     void remove_from_scene(uint8_t addr, uint8_t scene);
     void go_to_scene(uint8_t addr, uint8_t scene);
     void add_to_scene(uint8_t addr, uint8_t scene);
@@ -159,7 +162,12 @@ public:
     // Scanning function
     int scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses);
     void enableReceiver(bool enable);
+    void disableRxInterrupt();
+    void enableRxInterrupt();
+
     void query(uint8_t shortAddress, uint8_t queryCommand);
+    void enable_query_mode();
+    void disable_query_mode();
     
 private:
     gpio_num_t txPin;

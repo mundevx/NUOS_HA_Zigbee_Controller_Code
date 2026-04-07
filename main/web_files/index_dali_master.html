@@ -4,7 +4,6 @@
 <title>DALI Control — Group Membership with CCT Slider + Per-Device Scene Settings</title>
 
 <style>
-/* ---------- blended styles (kept the working look you provided) ---------- */
 body {
     display: flex;
     flex-direction: column;
@@ -162,13 +161,11 @@ select, input[type="number"] {
 .toast.error { background-color: #dc3545; }
 .toast.info  { background-color: #007bff; }
 
-
 h2{ color:#2193b0;text-align:center;margin-top:0; }
 h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:25px; }
 .toggle-grid{ display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:15px 0;max-height:300px;overflow-y:auto;padding:10px;background:#f9f9f9;border-radius:8px; }
 .two-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* device control layout (per-device area) */
 .device-controls{ display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
 .toggle-onoff{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .toggle-onoff .toggle{ width:64px; height:36px; border-radius:20px; background:#ddd; position:relative; cursor:pointer; transition:background .18s; border:1px solid rgba(0,0,0,0.06); }
@@ -186,9 +183,22 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 .cct-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid rgba(0,0,0,0.12); box-shadow:0 4px 10px rgba(0,0,0,0.12); margin-top:-6px; cursor:pointer; }
 .cct-ticks{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; font-size:12px; color:#333; user-select:none; }
 
-<!--  @media (max-width: 680px){ .tabs{ flex-direction:column; } .toggle-grid{ grid-template-columns:repeat(4,1fr); } } -->
+.rgb-slider-wrap { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.rgb-row { display:flex; align-items:center; gap:8px; }
+.rgb-row label { min-width:14px; font-weight:bold; font-size:13px; color:#333; }
+.rgb-row input[type="range"] { flex:1; height:20px; border-radius:10px; outline:none; -webkit-appearance:none; appearance:none; }
+.rgb-row input[type="range"].r-slider { background:linear-gradient(90deg,#000,#f00); }
+.rgb-row input[type="range"].g-slider { background:linear-gradient(90deg,#000,#0f0); }
+.rgb-row input[type="range"].b-slider { background:linear-gradient(90deg,#000,#00f); }
+.rgb-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid rgba(0,0,0,0.2); box-shadow:0 2px 6px rgba(0,0,0,.15); cursor:pointer; }
+.rgb-val { min-width:32px; text-align:right; font-size:13px; font-weight:bold; color:#333; }
+.rgb-preview { width:80px; height:44px; border-radius:8px; border:1px solid rgba(0,0,0,0.1); box-shadow:0 2px 8px rgba(0,0,0,.1); flex-shrink:0; }
 
-/* Simple modal for scene mode choice */
+.color-mode-toggle { display:flex; gap:0; border:1px solid #2193b0; border-radius:6px; overflow:hidden; margin-bottom:10px; width:fit-content; }
+.color-mode-toggle label { padding:6px 16px; font-size:13px; font-weight:bold; cursor:pointer; color:#2193b0; background:#fff; margin:0; display:flex; align-items:center; gap:5px; transition:background .18s,color .18s; }
+.color-mode-toggle input[type="radio"] { display:none; }
+.color-mode-toggle label.active { background:#2193b0; color:#fff; }
+
 #sceneModeModal{ position:fixed; left:0; top:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); z-index:9999; }
 #sceneModeModal .modal-card{ width:340px; background:#fff; border-radius:8px; padding:18px; box-shadow:0 8px 30px rgba(0,0,0,0.25); }
 #sceneModeModal .modal-card h3{ margin-top:0; }
@@ -198,55 +208,42 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 </head>
 <body>
 
-<!-- TAB BUTTONS -->
 <div class="tabs">
-  <button class="tab-btn active" data-tab="sceneControl">Scene Control</button>
-  <button class="tab-btn" data-tab="daliAddressing">DALI Addressing</button>
-  <button class="tab-btn" data-tab="groupMembership">Group Membership</button>
-  <button class="tab-btn" data-tab="sceneManagement">Scenes</button>
+  <button class="tab-btn active" data-tab="sceneControl">Home</button>
+  <button class="tab-btn" data-tab="groupMembership">Group Assignment</button>
+  <button class="tab-btn" data-tab="sceneManagement">Scene Assignment</button>
+  <button class="tab-btn" data-tab="daliAddressing">Settings</button>
 </div>
 
-<!-- ---------------- TAB 1: Scene Control (from your working upload) ---------------- -->
-<!-- TAB 1: Scene Control UI -->
 <div id="sceneControl" class="tab-content active">
   <div class="card">
     <h2 id="mainHeader">DALI Scene Control Switch</h2>
     <p>Set Group, Scene IDs (0–15) or Dali IDs (0–63).<br>Choose Switch Control Type, and submit to your device.</p>
     <form id="sceneForm" autocomplete="off">
       <label for="control_type" style="color: #3b82f6;">Switch Control Type:</label>
-      <select id="control_type" required="">
+      <select id="control_type" required>
         <option>Individual Control</option>
         <option>Group Control</option>
         <option>Scene Control</option>
       </select>
-      <!-- <div id="sceneControlDiv" style="display: block; margin-top: 1em; color: rgb(59, 130, 246);">
-        <label for="control_type1">Scene Control Type:</label>
-        <select id="control_type1" required="">
-          <option>Broadcast Control</option>
-          <option>Group Control</option>
-          <option>Individual Control</option>
-        </select>
-      </div> -->
       <br><br><br>
-      <!-- <label for="group_id" id="groupIdLabel" style="color: rgb(59, 130, 246); display: none;">Group ID (0–15):</label>
-      <input type="number" id="group_id" min="0" max="15" value="0" style="display: none;"> -->
       <p>Long Press each ID field to set DALI Ids</p>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div>
           <label for="scene1" id="scene1Label" style="color: #3b82f6;">Scene ID 1:</label>
-          <input type="number" id="scene1" min="0" max="15" required="">
+          <input type="number" id="scene1" min="0" max="15" required>
         </div>
         <div>
           <label for="scene2" id="scene2Label" style="color: #3b82f6;">Scene ID 2:</label>
-          <input type="number" id="scene2" min="0" max="15" required="">
+          <input type="number" id="scene2" min="0" max="15" required>
         </div>
         <div>
           <label for="scene3" id="scene3Label" style="color: #3b82f6;">Scene ID 3:</label>
-          <input type="number" id="scene3" min="0" max="15" required="">
+          <input type="number" id="scene3" min="0" max="15" required>
         </div>
         <div>
           <label for="scene4" id="scene4Label" style="color: #3b82f6;">Scene ID 4:</label>
-          <input type="number" id="scene4" min="0" max="15" required="">
+          <input type="number" id="scene4" min="0" max="15" required>
         </div>
       </div>
       <button class="stylish-button" type="submit">Save Changes</button>
@@ -256,9 +253,7 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   <div class="overlay" id="overlay" style="display: none;"></div>
   <div class="popup" id="popup" style="display: none;">
     <h3>Select IDs</h3>
-    <div id="toggleGrid">
-      <!-- Dynamically filled -->
-    </div>
+    <div id="toggleGrid"></div>
     <div style="margin-top: 15px;">
       <button style="padding: 10px 20px;" onclick="submitSelection()">Submit</button>
       <button style="padding: 10px 20px;" onclick="closePopup()">Cancel</button>
@@ -268,26 +263,27 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   <p></p>
 </div>
 
-<!-- ---------------- TAB 2: DALI Addressing (from your working upload) ---------------- -->
 <div id="daliAddressing" class="tab-content">
   <div class="card">
     <h2>DALI Addressing</h2>
-    <!-- <label for="daliAddress">Select DALI Address (0–63):</label>
-    <select id="daliAddress"></select> -->
-  <div style="display: flex; gap: 2em; margin-bottom: 1em;">
-    <div>
-      <label for="daliStartAddress">Start Address</label>
-      <select id="daliStartAddress"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option><option value="60">60</option><option value="61">61</option><option value="62">62</option><option value="63">63</option></select>
+    <div style="display: flex; gap: 2em; margin-bottom: 1em;">
+      <div>
+        <label for="daliStartAddress">Start Address</label>
+        <select id="daliStartAddress"></select>
+      </div>
+      <div>
+        <label for="daliNumAddresses">Number Of Addresses</label>
+        <select id="daliNumAddresses"></select>
+      </div>
     </div>
-    <div>
-      <label for="daliNumAddresses">Number Of Addresses</label>
-      <select id="daliNumAddresses"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option><option value="60">60</option><option value="61">61</option><option value="62">62</option><option value="63">63</option></select>
-    </div>
-  </div>
     <button class="stylish-button" id="sendDaliAddress">Send Address</button>
   </div>
-
-  <!-- Confirmation Popup (initially hidden) -->
+  <div class="card">
+    <h2>Controller Action</h2>
+    <button class="stylish-button" id="rebootControllerBtn" style="background:#dc3545;">
+      Reboot Controller
+    </button>
+  </div>
   <div id="daliConfirmPopup" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.45);justify-content:center;align-items:center;">
     <div style="background:white;padding:2em;border-radius:10px;box-shadow:0 0 20px #333;min-width:350px;text-align:center;">
       <div style="font-size:1.15em;color:#2193b0;margin-bottom:1em;">
@@ -299,23 +295,20 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     </div>
   </div>
 
-  <!-- Info Popup (initially hidden) -->
   <div id="daliInfoPopup" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.45);justify-content:center;align-items:center;">
     <div style="background:white;padding:2em;border-radius:10px;box-shadow:0 0 20px #333;min-width:350px;text-align:center;">
       <div style="font-size:1.15em;color:#2193b0;margin-bottom:1em;">
         Kindly allow the process to finish, then reconnect to the webpage.
       </div>
-      <!-- <button id="daliInfoOk" class="stylish-button">OK</button> -->
     </div>
   </div>
 </div>
 
-<!-- ---------------- TAB 3: Group Membership (kept your preferred implementation) ---------------- -->
 <div id="groupMembership" class="tab-content">
   <div class="card">
     <h2>DALI Group Membership</h2>
     <label for="groupSelect">Select Group (0–15):</label>
-    <select id="groupSelect"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+    <select id="groupSelect"></select>
 
     <h3>Group Controls</h3>
     <div class="device-controls">
@@ -371,7 +364,7 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     </div>
 
     <p style="margin-top:18px;">Select DALI addresses to include in this group:</p>
-    <div class="toggle-grid" id="groupIdGrid"><button type="button" class="toggle-btn" id="btn0">0</button><button type="button" class="toggle-btn" id="btn1">1</button><button type="button" class="toggle-btn" id="btn2">2</button><button type="button" class="toggle-btn" id="btn3">3</button><button type="button" class="toggle-btn" id="btn4">4</button><button type="button" class="toggle-btn" id="btn5">5</button><button type="button" class="toggle-btn" id="btn6">6</button><button type="button" class="toggle-btn" id="btn7">7</button><br><button type="button" class="toggle-btn" id="btn8">8</button><button type="button" class="toggle-btn" id="btn9">9</button><button type="button" class="toggle-btn" id="btn10">10</button><button type="button" class="toggle-btn" id="btn11">11</button><button type="button" class="toggle-btn" id="btn12">12</button><button type="button" class="toggle-btn" id="btn13">13</button><button type="button" class="toggle-btn" id="btn14">14</button><button type="button" class="toggle-btn" id="btn15">15</button><br><button type="button" class="toggle-btn" id="btn16">16</button><button type="button" class="toggle-btn" id="btn17">17</button><button type="button" class="toggle-btn" id="btn18">18</button><button type="button" class="toggle-btn" id="btn19">19</button><button type="button" class="toggle-btn" id="btn20">20</button><button type="button" class="toggle-btn" id="btn21">21</button><button type="button" class="toggle-btn" id="btn22">22</button><button type="button" class="toggle-btn" id="btn23">23</button><br><button type="button" class="toggle-btn" id="btn24">24</button><button type="button" class="toggle-btn" id="btn25">25</button><button type="button" class="toggle-btn" id="btn26">26</button><button type="button" class="toggle-btn" id="btn27">27</button><button type="button" class="toggle-btn" id="btn28">28</button><button type="button" class="toggle-btn" id="btn29">29</button><button type="button" class="toggle-btn" id="btn30">30</button><button type="button" class="toggle-btn" id="btn31">31</button><br><button type="button" class="toggle-btn" id="btn32">32</button><button type="button" class="toggle-btn" id="btn33">33</button><button type="button" class="toggle-btn" id="btn34">34</button><button type="button" class="toggle-btn" id="btn35">35</button><button type="button" class="toggle-btn" id="btn36">36</button><button type="button" class="toggle-btn" id="btn37">37</button><button type="button" class="toggle-btn" id="btn38">38</button><button type="button" class="toggle-btn" id="btn39">39</button><br><button type="button" class="toggle-btn" id="btn40">40</button><button type="button" class="toggle-btn" id="btn41">41</button><button type="button" class="toggle-btn" id="btn42">42</button><button type="button" class="toggle-btn" id="btn43">43</button><button type="button" class="toggle-btn" id="btn44">44</button><button type="button" class="toggle-btn" id="btn45">45</button><button type="button" class="toggle-btn" id="btn46">46</button><button type="button" class="toggle-btn" id="btn47">47</button><br><button type="button" class="toggle-btn" id="btn48">48</button><button type="button" class="toggle-btn" id="btn49">49</button><button type="button" class="toggle-btn" id="btn50">50</button><button type="button" class="toggle-btn" id="btn51">51</button><button type="button" class="toggle-btn" id="btn52">52</button><button type="button" class="toggle-btn" id="btn53">53</button><button type="button" class="toggle-btn" id="btn54">54</button><button type="button" class="toggle-btn" id="btn55">55</button><br><button type="button" class="toggle-btn" id="btn56">56</button><button type="button" class="toggle-btn" id="btn57">57</button><button type="button" class="toggle-btn" id="btn58">58</button><button type="button" class="toggle-btn" id="btn59">59</button><button type="button" class="toggle-btn" id="btn60">60</button><button type="button" class="toggle-btn" id="btn61">61</button><button type="button" class="toggle-btn" id="btn62">62</button><button type="button" class="toggle-btn" id="btn63">63</button><br></div>
+    <div class="toggle-grid" id="groupIdGrid"></div>
 
     <div class="two-buttons" style="margin-top:12px;">
       <button class="stylish-button" id="addToGroup">Add To Group</button>
@@ -380,20 +373,18 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   </div>
 </div>
 
-<!-- ---------------- TAB 4: Scenes (per-device) ---------------- -->
 <div id="sceneManagement" class="tab-content">
   <div class="card">
     <h2>DALI Scene Management (Per-device)</h2>
 
     <label for="sceneGroupSelect">Select Scene (0–15):</label>
-    <select id="sceneGroupSelect"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+    <select id="sceneGroupSelect"></select>
 
-    <!-- NEW: Select Group Id to include in Add To Scene payload -->
     <label for="sceneGroupIdSelect" id="sceneGroupIdLabel" style="display: none;">Select Group Id (0–15) for this Scene</label>
-    <select id="sceneGroupIdSelect" style="display: none;"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+    <select id="sceneGroupIdSelect" style="display: none;"></select>
 
     <label for="sceneDeviceSelect" id="sceneDeviceSelectLabel">Select Device ID (0–63):</label>
-    <select id="sceneDeviceSelect"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option><option value="32">32</option><option value="33">33</option><option value="34">34</option><option value="35">35</option><option value="36">36</option><option value="37">37</option><option value="38">38</option><option value="39">39</option><option value="40">40</option><option value="41">41</option><option value="42">42</option><option value="43">43</option><option value="44">44</option><option value="45">45</option><option value="46">46</option><option value="47">47</option><option value="48">48</option><option value="49">49</option><option value="50">50</option><option value="51">51</option><option value="52">52</option><option value="53">53</option><option value="54">54</option><option value="55">55</option><option value="56">56</option><option value="57">57</option><option value="58">58</option><option value="59">59</option><option value="60">60</option><option value="61">61</option><option value="62">62</option><option value="63">63</option></select>
+    <select id="sceneDeviceSelect"></select>
 
     <h3>Device Settings for Selected Scene</h3>
     <div class="device-controls">
@@ -424,27 +415,68 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
       </div>
 
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-weight:bold;color:#2193b0;">Device Color Temperature (CCT)</div>
-          <div class="value-label" id="deviceCctValue">3500K</div>
+        <div style="margin-top:10px;">
+          <div style="font-weight:bold;color:#2193b0;margin-bottom:6px;">Color Mode</div>
+          <div class="color-mode-toggle" id="colorModeToggle">
+            <label id="cctModeLabel" class="active">
+              <input type="radio" name="deviceColorMode" id="colorModeCCT" value="cct" checked>
+              <span>🌡 CCT</span>
+            </label>
+            <label id="rgbModeLabel">
+              <input type="radio" name="deviceColorMode" id="colorModeRGB" value="rgb">
+              <span>🎨 RGB</span>
+            </label>
+          </div>
         </div>
-        <div style="margin-top:8px; display:flex; gap:14px; align-items:center;">
-          <div style="flex:1;">
-            <input id="deviceCctSlider" class="cct-slider" type="range" min="2000" max="6500" step="50" value="3500">
-            <div class="cct-ticks" aria-hidden="true">
-              <div class="tick"><div class="tick-label">2000K</div></div>
-              <div class="tick"><div class="tick-label">3000K</div></div>
-              <div class="tick"><div class="tick-label">4000K</div></div>
-              <div class="tick"><div class="tick-label">5000K</div></div>
-              <div class="tick"><div class="tick-label">6000K</div></div>
-              <div class="tick"><div class="tick-label">6500K</div></div>
+
+        <div id="deviceCctPanel">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:bold;color:#2193b0;">Device Color Temperature (CCT)</div>
+            <div class="value-label" id="deviceCctValue">3500K</div>
+          </div>
+          <div style="margin-top:8px; display:flex; gap:14px; align-items:center;">
+            <div style="flex:1;">
+              <input id="deviceCctSlider" class="cct-slider" type="range" min="2000" max="6500" step="50" value="3500">
+              <div class="cct-ticks" aria-hidden="true">
+                <div class="tick"><div class="tick-label">2000K</div></div>
+                <div class="tick"><div class="tick-label">3000K</div></div>
+                <div class="tick"><div class="tick-label">4000K</div></div>
+                <div class="tick"><div class="tick-label">5000K</div></div>
+                <div class="tick"><div class="tick-label">6000K</div></div>
+                <div class="tick"><div class="tick-label">6500K</div></div>
+              </div>
+            </div>
+            <div style="width:100px;">
+              <div id="deviceCctPreview" class="cct-preview" aria-hidden="true" style="background: rgb(255, 193, 141);"></div>
+              <div style="text-align:center;font-size:12px;margin-top:6px;color:#666;">Preview</div>
+            </div>
+            <button id="sendDeviceCct" class="inline-send">Send</button>
+          </div>
+        </div>
+
+        <div id="deviceRgbPanel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:bold;color:#2193b0;">Device RGB Color</div>
+            <div class="rgb-preview" id="deviceRgbPreview" style="background:rgb(255,128,0);"></div>
+          </div>
+          <div class="rgb-slider-wrap" style="margin-top:10px;">
+            <div class="rgb-row">
+              <label style="color:#e53935;">R</label>
+              <input type="range" class="r-slider" id="deviceRedSlider" min="0" max="255" value="255">
+              <span class="rgb-val" id="deviceRedVal">255</span>
+            </div>
+            <div class="rgb-row">
+              <label style="color:#43a047;">G</label>
+              <input type="range" class="g-slider" id="deviceGreenSlider" min="0" max="255" value="128">
+              <span class="rgb-val" id="deviceGreenVal">128</span>
+            </div>
+            <div class="rgb-row">
+              <label style="color:#1e88e5;">B</label>
+              <input type="range" class="b-slider" id="deviceBlueSlider" min="0" max="255" value="0">
+              <span class="rgb-val" id="deviceBlueVal">0</span>
             </div>
           </div>
-          <div style="width:130px;">
-            <div id="deviceCctPreview" class="cct-preview" aria-hidden="true" style="background: rgb(255, 193, 141);"></div>
-            <div style="text-align:center;font-size:12px;margin-top:8px;color:#666;">Preview</div>
-          </div>
-          <button id="sendDeviceCct" class="inline-send">Send</button>
+          <button id="sendDeviceRgb" class="inline-send" style="margin-top:8px;width:100%;">Send RGB</button>
         </div>
       </div>
 
@@ -459,7 +491,6 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   </div>
 </div>
 
-<!-- modal: ask user how to set scene -->
 <div id="sceneModeModal" aria-hidden="true">
   <div class="modal-card">
     <h3>How to set scene via?</h3>
@@ -474,36 +505,42 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   </div>
 </div>
 
-<!-- popup overlay (legacy) -->
-<div id="overlay" style="display:none;"></div>
-<div id="popup" aria-hidden="true" style="display:none;">
-  <h3 style="margin-top:0;">Select IDs</h3>
-  <div id="toggleGrid"><button class="toggle-btn" id="btn0" onclick="toggleBtn(0)">0</button><button class="toggle-btn" id="btn1" onclick="toggleBtn(1)">1</button><button class="toggle-btn" id="btn2" onclick="toggleBtn(2)">2</button><button class="toggle-btn" id="btn3" onclick="toggleBtn(3)">3</button><button class="toggle-btn" id="btn4" onclick="toggleBtn(4)">4</button><button class="toggle-btn" id="btn5" onclick="toggleBtn(5)">5</button><button class="toggle-btn" id="btn6" onclick="toggleBtn(6)">6</button><button class="toggle-btn" id="btn7" onclick="toggleBtn(7)">7</button><br><button class="toggle-btn" id="btn8" onclick="toggleBtn(8)">8</button><button class="toggle-btn" id="btn9" onclick="toggleBtn(9)">9</button><button class="toggle-btn" id="btn10" onclick="toggleBtn(10)">10</button><button class="toggle-btn" id="btn11" onclick="toggleBtn(11)">11</button><button class="toggle-btn" id="btn12" onclick="toggleBtn(12)">12</button><button class="toggle-btn" id="btn13" onclick="toggleBtn(13)">13</button><button class="toggle-btn" id="btn14" onclick="toggleBtn(14)">14</button><button class="toggle-btn" id="btn15" onclick="toggleBtn(15)">15</button><br><button class="toggle-btn" id="btn16" onclick="toggleBtn(16)">16</button><button class="toggle-btn" id="btn17" onclick="toggleBtn(17)">17</button><button class="toggle-btn" id="btn18" onclick="toggleBtn(18)">18</button><button class="toggle-btn" id="btn19" onclick="toggleBtn(19)">19</button><button class="toggle-btn" id="btn20" onclick="toggleBtn(20)">20</button><button class="toggle-btn" id="btn21" onclick="toggleBtn(21)">21</button><button class="toggle-btn" id="btn22" onclick="toggleBtn(22)">22</button><button class="toggle-btn" id="btn23" onclick="toggleBtn(23)">23</button><br><button class="toggle-btn" id="btn24" onclick="toggleBtn(24)">24</button><button class="toggle-btn" id="btn25" onclick="toggleBtn(25)">25</button><button class="toggle-btn" id="btn26" onclick="toggleBtn(26)">26</button><button class="toggle-btn" id="btn27" onclick="toggleBtn(27)">27</button><button class="toggle-btn" id="btn28" onclick="toggleBtn(28)">28</button><button class="toggle-btn" id="btn29" onclick="toggleBtn(29)">29</button><button class="toggle-btn" id="btn30" onclick="toggleBtn(30)">30</button><button class="toggle-btn" id="btn31" onclick="toggleBtn(31)">31</button><br><button class="toggle-btn" id="btn32" onclick="toggleBtn(32)">32</button><button class="toggle-btn" id="btn33" onclick="toggleBtn(33)">33</button><button class="toggle-btn" id="btn34" onclick="toggleBtn(34)">34</button><button class="toggle-btn" id="btn35" onclick="toggleBtn(35)">35</button><button class="toggle-btn" id="btn36" onclick="toggleBtn(36)">36</button><button class="toggle-btn" id="btn37" onclick="toggleBtn(37)">37</button><button class="toggle-btn" id="btn38" onclick="toggleBtn(38)">38</button><button class="toggle-btn" id="btn39" onclick="toggleBtn(39)">39</button><br><button class="toggle-btn" id="btn40" onclick="toggleBtn(40)">40</button><button class="toggle-btn" id="btn41" onclick="toggleBtn(41)">41</button><button class="toggle-btn" id="btn42" onclick="toggleBtn(42)">42</button><button class="toggle-btn" id="btn43" onclick="toggleBtn(43)">43</button><button class="toggle-btn" id="btn44" onclick="toggleBtn(44)">44</button><button class="toggle-btn" id="btn45" onclick="toggleBtn(45)">45</button><button class="toggle-btn" id="btn46" onclick="toggleBtn(46)">46</button><button class="toggle-btn" id="btn47" onclick="toggleBtn(47)">47</button><br><button class="toggle-btn" id="btn48" onclick="toggleBtn(48)">48</button><button class="toggle-btn" id="btn49" onclick="toggleBtn(49)">49</button><button class="toggle-btn" id="btn50" onclick="toggleBtn(50)">50</button><button class="toggle-btn" id="btn51" onclick="toggleBtn(51)">51</button><button class="toggle-btn" id="btn52" onclick="toggleBtn(52)">52</button><button class="toggle-btn" id="btn53" onclick="toggleBtn(53)">53</button><button class="toggle-btn" id="btn54" onclick="toggleBtn(54)">54</button><button class="toggle-btn" id="btn55" onclick="toggleBtn(55)">55</button><br><button class="toggle-btn" id="btn56" onclick="toggleBtn(56)">56</button><button class="toggle-btn" id="btn57" onclick="toggleBtn(57)">57</button><button class="toggle-btn" id="btn58" onclick="toggleBtn(58)">58</button><button class="toggle-btn" id="btn59" onclick="toggleBtn(59)">59</button><button class="toggle-btn" id="btn60" onclick="toggleBtn(60)">60</button><button class="toggle-btn" id="btn61" onclick="toggleBtn(61)">61</button><button class="toggle-btn" id="btn62" onclick="toggleBtn(62)">62</button><button class="toggle-btn" id="btn63" onclick="toggleBtn(63)">63</button><br></div>
-  <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
-    <button onclick="submitSelection()" style="padding:10px 16px;">Submit</button>
-    <button onclick="closePopup()" style="padding:10px 16px;">Cancel</button>
-  </div>
-</div>
-
-<!-- ---------------- JavaScript ---------------- -->
 <script>
-/* ---------- constants ---------- */
 const FXN_POWER = 301, FXN_BRIGHT = 302, FXN_CCT = 303;
 const FXN_SAVE_SCENE = 202;
 const FXN_CLEAR_SCENE = 202;
 
-/* ---------- helper: CCT -> RGB ---------- */
+function fillSelect(selectId, start, end){
+  const el = document.getElementById(selectId);
+  if(!el) return;
+  el.innerHTML = '';
+  for(let i=start;i<=end;i++){
+    const op = document.createElement('option');
+    op.value = i;
+    op.textContent = i;
+    el.appendChild(op);
+  }
+}
+
+fillSelect('daliStartAddress',0,63);
+fillSelect('daliNumAddresses',0,63);
+fillSelect('groupSelect',0,15);
+fillSelect('sceneGroupSelect',0,15);
+fillSelect('sceneGroupIdSelect',0,15);
+fillSelect('sceneDeviceSelect',0,63);
+
 function cctToRgb(kelvin){
   let temp = kelvin / 100;
   let r,g,b;
   if (temp <= 66) r = 255; else r = 329.698727446 * Math.pow(temp - 60, -0.1332047592);
   if (temp <= 66) g = 99.4708025861 * Math.log(temp) - 161.1195681661; else g = 288.1221695283 * Math.pow(temp - 60, -0.0755148492);
   if (temp >= 66) b = 255; else if (temp <= 19) b = 0; else b = 138.5177312231 * Math.log(temp - 10) - 305.0447927307;
-  r = Math.min(Math.max(Math.round(r),0),255); g = Math.min(Math.max(Math.round(g),0),255); b = Math.min(Math.max(Math.round(b),0),255);
+  r = Math.min(Math.max(Math.round(r),0),255);
+  g = Math.min(Math.max(Math.round(g),0),255);
+  b = Math.min(Math.max(Math.round(b),0),255);
   return { r,g,b };
 }
 
-/* ---------- helper: post JSON ---------- */
 async function postJson(url, body){
   try {
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -511,7 +548,6 @@ async function postJson(url, body){
   } catch (e) { console.error('postJson error', e); throw e; }
 }
 
-/* ---------- small POST /action helper used in Scene Control and elsewhere ---------- */
 async function postAction(payload){
   try {
     const res = await fetch('/action',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -519,15 +555,11 @@ async function postAction(payload){
   } catch(e){ console.error('postAction', e); return null; }
 }
 
-/* ---------- Scene Control (first tab) wiring - preserved from working upload ---------- */
-var savedGroupId = 0;
 var savedSceneIds = [0,0,0,0];
 var savedControlType = 'Individual Control';
-var savedControlType1 = 'Broadcast Control';
 let currentInput = null;
 let popupSelections = [[],[],[],[]];
 
-// Toast implementation
 function showToast(message, type = "info", duration = 3000) {
   const toast = document.getElementById("toast");
   if (!toast) return;
@@ -535,55 +567,37 @@ function showToast(message, type = "info", duration = 3000) {
   toast.textContent = message;
   toast.classList.add(type);
   toast.classList.add("show");
-  setTimeout(() => {
-    toast.classList.remove("show");
-  }, duration);
+  setTimeout(() => { toast.classList.remove("show"); }, duration);
 }
-// Initial field setup
+
 document.addEventListener('DOMContentLoaded',function(){
-  // document.getElementById('group_id').value = savedGroupId;
   document.getElementById('scene1').value = savedSceneIds[0];
   document.getElementById('scene2').value = savedSceneIds[1];
   document.getElementById('scene3').value = savedSceneIds[2];
   document.getElementById('scene4').value = savedSceneIds[3];
   document.getElementById('control_type').value = savedControlType;
-  // document.getElementById('control_type1').value = savedControlType1;
 });
 
-function updateHeader(newText) {
-  document.getElementById('mainHeader').textContent = newText;
-}
-function updateTitle(newTitle) {
-  document.title = newTitle; updateHeader(newTitle);
-}
+function updateHeader(newText) { document.getElementById('mainHeader').textContent = newText; }
+function updateTitle(newTitle) { document.title = newTitle; updateHeader(newTitle); }
 function setInputRange(min, max) {
-  let input1 = document.getElementById('scene1');
-  input1.min = min; input1.max = max;
-  let input2 = document.getElementById('scene2');
-  input2.min = min; input2.max = max;
-  let input3 = document.getElementById('scene3');
-  input3.min = min; input3.max = max;
-  let input4 = document.getElementById('scene4');
-  input4.min = min; input4.max = max;
+  ['scene1','scene2','scene3','scene4'].forEach(id => {
+    const input = document.getElementById(id);
+    input.min = min;
+    input.max = max;
+  });
 }
-
-function updateGroupIdVisibility(show) {
-  // var groupIdLabel = document.getElementById('groupIdLabel');
-  // var groupIdInput = document.getElementById('group_id');
-  // groupIdLabel.style.display = show ? '' : 'none';
-  // groupIdInput.style.display = show ? '' : 'none';
-}
-
-
+function updateGroupIdVisibility(show) {}
 
 document.getElementById('control_type').addEventListener('change', function() {
   var val = this.value;
-  // var groupIdLabel = document.getElementById('groupIdLabel');
-  // var groupIdInput = document.getElementById('group_id');
-  var sceneLabels = [ document.getElementById('scene1Label'), document.getElementById('scene2Label'), document.getElementById('scene3Label'), document.getElementById('scene4Label') ];
+  var sceneLabels = [
+    document.getElementById('scene1Label'),
+    document.getElementById('scene2Label'),
+    document.getElementById('scene3Label'),
+    document.getElementById('scene4Label')
+  ];
   if (val === 'Individual Control') {
-    groupIdLabel.style.display = 'none';
-    groupIdInput.style.display = 'none';
     sceneLabels[0].innerText = 'Dali ID 1:';
     sceneLabels[1].innerText = 'Dali ID 2:';
     sceneLabels[2].innerText = 'Dali ID 3:';
@@ -592,117 +606,42 @@ document.getElementById('control_type').addEventListener('change', function() {
     updateTitle("DALI Id's Control Switch");
     updateGroupIdVisibility(false);
   } else if (val === 'Group Control' || val === 'Broadcast Control') {
-    groupIdLabel.style.display = 'none';
-    groupIdInput.style.display = 'none';
     sceneLabels[0].innerText = 'Group ID 1:';
     sceneLabels[1].innerText = 'Group ID 2:';
     sceneLabels[2].innerText = 'Group ID 3:';
     sceneLabels[3].innerText = 'Group ID 4:';
-    if (val === 'Group Control'){
-      updateTitle("DALI Group Control Switch");
-      updateGroupIdVisibility(false);
-      setInputRange(0, 15);
-    }else{
-      updateTitle("DALI Broadcast Control Switch");
-      setInputRange(0, 15);
-      updateGroupIdVisibility(false);
-    }
+    updateTitle("DALI Group Control Switch");
+    setInputRange(0, 15);
+    updateGroupIdVisibility(false);
   } else if (val === 'Scene Control') {
-    groupIdLabel.style.display = '';
-    groupIdInput.style.display = '';
     sceneLabels[0].innerText = 'Scene ID 1:';
     sceneLabels[1].innerText = 'Scene ID 2:';
     sceneLabels[2].innerText = 'Scene ID 3:';
     sceneLabels[3].innerText = 'Scene ID 4:';
     setInputRange(0, 15);
   }
-  // var sceneDiv = document.getElementById('sceneControlDiv');
-  // if (this.value === 'Scene Control') {
-  //   sceneDiv.style.display = 'block';
-  //   var val = document.getElementById('control_type1').value;
-  //   if (val === 'Broadcast Control') {
-  //     updateGroupIdVisibility(false);
-  //     updateTitle("DALI Scene Control Switch");
-  //     setInputRange(0, 15);
-  //   }else if(val === 'Individual Control') {
-  //     updateGroupIdVisibility(false);
-  //     updateTitle("DALI Scene Control Switch");
-  //     setInputRange(0, 63);
-  //   } else if (val === 'Group Control') {
-  //     updateGroupIdVisibility(false);
-  //     updateTitle("DALI Scene Control Switch (group required)");
-  //     setInputRange(0, 15);
-  //   }
-  // } else {
-  //   sceneDiv.style.display = 'none';
-  // }
 });
-// document.getElementById('control_type1').addEventListener('change', function() {
-//   var val = this.value;
-//   if (document.getElementById('sceneControlDiv').style.display !== 'none') {
-//     updateGroupIdVisibility(false);
-//   }
-// });
+
 document.getElementById('sceneForm').onsubmit = async function(e) {
   e.preventDefault();
   const data = {
     fxn: '40',
-    // group_id: parseInt(document.getElementById('group_id').value),
     scene_ids: [
       parseInt(document.getElementById('scene1').value),
       parseInt(document.getElementById('scene2').value),
       parseInt(document.getElementById('scene3').value),
       parseInt(document.getElementById('scene4').value)
     ],
-    control_type: document.getElementById('control_type').selectedIndex,
-    // scn_ctrl_type: document.getElementById('control_type1').selectedIndex
+    control_type: document.getElementById('control_type').selectedIndex
   };
-  const res = await fetch('/action', {
+  await fetch('/action', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(data)
   });
   showToast("Scene Control Change sent.");
 };
-// Fetch saved values and UI state
-document.addEventListener('DOMContentLoaded', function() {
-  fetch('/items?fxn=15')
-    .then(response => response.json())
-    .then(data => {
-      // document.getElementById('group_id').value = data.group_id;
-      document.getElementById('scene1').value = data.scene_ids[0];
-      document.getElementById('scene2').value = data.scene_ids[1];
-      document.getElementById('scene3').value = data.scene_ids[2];
-      document.getElementById('scene4').value = data.scene_ids[3];
-      document.getElementById('control_type').value = data.control_type;
-      // document.getElementById('control_type1').value = data.scn_ctrl_type;
-      if (document.getElementById('control_type').value == 'Scene Control' ||
-          document.getElementById('control_type').value == 'Individual Control' ||
-          document.getElementById('control_type').value == 'Broadcast Control') {
-        updateGroupIdVisibility(false);
-      } else {
-        updateGroupIdVisibility(true);
-      }
-      // if (document.getElementById('control_type').value == 'Scene Control'){
-      //   document.getElementById('sceneControlDiv').style.display = 'block';
-      // }else{
-      //   document.getElementById('sceneControlDiv').style.display = 'none';
-      // }
-    });
-  fetch('/items?fxn=16')
-    .then(response => response.json())
-    .then(data => {
-      if (Array.isArray(data) && data.length === 4) {
-        popupSelections = data.map(arr => Array.isArray(arr) ? arr : []);
-      }
-      console.log('Loaded popupSelections:', popupSelections);
-    })
-    .catch(err => {
-      console.error('Failed to load popupSelections:', err);
-    });
-});
 
-// Large popup grid with toggles for each ID
 (function initGrid() {
   let grid = '';
   for (let i = 0; i < 64; i++) {
@@ -712,19 +651,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('toggleGrid').innerHTML = grid;
 })();
 
-// Scene field press/long-press handlers to open the popup
 ['scene1','scene2','scene3','scene4'].forEach((id, idx) => {
   let el = document.getElementById(id);
   let pressTimer;
   function tryShowPopup() {
     const ctrlType = document.getElementById('control_type').value;
-    if (ctrlType === 'Individual Control') {
-      openPopup(idx);
-    }
-/*else if (ctrlType === 'Scene Control') {
-      const ctrlType1 = document.getElementById('control_type1').value;
-      if (ctrlType1 === 'Individual Control') { openPopup(idx); }
-    }*/
+    if (ctrlType === 'Individual Control') openPopup(idx);
   }
   function sendClickIndex(idx, id) {
     const payload = { fxn: '42', index: idx, id: id };
@@ -732,13 +664,8 @@ document.addEventListener('DOMContentLoaded', function() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    })
-    .then(res => res.text())
-    .then(data => { })
-    .catch(err => {
-      setTimeout(() => {
-        showToast('Error sending data: ' + err);
-      }, 1000);
+    }).catch(err => {
+      setTimeout(() => { showToast('Error sending data: ' + err); }, 1000);
     });
   }
   el.addEventListener('mousedown', () => pressTimer = setTimeout(tryShowPopup, 600));
@@ -748,18 +675,13 @@ document.addEventListener('DOMContentLoaded', function() {
   el.addEventListener('touchend', () => clearTimeout(pressTimer));
   el.addEventListener('click', function() { sendClickIndex(idx, id); });
 });
+
 function openPopup(inputIdx) {
   currentInput = inputIdx;
   let selected = popupSelections[inputIdx] || [];
   for (let i = 0; i < 64; i++) {
     const btn = document.getElementById('btn' + i);
-    if (btn) {
-      if (selected.includes(i)) {
-        btn.classList.add('selected');
-      } else {
-        btn.classList.remove('selected');
-      }
-    }
+    if (btn) btn.classList.toggle('selected', selected.includes(i));
   }
   document.getElementById('popup').style.display = 'block';
   document.getElementById('overlay').style.display = 'block';
@@ -767,11 +689,8 @@ function openPopup(inputIdx) {
 function toggleBtn(id) {
   let selected = popupSelections[currentInput] || [];
   const index = selected.indexOf(id);
-  if (index === -1) {
-    selected.push(id);
-  } else {
-    selected.splice(index, 1);
-  }
+  if (index === -1) selected.push(id);
+  else selected.splice(index, 1);
   popupSelections[currentInput] = selected;
   const btn = document.getElementById(`btn${id}`);
   btn.classList.toggle('selected');
@@ -784,13 +703,8 @@ function submitSelection() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
-  })
-  .then(res => res.text())
-  .then(data => { closePopup(); })
-  .catch(err => {
-    setTimeout(() => {
-      showToast("Error sending data!", "error");
-    }, 1000);
+  }).then(() => closePopup()).catch(() => {
+    setTimeout(() => { showToast("Error sending data!", "error"); }, 1000);
     closePopup();
   });
 }
@@ -799,8 +713,85 @@ function closePopup() {
   document.getElementById('overlay').style.display = 'none';
 }
 
-// Tab Switcher for 4 tabs (Scene Control, DALI Addressing, Group Membership, Scenes)
 document.addEventListener('DOMContentLoaded', function () {
+  // Restore DALI Addressing values
+  fetch('/items?fxn=12')
+    .then(res => res.json())
+    .then(data => {
+      console.log('DALI restore data:', data);
+
+      if (!data) return;
+
+      const startEl = document.getElementById('daliStartAddress');
+      const numEl   = document.getElementById('daliNumAddresses');
+
+      // support multiple possible backend key names
+      const start =
+        data.startaddr ??
+        data.start_addr ??
+        data.startAddress ??
+        data.start ??
+        0;
+
+      const num =
+        data.maxaddr ??
+        data.numaddr ??
+        data.num_addresses ??
+        data.numberOfAddresses ??
+        data.count ??
+        0;
+
+      if (startEl) startEl.value = String(start);
+      if (numEl)   numEl.value   = String(num);
+
+      console.log('Restored start/num =', startEl?.value, numEl?.value);
+    })
+    .catch(err => {
+      console.error('Failed to restore DALI addressing values:', err);
+    });
+
+    // Restore saved Scene Control values on page refresh
+  fetch('/items?fxn=15')
+    .then(response => response.json())
+    .then(data => {
+      if (!data) return;
+
+      const ids = data.scene_ids || data.sceneids || [];
+      if (ids.length >= 4) {
+        document.getElementById('scene1').value = ids[0] ?? 0;
+        document.getElementById('scene2').value = ids[1] ?? 0;
+        document.getElementById('scene3').value = ids[2] ?? 0;
+        document.getElementById('scene4').value = ids[3] ?? 0;
+      }
+
+      const ctrlEl = document.getElementById("control_type");
+
+      const savedType =
+        data.control_type ??
+        data.controltype ??
+        data.scn_ctrl_type ??
+        "";
+
+      if (typeof savedType === "string") {
+        const normalized = savedType.trim();
+        const optionToUse =
+          normalized === "Broadcast Control" ? "Group Control" : normalized;
+
+        const matched = Array.from(ctrlEl.options).findIndex(
+          opt => opt.text.trim() === optionToUse
+        );
+
+        ctrlEl.selectedIndex = matched >= 0 ? matched : 0;
+      } else {
+        ctrlEl.selectedIndex = Number(savedType || 0);
+      }
+
+      ctrlEl.dispatchEvent(new Event("change"));
+    })
+    .catch(err => {
+      console.error('Failed to restore scene control values:', err);
+    });
+
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   function switchTab(tabName) {
@@ -813,28 +804,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
   tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-  // Set first tab active on page load
   switchTab('sceneControl');
+
+
+
+
+
 });
-
-
-
-
-
-
-
-/* ---------- small grid for group membership and scene grid (from your working upload) ---------- */
-function createToggleGrid123(container, count){
-  if(!container) return;
-  container.innerHTML = '';
-  for(let i=0;i<count;i++){
-    const btn = document.createElement('button');
-    btn.type='button'; btn.className='toggle-btn'; btn.textContent = i; btn.id = 'btn'+i;
-    btn.addEventListener('click', ()=> btn.classList.toggle('selected'));
-    container.appendChild(btn);
-    if ((i+1)%8===0) container.appendChild(document.createElement('br'));
-  }
-}
 
 function createToggleGrid(container, count, idPrefix){
   if (!container) return;
@@ -844,28 +820,18 @@ function createToggleGrid(container, count, idPrefix){
     btn.type = 'button';
     btn.className = 'toggle-btn';
     btn.textContent = i;
-    btn.id = idPrefix + i;          // <– use prefix
+    btn.id = idPrefix + i;
+    btn.dataset.val = i;
     btn.addEventListener('click', () => btn.classList.toggle('selected'));
     container.appendChild(btn);
     if ((i + 1) % 8 === 0) container.appendChild(document.createElement('br'));
   }
 }
 
-
-
-
-/* create required grids */
 document.addEventListener('DOMContentLoaded', ()=> {
-  // createToggleGrid(document.getElementById('groupIdGrid'), 64);
-
-  // on DOMContentLoaded
-createToggleGrid(document.getElementById('groupIdGrid'), 64, 'gridbtn');
-  // keep legacy sceneGrid creation safe (if used elsewhere it won't break)
-  const sceneGridEl = document.getElementById('sceneGrid');
-  if (sceneGridEl) createToggleGrid(sceneGridEl, 16);
+  createToggleGrid(document.getElementById('groupIdGrid'), 64, 'gridbtn');
 });
 
-/* ---------- Group Membership wiring ---------- */
 document.getElementById('addToGroup').addEventListener('click', ()=> {
   const group = document.getElementById('groupSelect').value;
   const selectedButtons = document.querySelectorAll('#groupIdGrid .selected');
@@ -881,53 +847,44 @@ document.getElementById('removeFromGroup').addEventListener('click', ()=> {
   alert(`Group ${group} remove ${selectedIds.length} ids`);
 });
 
-/* ---------- DALI Addressing button ---------- */
-// document.getElementById('sendDaliAddress').addEventListener('click', ()=> {
-//   const address = parseInt(document.getElementById('daliAddress').value || 0,10);
-//   postAction({ fxn: '60', selected_address: address });
-//   alert('DALI Address sent');
-// });
-
-
-
-// You can make both "dropdown" inputs editable by switching them to <input type="number"> elements.
-// For now, the above code makes them as dropdowns (select).
-
-
-
 document.addEventListener("DOMContentLoaded", function () {
-  // Elements
   const sendBtn = document.getElementById("sendDaliAddress");
   const confirmPopup = document.getElementById("daliConfirmPopup");
   const infoPopup = document.getElementById("daliInfoPopup");
   const okBtn = document.getElementById("daliPopupOk");
   const cancelBtn = document.getElementById("daliPopupCancel");
-  // const infoOkBtn = document.getElementById("daliInfoOk");
+  const rebootControllerBtn = document.getElementById("rebootControllerBtn");
 
-  // Show confirmation popup when Send Address is clicked
+  rebootControllerBtn.addEventListener("click", async function () {
+    const ok = confirm("Are you sure you want to reboot the controller?");
+    if (!ok) return;
+
+    try {
+      const payload = { fxn: "13" };   // change fxn if your reboot command uses another code
+      await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      alert("Controller reboot command sent.");
+    } catch (err) {
+      console.error("Reboot failed:", err);
+      alert("Failed to send reboot command.");
+    }
+  });
   sendBtn.addEventListener("click", function (e) {
     e.preventDefault();
-    confirmPopup.style.display = "flex"; // only visible now
+    confirmPopup.style.display = "flex";
   });
 
-  // Cancel closes the confirmation popup
   cancelBtn.addEventListener("click", function () {
     confirmPopup.style.display = "none";
   });
 
-  // OK sends JSON and shows info popup
   okBtn.addEventListener("click", async function () {
     confirmPopup.style.display = "none";
-    // Prepare and send your JSON
-    // const address = document.getElementById("daliAddress").value;
-    // const payload = { fxn: 12, maxaddr: address };
     try {
-      // await fetch("action", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(payload),
-      // });
-// On confirm (your okBtn logic):
       const start = parseInt(document.getElementById("daliStartAddress").value, 10);
       const num = parseInt(document.getElementById("daliNumAddresses").value, 10);
       const payload = { fxn: 12, start_addr: start, max_addr: num };
@@ -935,20 +892,14 @@ document.addEventListener("DOMContentLoaded", function () {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });      
+      });
     } catch (err) {
       console.warn("Could not send DALI addressing command:", err);
     }
-    infoPopup.style.display = "flex"; // only visible after OK
+    infoPopup.style.display = "flex";
   });
-
-  // Final OK closes info popup
-  // infoOkBtn.addEventListener("click", function () {
-  //   infoPopup.style.display = "none";
-  // });
 });
 
-/* ---------- Group-level controls wiring (power/brightness/cct) ---------- */
 let groupPowerState = 0;
 const groupPowerToggle = document.getElementById('groupPowerToggle');
 const groupPowerLabel = document.getElementById('groupPowerStateLabel');
@@ -983,12 +934,12 @@ if (sendCCTBtn) sendCCTBtn.addEventListener('click', async ()=> {
   await postJson('/action',{ fxn: FXN_CCT, group_id: group, val });
   alert('Group CCT sent');
 });
+updateGroupCCTUI(3500);
 
-/* ---------- Scenes (per-device) logic (MODIFIED: support Group-mode vs Device-mode) ---------- */
 const CACHE_KEY = 'sceneDeviceCache_v1';
 const MODE_KEY = 'sceneModeMap_v1';
-let sceneDeviceCache = {}; // { sceneId: { deviceId: { included, power, brightness, cct } } };
-let sceneModeMap = {}; // { sceneId: 'device' | 'group' }
+let sceneDeviceCache = {};
+let sceneModeMap = {};
 
 function loadCache(){ try{ const raw = localStorage.getItem(CACHE_KEY); if(raw) sceneDeviceCache = JSON.parse(raw); }catch(e){} }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(sceneDeviceCache)); }catch(e){} }
@@ -1003,7 +954,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 
   const sceneSelector = document.getElementById('sceneGroupSelect');
   const deviceSelector = document.getElementById('sceneDeviceSelect');
-  const sceneGroupIdSelect = document.getElementById('sceneGroupIdSelect'); // NEW
+  const sceneGroupIdSelect = document.getElementById('sceneGroupIdSelect');
   const deviceIncluded = document.getElementById('deviceIncluded');
   const devicePowerToggle = document.getElementById('devicePowerToggle');
   const devicePowerLabel = document.getElementById('devicePowerLabel');
@@ -1017,10 +968,68 @@ document.addEventListener('DOMContentLoaded', ()=> {
   const saveDeviceBtn = document.getElementById('saveDevice');
   const removeDeviceBtn = document.getElementById('removeDevice');
 
-  // const sceneModeModal = document.getElementById('sceneModeModal');
-  // const chooseGroupMode = document.getElementById('chooseGroupMode');
-  // const chooseDeviceMode = document.getElementById('chooseDeviceMode');
-  // const rememberSceneMode = document.getElementById('rememberSceneMode');
+  const colorModeCCT = document.getElementById('colorModeCCT');
+  const colorModeRGB = document.getElementById('colorModeRGB');
+  const cctModeLabel  = document.getElementById('cctModeLabel');
+  const rgbModeLabel  = document.getElementById('rgbModeLabel');
+  const deviceCctPanel = document.getElementById('deviceCctPanel');
+  const deviceRgbPanel = document.getElementById('deviceRgbPanel');
+
+  const redSlider   = document.getElementById('deviceRedSlider');
+  const greenSlider = document.getElementById('deviceGreenSlider');
+  const blueSlider  = document.getElementById('deviceBlueSlider');
+  const redVal      = document.getElementById('deviceRedVal');
+  const greenVal    = document.getElementById('deviceGreenVal');
+  const blueVal     = document.getElementById('deviceBlueVal');
+  const rgbPreview  = document.getElementById('deviceRgbPreview');
+
+  function updateRgbPreview(){
+    const r = parseInt(redSlider.value), g = parseInt(greenSlider.value), b = parseInt(blueSlider.value);
+    rgbPreview.style.background = `rgb(${r},${g},${b})`;
+  }
+
+  function switchColorMode(mode){
+    if (mode === 'rgb'){
+      colorModeRGB.checked = true;
+      colorModeCCT.checked = false;
+      deviceCctPanel.style.display = 'none';
+      deviceRgbPanel.style.display = '';
+      cctModeLabel.classList.remove('active');
+      rgbModeLabel.classList.add('active');
+    } else {
+      colorModeCCT.checked = true;
+      colorModeRGB.checked = false;
+      deviceCctPanel.style.display = '';
+      deviceRgbPanel.style.display = 'none';
+      cctModeLabel.classList.add('active');
+      rgbModeLabel.classList.remove('active');
+    }
+    cacheCurrentUI();
+  }
+
+  colorModeCCT.addEventListener('change', () => switchColorMode('cct'));
+  colorModeRGB.addEventListener('change', () => switchColorMode('rgb'));
+
+  [redSlider, greenSlider, blueSlider].forEach(sl => {
+    sl.addEventListener('input', () => {
+      redVal.textContent   = redSlider.value;
+      greenVal.textContent = greenSlider.value;
+      blueVal.textContent  = blueSlider.value;
+      updateRgbPreview();
+      cacheCurrentUI();
+    });
+  });
+
+  document.getElementById('sendDeviceRgb').addEventListener('click', async () => {
+    const r = parseInt(redSlider.value), g = parseInt(greenSlider.value), b = parseInt(blueSlider.value);
+    const sid = parseInt(sceneSelector.value || 0, 10);
+    const did = parseInt(deviceSelector.value || 0, 10);
+    const mode = sceneModeMap[String(sid)] || 'device';
+    const payload = { fxn: FXN_CCT, scene_id: sid, r, g, b };
+    if (mode === 'group') payload.group_id = parseInt(sceneGroupIdSelect.value || 0, 10);
+    else payload.dali_id = did;
+    try { await postJson('/action', payload); alert('RGB sent'); } catch(e){ console.error(e); }
+  });
 
   function setDevicePowerUI(on){
     const bool = !!on;
@@ -1029,26 +1038,131 @@ document.addEventListener('DOMContentLoaded', ()=> {
     if (devicePowerToggle) devicePowerToggle.setAttribute('aria-checked', bool ? 'true':'false');
   }
   function updateDeviceCCTPreview(val){ if (!deviceCctPreview) return; const col = cctToRgb(Number(val)); deviceCctPreview.style.background = `rgb(${col.r},${col.g},${col.b})`; }
+function populateDeviceUIFromData(data){
+  const redSlider   = document.getElementById('deviceRedSlider');
+  const greenSlider = document.getElementById('deviceGreenSlider');
+  const blueSlider  = document.getElementById('deviceBlueSlider');
+  const redVal      = document.getElementById('deviceRedVal');
+  const greenVal    = document.getElementById('deviceGreenVal');
+  const blueVal     = document.getElementById('deviceBlueVal');
 
-  function populateDeviceUIFromData(data){
-    if (!data) { if (deviceIncluded) deviceIncluded.checked = false; setDevicePowerUI(false); if (deviceBrightnessSlider) { deviceBrightnessSlider.value = 50; deviceBrightnessValue.textContent = '50%'; } if (deviceCctSlider) { deviceCctSlider.value = 3500; deviceCctValue.textContent='3500K'; updateDeviceCCTPreview(3500); } return; }
+  function updateRgbPreviewLocal(){
+    const r = parseInt(redSlider?.value || 0, 10);
+    const g = parseInt(greenSlider?.value || 0, 10);
+    const b = parseInt(blueSlider?.value || 0, 10);
+    const rgbPreview = document.getElementById('deviceRgbPreview');
+    if (rgbPreview) rgbPreview.style.background = `rgb(${r},${g},${b})`;
+  }
+
+  if (!data) {
+    if (deviceIncluded) deviceIncluded.checked = false;
+    setDevicePowerUI(false);
+
+    if (deviceBrightnessSlider){
+      deviceBrightnessSlider.value = 50;
+      deviceBrightnessValue.textContent = '50%';
+    }
+
+    if (deviceCctSlider){
+      deviceCctSlider.value = 3500;
+      deviceCctValue.textContent = '3500K';
+      updateDeviceCCTPreview(3500);
+    }
+
+    if (redSlider) redSlider.value = 255;
+    if (greenSlider) greenSlider.value = 128;
+    if (blueSlider) blueSlider.value = 0;
+    if (redVal) redVal.textContent = '255';
+    if (greenVal) greenVal.textContent = '128';
+    if (blueVal) blueVal.textContent = '0';
+    updateRgbPreviewLocal();
+
+    if (typeof switchColorMode === 'function') switchColorMode('cct');
+    return;
+  }
+
+  if (deviceIncluded) deviceIncluded.checked = !!data.included;
+  setDevicePowerUI(Boolean(data.power));
+
+  if (deviceBrightnessSlider){
+    deviceBrightnessSlider.value = data.brightness ?? 50;
+    deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
+  }
+
+  if (deviceCctSlider){
+    deviceCctSlider.value = data.cct ?? 3500;
+    deviceCctValue.textContent = deviceCctSlider.value + 'K';
+    updateDeviceCCTPreview(deviceCctSlider.value);
+  }
+
+  if (redSlider) redSlider.value = data.r ?? 255;
+  if (greenSlider) greenSlider.value = data.g ?? 128;
+  if (blueSlider) blueSlider.value = data.b ?? 0;
+  if (redVal) redVal.textContent = redSlider?.value ?? '255';
+  if (greenVal) greenVal.textContent = greenSlider?.value ?? '128';
+  if (blueVal) blueVal.textContent = blueSlider?.value ?? '0';
+  updateRgbPreviewLocal();
+
+  const mode = data.colorMode || 'cct';
+  if (typeof switchColorMode === 'function') switchColorMode(mode);
+}
+
+  function populateDeviceUIFromData123(data){
+    if (!data) {
+      if (deviceIncluded) deviceIncluded.checked = false;
+      setDevicePowerUI(false);
+      if (deviceBrightnessSlider){ deviceBrightnessSlider.value=50; deviceBrightnessValue.textContent='50%'; }
+      if (deviceCctSlider){ deviceCctSlider.value=3500; deviceCctValue.textContent='3500K'; updateDeviceCCTPreview(3500); }
+      if (redSlider){ redSlider.value=255; greenSlider.value=128; blueSlider.value=0; }
+      if (redVal){ redVal.textContent='255'; greenVal.textContent='128'; blueVal.textContent='0'; }
+      updateRgbPreview();
+      switchColorMode('cct');
+      return;
+    }
     if (deviceIncluded) deviceIncluded.checked = !!data.included;
     setDevicePowerUI(Boolean(data.power));
-    if (deviceBrightnessSlider) { deviceBrightnessSlider.value = (data.brightness !== undefined ? data.brightness : 50); deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%'; }
-    if (deviceCctSlider) { deviceCctSlider.value = (data.cct !== undefined ? data.cct : 3500); deviceCctValue.textContent = deviceCctSlider.value + 'K'; updateDeviceCCTPreview(deviceCctSlider.value); }
+    if (deviceBrightnessSlider){
+      deviceBrightnessSlider.value = data.brightness ?? 50;
+      deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
+    }
+    if (deviceCctSlider){
+      deviceCctSlider.value = data.cct ?? 3500;
+      deviceCctValue.textContent = deviceCctSlider.value + 'K';
+      updateDeviceCCTPreview(deviceCctSlider.value);
+    }
+    const cm = data.colorMode || 'cct';
+    if (redSlider){
+      redSlider.value   = data.r ?? 255;
+      greenSlider.value = data.g ?? 128;
+      blueSlider.value  = data.b ?? 0;
+      redVal.textContent   = redSlider.value;
+      greenVal.textContent = greenSlider.value;
+      blueVal.textContent  = blueSlider.value;
+      updateRgbPreview();
+    }
+    switchColorMode(cm);
   }
 
   function cacheCurrentUI(){
-    const sid = String(parseInt(sceneSelector.value || 0,10));
-    const did = String(parseInt(deviceSelector.value || 0,10));
-    const entry = {
-      included: !!(deviceIncluded && deviceIncluded.checked),
-      power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
-      brightness: parseInt(deviceBrightnessSlider?.value || 50,10),
-      cct: parseInt(deviceCctSlider?.value || 3500,10)
-    };
-    setCache(sid, did, entry);
-  }
+  const sid = String(parseInt(sceneSelector.value || 0, 10));
+  const did = String(parseInt(deviceSelector.value || 0, 10));
+
+  const mode = (document.getElementById('colorModeRGB')?.checked) ? 'rgb' : 'cct';
+
+  const entry = {
+    included: !!(deviceIncluded && deviceIncluded.checked),
+    power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+    brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+    cct: parseInt(deviceCctSlider?.value || 3500, 10),
+    colorMode: mode,
+    r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
+    g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
+    b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
+  };
+
+  setCache(sid, did, entry);
+}
+
 
   if (deviceIncluded) deviceIncluded.addEventListener('change', ()=> cacheCurrentUI());
   if (deviceBrightnessSlider) deviceBrightnessSlider.addEventListener('input', ()=>{ deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%'; cacheCurrentUI(); });
@@ -1061,7 +1175,6 @@ document.addEventListener('DOMContentLoaded', ()=> {
       cacheCurrentUI();
       const sid = parseInt(sceneSelector.value || 0,10);
       const did = parseInt(deviceSelector.value || 0,10);
-      // Use scene mode to decide payload
       const mode = sceneModeMap[String(sid)] || 'device';
       const payload = { fxn: FXN_POWER, val: newOn ? 1 : 0, scene_id: sid };
       if (mode === 'group') payload.group_id = parseInt(sceneGroupIdSelect.value || 0,10);
@@ -1076,12 +1189,10 @@ document.addEventListener('DOMContentLoaded', ()=> {
     const cached = getCache(sid, did);
     if (cached) { populateDeviceUIFromData(cached); return; }
 
-    // Determine mode for this scene (default device)
     const mode = sceneModeMap[sid] || 'device';
     try {
       let url;
       if (mode === 'group') {
-        // if group mode ask server for scene+group state
         const gid = parseInt(sceneGroupIdSelect.value || 0,10);
         url = '/action?scene_id=' + encodeURIComponent(sid) + '&group_id=' + encodeURIComponent(gid);
       } else {
@@ -1091,56 +1202,42 @@ document.addEventListener('DOMContentLoaded', ()=> {
       if (!r.ok) { populateDeviceUIFromData(null); return; }
       const data = await r.json();
       populateDeviceUIFromData(data);
-      setCache(sid, did, { included: !!data.included, power: data.power ? 1 : 0, brightness: data.brightness ?? 50, cct: data.cct ?? 3500 });
+      setCache(sid, did, {
+        included: !!data.included,
+        power: data.power ? 1 : 0,
+        brightness: data.brightness ?? 50,
+        cct: data.cct ?? 3500,
+        colorMode: data.colorMode || 'cct',
+        r: data.r ?? 255,
+        g: data.g ?? 128,
+        b: data.b ?? 0
+      });
     } catch(e){ console.error('restoreUIFor', e); populateDeviceUIFromData(null); }
   }
 
-  // Show modal when scene selection changes so user chooses how to set this scene (group or device)
   sceneSelector.addEventListener('change', async ()=> {
     const sid = String(parseInt(sceneSelector.value || 0,10));
-    // If map has a remembered choice, apply it immediately
     const remembered = sceneModeMap[sid];
     if (remembered) {
       applySceneMode(remembered, sid);
-      // After applying mode restore UI
       await restoreUIFor(sid, deviceSelector.value);
       return;
     }
-    // show modal to ask
     showSceneModeModal(sid);
-    
   });
 
-  // when device select changes, just restore UI (mode determines how)
   deviceSelector.addEventListener('change', ()=> restoreUIFor(sceneSelector.value, deviceSelector.value));
+  sceneGroupIdSelect.addEventListener('change', ()=> restoreUIFor(sceneSelector.value, deviceSelector.value));
 
   function showSceneModeModal(sceneId){
-    // sceneModeModal.style.display = 'flex';
-    // sceneModeModal.setAttribute('aria-hidden','false');
-
-    const onChoose = async (mode) => {
-      const remember = rememberSceneMode.checked;
-      if (remember) { sceneModeMap[String(sceneId)] = mode; saveModeMap(); }
-      applySceneMode(mode, sceneId);
-      // sceneModeModal.style.display = 'none';
-      // sceneModeModal.setAttribute('aria-hidden','true');
-      // restore UI now that mode is chosen
-      await restoreUIFor(sceneId, deviceSelector.value);
-      // reset checkbox
-      rememberSceneMode.checked = false;
-    };
-    onChoose('device');
-  //   chooseGroupMode.onclick = ()=> onChoose('group');
-  //   chooseDeviceMode.onclick = ()=> onChoose('device');
+    applySceneMode('device', sceneId);
+    restoreUIFor(sceneId, deviceSelector.value);
   }
 
   function applySceneMode(mode, sceneId){
     const sid = String(parseInt(sceneId || 0,10));
-    // store mode in map (even if not remembered) so payload decisions use it immediately
     sceneModeMap[sid] = mode;
-    // UI visibility changes
     if (mode === 'group') {
-      // show group select, hide device select
       document.getElementById('sceneGroupIdLabel').style.display = '';
       document.getElementById('sceneGroupIdSelect').style.display = '';
       document.getElementById('sceneDeviceSelectLabel').style.display = 'none';
@@ -1153,357 +1250,181 @@ document.addEventListener('DOMContentLoaded', ()=> {
     }
   }
 
-  // Save device (Add To Scene) -> include sceneGroupIdSelect selected group if mode=group
-// === REPLACE THE EXISTING saveDeviceBtn listener WITH THIS ===
-// === saveDeviceBtn handler: primary = all cached included:true (0..63), fallback = grid selected, final fallback = dropdown ===
-// === REPLACEMENT saveDeviceBtn handler: send wrapped payload { fxn, scene_id, devices: [...] } ===
-if (saveDeviceBtn) {
-  saveDeviceBtn.addEventListener('click', async () => {
-    try {
-      const sid = parseInt(sceneSelector.value || 0, 10);
-      const sidStr = String(sid);
-      const did = parseInt(deviceSelector.value || 0, 10);
-      const mode = sceneModeMap[String(sid)] || 'device';
+  if (saveDeviceBtn) {
+    saveDeviceBtn.addEventListener('click', async () => {
+      try {
+        const sid = parseInt(sceneSelector.value || 0, 10);
+        const sidStr = String(sid);
+        const did = parseInt(deviceSelector.value || 0, 10);
+        const mode = sceneModeMap[String(sid)] || 'device';
 
-      // helper: read grid selection (local)
-      const getSelectedSceneDevices_local = () => {
-        const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
-        return btns.map(b => {
-          const dv = b.dataset && b.dataset.val;
-          return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
-        }).filter(n => !Number.isNaN(n));
-      };
+        if (mode === 'group') {
+          const currentMode = colorModeRGB.checked ? 'rgb' : 'cct';
+          const payload = {
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            action: "add",
+            included: !!(deviceIncluded && deviceIncluded.checked),
+            power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+            brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+            group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+          };
+          if (currentMode === 'rgb') {
+            payload.r = parseInt(redSlider.value || 0, 10);
+            payload.g = parseInt(greenSlider.value || 0, 10);
+            payload.b = parseInt(blueSlider.value || 0, 10);
+          } else {
+            payload.cct = parseInt(deviceCctSlider?.value || 3500, 10);
+          }
+          const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (rGroup.ok) alert('Scene saved (group)');
+          else alert('Failed saving scene (group)');
+          return;
+        }
 
-      // GROUP mode: keep previous behavior
-      if (mode === 'group') {
+        const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
+        const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
+        const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
+        const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
+        const uiColorMode = colorModeRGB.checked ? 'rgb' : 'cct';
+        const uiR = parseInt(redSlider?.value || 255, 10);
+        const uiG = parseInt(greenSlider?.value || 128, 10);
+        const uiB = parseInt(blueSlider?.value || 0, 10);
+
+        const cachedIncludedDevices = [];
+        for (let id = 0; id < 64; id++) {
+          const c = getCache(sidStr, String(id));
+          if (c && c.included === true) {
+            const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+            const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+            const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+            cachedIncludedDevices.push({
+              fxn: FXN_SAVE_SCENE,
+              scene_id: sid,
+              included: true,
+              power: power,
+              brightness: brightness,
+              cct: cct,
+              colorMode: c.colorMode || 'cct',
+              r: c.r ?? 255,
+              g: c.g ?? 128,
+              b: c.b ?? 0,
+              dali_id: id
+            });
+
+          }
+        }
+
+        function makeWrappedFromDeviceObjects(arr) {
+            const devices = arr.map(d => {
+              const obj = {
+                power: Number(d.power) || 0,
+                brightness: Number(d.brightness) || 0,
+                dali_id: Number(d.dali_id)
+              };
+
+              if ((d.colorMode || 'cct') === 'rgb') {
+                obj.r = Number(d.r) || 0;
+                obj.g = Number(d.g) || 0;
+                obj.b = Number(d.b) || 0;
+              } else {
+                obj.cct = Number(d.cct) || 0;
+              }
+
+              return obj;
+            });
+
+            return {
+              fxn: typeof FXN_SAVE_SCENE !== "undefined" ? FXN_SAVE_SCENE : (arr[0]?.fxn || 202),
+              scene_id: sid,
+              action: "add",
+              devices
+            };
+          }
+
+
+        if (cachedIncludedDevices.length > 0) {
+          const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+          const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+          if (resp.ok) {
+            cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), {
+              included: d.included,
+              power: d.power,
+              brightness: d.brightness,
+              cct: d.cct,
+              colorMode: d.colorMode || 'cct',
+              r: d.r ?? 255,
+              g: d.g ?? 128,
+              b: d.b ?? 0
+            }));
+            alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene');
+            return;
+          }
+        }
+
         const payload = {
           fxn: FXN_SAVE_SCENE,
           scene_id: sid,
-          action: "add",
-          included: !!(deviceIncluded && deviceIncluded.checked),
-          power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
-          brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
-          cct: parseInt(deviceCctSlider?.value || 3500, 10),
-          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+          device_id: did,
+          included: uiIncluded,
+          power: uiPower,
+          brightness: uiBrightness
         };
-        console.log('[group-mode] payload ->', payload);
-        const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        console.log('[group-mode] response status', rGroup.status);
-        if (rGroup.ok) alert('Scene saved (group)');
-        else alert('Failed saving scene (group) - check server logs / response');
-        return;
-      }
+        if (uiColorMode === 'rgb') {
+          payload.r = uiR;
+          payload.g = uiG;
+          payload.b = uiB;
+        } else {
+          payload.cct = uiCct;
+        }
 
-      // DEVICE mode:
-      const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
-      const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
-      const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
-      const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
-
-      // PRIMARY: gather from cache across all 0..63 devices where included === true
-      const cachedIncludedDevices = [];
-      for (let id = 0; id < 64; id++) {
-        const c = getCache(sidStr, String(id));
-        if (c && c.included === true) {
-          const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
-          const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
-          const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
-          cachedIncludedDevices.push({
-            // keep internal full object so we can map below
-            fxn: FXN_SAVE_SCENE,
-            scene_id: sid,
-            included: true,
-            power: power,
-            brightness: brightness,
-            cct: cct,
-            dali_id: id
+        const rSingle = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (rSingle.ok) {
+          setCache(String(sid), String(did), {
+            included: uiIncluded,
+            power: uiPower,
+            brightness: uiBrightness,
+            cct: uiCct,
+            colorMode: uiColorMode,
+            r: uiR,
+            g: uiG,
+            b: uiB
           });
-        }
-      }
-
-      // convert an array of internal device objects -> wrapped payload exactly as requested
-      function makeWrappedFromDeviceObjects(arr) {
-        const devices = arr.map(d => ({
-          power: Number(d.power) || 0,
-          brightness: Number(d.brightness) || 0,
-          cct: Number(d.cct) || 0,
-          dali_id: Number(d.dali_id)
-        }));
-        return {
-          fxn: (typeof FXN_SAVE_SCENE !== 'undefined' ? FXN_SAVE_SCENE : (arr[0] && arr[0].fxn) || 202),
-          scene_id: sid,
-          action: "add",
-          devices: devices
-        };
-      }
-
-      if (cachedIncludedDevices.length > 0) {
-        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
-        console.log('Primary -> sending cachedIncludedDevices wrapped payload:', wrapped);
-        const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
-        const text = await resp.text().catch(()=>null);
-        console.log('[primary try] status:', resp.status, 'responseText:', text);
-        if (resp.ok) {
-          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
-          alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene (from cached included:true)');
-          return;
+          alert('Saved single device to scene');
         } else {
-          console.warn('[primary try] server rejected cached-wrapped payload; falling back');
+          alert('Failed to save');
         }
+      } catch (err) {
+        console.error('saveDevice error:', err);
+        alert('Error saving devices');
       }
+    });
+  }
 
-      // FALLBACK: use grid-selected devices (but only include those with included true in cache or uiIncluded)
-      const selectedIds = getSelectedSceneDevices_local();
-      console.log('No cached included devices found; grid selected IDs:', selectedIds);
-
-      const selectedDevicesFiltered = [];
-      for (const id of selectedIds) {
-        const c = getCache(sidStr, String(id));
-        const includedPerCache = c && c.included === true;
-        const includedFinal = includedPerCache || uiIncluded; // prefer cache, else global checkbox
-        if (!includedFinal) continue;
-        const power = (c && typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
-        const brightness = (c && typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
-        const cct = (c && typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
-        selectedDevicesFiltered.push({
-          fxn: FXN_SAVE_SCENE,
-          scene_id: sid,
-          included: true,
-          power: power,
-          brightness: brightness,
-          cct: cct,
-          dali_id: id
-        });
-      }
-
-      if (selectedDevicesFiltered.length > 0) {
-        const wrapped = makeWrappedFromDeviceObjects(selectedDevicesFiltered);
-        console.log('Fallback -> sending selectedDevicesFiltered wrapped payload:', wrapped);
-        const resp2 = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
-        const text2 = await resp2.text().catch(()=>null);
-        console.log('[fallback try] status:', resp2.status, 'responseText:', text2);
-        if (resp2.ok) {
-          selectedDevicesFiltered.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
-          alert('Saved ' + selectedDevicesFiltered.length + ' device(s) to scene (from selected grid)');
-          return;
-        } else {
-          console.warn('[fallback try] server rejected selected-wrapped payload; will try final fallback');
-        }
-      }
-
-      // FINAL fallback: single dropdown device (legacy)
-      console.warn('No cached-included devices or selected included devices; using dropdown fallback (did=' + did + ')');
-      const payload = {
-        fxn: FXN_SAVE_SCENE,
-        scene_id: sid,
-        device_id: did,
-        included: !!(deviceIncluded && deviceIncluded.checked),
-        power: uiPower,
-        brightness: uiBrightness,
-        cct: uiCct
-      };
-      console.log('[final fallback] payload ->', payload);
-      const rSingle = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (rSingle.ok) {
-        setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
-        alert('Saved single device to scene (final fallback)');
-      } else {
-        alert('Failed to save (final fallback) - check server logs/response');
-      }
-
-    } catch (err) {
-      console.error('saveDevice primary/cached handler error:', err);
-      alert('Error saving devices — check console for details.');
-    }
-  });
-}
-
-
-if (removeDeviceBtn) {
-  removeDeviceBtn.addEventListener('click', async () => {
+  if (removeDeviceBtn) removeDeviceBtn.addEventListener('click', async ()=> {
+    const sid = parseInt(sceneSelector.value || 0,10);
+    const did = parseInt(deviceSelector.value || 0,10);
+    if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
+    const mode = sceneModeMap[String(sid)] || 'device';
     try {
-      const sid = parseInt(sceneSelector.value || 0, 10);
-      const sidStr = String(sid);
-      const did = parseInt(deviceSelector.value || 0, 10);
-      const mode = sceneModeMap[String(sid)] || 'device';
-
-      // helper: read grid selection (local)
-      const getSelectedSceneDevices_local = () => {
-        const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
-        return btns.map(b => {
-          const dv = b.dataset && b.dataset.val;
-          return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
-        }).filter(n => !Number.isNaN(n));
-      };
-
-      // GROUP mode: keep previous behavior
-      if (mode === 'group') {
-        const payload = {
-          fxn: FXN_SAVE_SCENE,
-          scene_id: sid,
-          action: "remove",
-          included: !!(deviceIncluded && deviceIncluded.checked),
-          power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
-          brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
-          cct: parseInt(deviceCctSlider?.value || 3500, 10),
-          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
-        };
-        console.log('[group-mode] payload ->', payload);
-        const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        console.log('[group-mode] response status', rGroup.status);
-        if (rGroup.ok) alert('Scene saved (group)');
-        else alert('Failed saving scene (group) - check server logs / response');
-        return;
-      }
-
-      // DEVICE mode:
-      const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
-      const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
-      const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
-      const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
-
-      // PRIMARY: gather from cache across all 0..63 devices where included === true
-      const cachedIncludedDevices = [];
-      for (let id = 0; id < 64; id++) {
-        const c = getCache(sidStr, String(id));
-        if (c && c.included === true) {
-          const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
-          const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
-          const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
-          cachedIncludedDevices.push({
-            // keep internal full object so we can map below
-            fxn: FXN_SAVE_SCENE,
-            scene_id: sid,
-            included: true,
-            power: power,
-            brightness: brightness,
-            cct: cct,
-            dali_id: id
-          });
-        }
-      }
-
-      // convert an array of internal device objects -> wrapped payload exactly as requested
-      function makeWrappedFromDeviceObjects(arr) {
-        const devices = arr.map(d => ({
-          power: Number(d.power) || 0,
-          brightness: Number(d.brightness) || 0,
-          cct: Number(d.cct) || 0,
-          dali_id: Number(d.dali_id)
-        }));
-        return {
-          fxn: (typeof FXN_SAVE_SCENE !== 'undefined' ? FXN_SAVE_SCENE : (arr[0] && arr[0].fxn) || 202),
-          scene_id: sid,
-          action: "remove",
-          devices: devices
-        };
-      }
-
-      if (cachedIncludedDevices.length > 0) {
-        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
-        console.log('Primary -> sending cachedIncludedDevices wrapped payload:', wrapped);
-        const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
-        const text = await resp.text().catch(()=>null);
-        console.log('[primary try] status:', resp.status, 'responseText:', text);
-        if (resp.ok) {
-          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
-          alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene (from cached included:true)');
-          return;
-        } else {
-          console.warn('[primary try] server rejected cached-wrapped payload; falling back');
-        }
-      }
-
-      // FALLBACK: use grid-selected devices (but only include those with included true in cache or uiIncluded)
-      const selectedIds = getSelectedSceneDevices_local();
-      console.log('No cached included devices found; grid selected IDs:', selectedIds);
-
-      const selectedDevicesFiltered = [];
-      for (const id of selectedIds) {
-        const c = getCache(sidStr, String(id));
-        const includedPerCache = c && c.included === true;
-        const includedFinal = includedPerCache || uiIncluded; // prefer cache, else global checkbox
-        if (!includedFinal) continue;
-        const power = (c && typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
-        const brightness = (c && typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
-        const cct = (c && typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
-        selectedDevicesFiltered.push({
-          fxn: FXN_SAVE_SCENE,
-          scene_id: sid,
-          included: true,
-          power: power,
-          brightness: brightness,
-          cct: cct,
-          dali_id: id
-        });
-      }
-
-      if (selectedDevicesFiltered.length > 0) {
-        const wrapped = makeWrappedFromDeviceObjects(selectedDevicesFiltered);
-        console.log('Fallback -> sending selectedDevicesFiltered wrapped payload:', wrapped);
-        const resp2 = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
-        const text2 = await resp2.text().catch(()=>null);
-        console.log('[fallback try] status:', resp2.status, 'responseText:', text2);
-        if (resp2.ok) {
-          selectedDevicesFiltered.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
-          alert('Saved ' + selectedDevicesFiltered.length + ' device(s) to scene (from selected grid)');
-          return;
-        } else {
-          console.warn('[fallback try] server rejected selected-wrapped payload; will try final fallback');
-        }
-      }
-
-      // FINAL fallback: single dropdown device (legacy)
-      console.warn('No cached-included devices or selected included devices; using dropdown fallback (did=' + did + ')');
-      const payload = {
-        fxn: FXN_SAVE_SCENE,
+      const body = {
+        fxn: FXN_CLEAR_SCENE,
         scene_id: sid,
-        device_id: did,
-        included: !!(deviceIncluded && deviceIncluded.checked),
-        power: uiPower,
-        brightness: uiBrightness,
-        cct: uiCct
+        action: "remove"
       };
-      console.log('[final fallback] payload ->', payload);
-      const rSingle = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (rSingle.ok) {
-        setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
-        alert('Saved single device to scene (final fallback)');
+      if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+      else body.device_id = did;
+
+      const res = await postJson('/action', body);
+      if (res.ok) {
+        setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
+        populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
+        alert('Device cleared from scene');
       } else {
-        alert('Failed to save (final fallback) - check server logs/response');
+        alert('Failed to clear device');
       }
-
-    } catch (err) {
-      console.error('saveDevice primary/cached handler error:', err);
-      alert('Error saving devices — check console for details.');
-    }
+    } catch(e){ alert('Failed to clear device'); console.error(e); }
   });
-}
-
-  // if (removeDeviceBtn) removeDeviceBtn.addEventListener('click', async ()=> {
-  //   const sid = parseInt(sceneSelector.value || 0,10);
-  //   const did = parseInt(deviceSelector.value || 0,10);
-  //   if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
-  //   const mode = sceneModeMap[String(sid)] || 'device';
-  //   try {
-  //     const body = {
-  //       fxn: FXN_CLEAR_SCENE,
-  //       scene_id: sid,
-  //       action: "remove",
-  //       };
-  //     if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
-  //     else body.devices = devices;
-  //     const res = await postJson('/action', body);
-  //     if (res.ok) {
-  //       setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500 });
-  //       populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500 });
-  //       alert('Device cleared from scene');
-  //     } else {
-  //       alert('Failed to clear device');
-  //       console.error('clearDevice failed', await res.text());
-  //     }
-  //   } catch(e){ alert('Failed to clear device'); console.error(e); }
-  // });
 
   if (sendDeviceBrightness) sendDeviceBrightness.addEventListener('click', async ()=> {
     const sid = parseInt(sceneSelector.value || 0,10);
@@ -1515,9 +1436,12 @@ if (removeDeviceBtn) {
       if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
       else body.dali_id = did;
       const res = await postJson('/action', body);
-      if (!res.ok) { alert('Failed to send device brightness'); console.error(await res.text()); }
+      if (!res.ok) alert('Failed to send device brightness');
       else {
-        const cached = getCache(String(sid), String(did)) || {}; cached.brightness = val; setCache(String(sid), String(did), cached); alert('Device brightness sent');
+        const cached = getCache(String(sid), String(did)) || {};
+        cached.brightness = val;
+        setCache(String(sid), String(did), cached);
+        alert('Device brightness sent');
       }
     } catch(e){ alert('Failed to send device brightness'); console.error(e); }
   });
@@ -1532,366 +1456,24 @@ if (removeDeviceBtn) {
       if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
       else body.dali_id = did;
       const res = await postJson('/action', body);
-      if (!res.ok) { alert('Failed to send device CCT'); console.error(await res.text()); }
+      if (!res.ok) alert('Failed to send device CCT');
       else {
-        const cached = getCache(String(sid), String(did)) || {}; cached.cct = val; setCache(String(sid), String(did), cached); alert('Device CCT sent');
+        const cached = getCache(String(sid), String(did)) || {};
+        cached.cct = val;
+        cached.colorMode = 'cct';
+        setCache(String(sid), String(did), cached);
+        alert('Device CCT sent');
       }
     } catch(e){ alert('Failed to send device CCT'); console.error(e); }
   });
 
-  // initial restore for the selected entries
-  // apply default UI mode for first scene (device unless remembered)
   (function initialSceneSetup(){
     const sid = String(parseInt(sceneSelector.value || 0,10));
     const remembered = sceneModeMap[sid] || 'device';
     applySceneMode(remembered, sid);
-    restoreUIFor(sceneSelector.value, sceneSelector.value ? document.getElementById('sceneDeviceSelect').value : 0);
+    restoreUIFor(sceneSelector.value, document.getElementById('sceneDeviceSelect').value);
   })();
 });
-
-/* ---------- Tab switching (keeps working behavior from your upload) ---------- */
-document.addEventListener('DOMContentLoaded', function() {
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-
-  function switchTab(tabName) {
-    tabContents.forEach(tab => tab.classList.remove('active'));
-    const el = document.getElementById(tabName);
-    if (el) el.classList.add('active');
-
-    tabButtons.forEach(btn => {
-      btn.classList.remove('active');
-      if(btn.dataset.tab === tabName) btn.classList.add('active');
-    });
-  }
-
-  tabButtons.forEach(button => {
-    button.addEventListener('click', ()=> switchTab(button.dataset.tab));
-  });
-
-  // Start on Scene Control
-  switchTab('sceneControl');
-});
-
-/* ---------- initial load of saved tab data (keeps your fetch logic) ---------- */
-document.addEventListener('DOMContentLoaded', function loadSavedTabData() {
-  // Tab2 saved DALI address / selection (fxn=20)
-    fetch('/items?fxn=20').then(r => r.json()).then(data => {
-        // expected data example: { selected_address: 12, max_addr: 32 }
-        if (data && data.selected_address !== undefined) {
-            const sel = data.selected_address;
-            const dselBtn = document.getElementById('btn' + sel);
-            if (dselBtn) dselBtn.classList.add('selected');
-            // set select box if needed
-            if (document.getElementById('daliAddress')) document.getElementById('daliAddress').value = data.selected_address;
-        }
-    }).catch(console.error);
-
-    // Tab3 Group membership saved (fxn=21) -> returns { group_id: N, selected_ids: [1,2,3] }
-    fetch('/items?fxn=21').then(r => r.json()).then(data => {
-        if (data && data.selected_ids && Array.isArray(data.selected_ids)) {
-            // mark selected ids in group grid
-            data.selected_ids.forEach(id => {
-                const b = document.getElementById('btn' + id);
-                if (b) b.classList.add('selected'); // green = selected membership
-            });
-            if (data.group_id !== undefined) document.getElementById('groupSelect').value = data.group_id;
-        }
-    }).catch(console.error);
-
-    // Tab4 Scene membership saved (fxn=22) -> returns { group_id: N, scene_selections: [[..], ..] } or { selected_scenes: [..] }
-    fetch('/items?fxn=22').then(r => r.json()).then(data => {
-        if (data && Array.isArray(data)) {
-            // if it returns list of 4 arrays for scene selections
-            // data = [[1,2],[3],[],[4]]
-            data.forEach((arr, idx) => {
-                if (Array.isArray(arr)) {
-                    arr.forEach(id => {
-                        const b = document.getElementById('btn' + id);
-                        if (b) b.classList.add('selected');
-                    });
-                }
-            });
-        } else if (data && data.selected_scenes) {
-            data.selected_scenes.forEach(id => {
-                const b = document.getElementById('btn' + id);
-                if (b) b.classList.add('selected');
-            });
-        }
-    }).catch(console.error);
-});
-
-
-
-async function refreshGroupGridFor(groupId) {
-  try {
-    const resp = await fetch('/items?fxn=21&group_id=' + encodeURIComponent(groupId));
-    if (!resp.ok) throw new Error('non-ok');
-    const data = await resp.json();   // expects { group_id: N, selected_ids: [...] }
-
-    const sel = Array.isArray(data.selected_ids)
-      ? data.selected_ids
-      : (Array.isArray(data) ? data : []);
-
-    // clear previous selection
-    document
-      .querySelectorAll('#groupIdGrid .toggle-btn')
-      .forEach(b => b.classList.remove('selected'));
-
-    // mark buttons (btn0..btn63)
-    // sel.forEach(id => {
-    //   const btn = document.getElementById('btn' + id);
-    //   if (btn) btn.classList.add('selected');
-    // });
-sel.forEach(id => {
-  const btn = document.getElementById('gridbtn' + id);  // now unambiguous
-  if (btn) btn.classList.add('selected');
-});
-    console.log('Group', groupId, 'loaded IDs:', sel);
-    return sel;
-  } catch (e) {
-    console.error('refreshGroupGridFor failed', e);
-    return [];
-  }
-}
-
-// hook group dropdown to server + refresh
-document.addEventListener('DOMContentLoaded', () => {
-  const groupSelectEl = document.getElementById('groupSelect');
-  if (!groupSelectEl) return;
-
-  groupSelectEl.addEventListener('change', async () => {
-    const gid = parseInt(groupSelectEl.value || 0, 10);
-
-    // optional: notify server of group selection
-    try {
-      await postJson('/action', { fxn: 21, group_id: gid });
-    } catch (e) {
-      console.warn('group change post failed', e);
-    }
-
-    // now actually fetch membership and update UI
-    await refreshGroupGridFor(gid);
-  });
-
-  // initial load for default group on page open
-  (async () => {
-    const initialG = parseInt(groupSelectEl.value || 0, 10);
-    await refreshGroupGridFor(initialG);
-  })();
-});
-
-
-
-async function refreshGroupGridFor1234(groupId){
-  try {
-    // Try scoped fetch first
-    const resp = await fetch('/items?fxn=21&group_id=' + encodeURIComponent(groupId));
-    if (!resp.ok) {
-      console.warn('refreshGroupGridFor: /items?fxn=21 returned non-ok, trying fallback');
-      throw new Error('non-ok');
-    }
-    const data = await resp.json();
-    // data.expected: { group_id: N, selected_ids: [..] } or { selected_ids: [...] }
-    const sel = Array.isArray(data.selected_ids) ? data.selected_ids : (Array.isArray(data) ? data : []);
-	console.log("sel: "); console.log(sel);
-    // clear existing selections
-    document.querySelectorAll('#groupIdGrid .toggle-btn').forEach(b => b.classList.remove('selected'));
-    sel.forEach(id => {
-      const btn = document.getElementById('gridbtn' + id) || document.getElementById('btn' + id);
-      if (btn) btn.classList.add('selected');
-    });
-    return sel;
-  } catch (err) {
-    // fallback single-call without group_id param
-    try {
-      const resp2 = await fetch('/items?fxn=21');
-      if (!resp2.ok) throw new Error('fallback non-ok');
-      const data2 = await resp2.json();
-      const sel = Array.isArray(data2.selected_ids) ? data2.selected_ids : (Array.isArray(data2) ? data2 : []);
-      document.querySelectorAll('#groupIdGrid .toggle-btn').forEach(b => b.classList.remove('selected'));
-      sel.forEach(id => {
-        const btn = document.getElementById('gridbtn' + id) || document.getElementById('btn' + id);
-        if (btn) btn.classList.add('selected');
-      });
-      return sel;
-    } catch(e){
-      console.error('refreshGroupGridFor failed', e);
-      return [];
-    }
-  }
-}
-
-// Handler to send group change to server and refresh grid
-const groupSelectEl = document.getElementById('groupSelect');
-if (groupSelectEl) {
-  groupSelectEl.addEventListener('change', async () => {
-    const gid = parseInt(groupSelectEl.value || 0, 10);
-    // immediately inform server of group selection (fxn 21)
-    try {
-      const res = await postJson('/action', { fxn: 21, group_id: gid });
-      if (!res || !res.ok) {
-        console.warn('Group-change /action post returned non-ok or null', res);
-      } else {
-        console.log('Group-change posted', gid);
-      }
-    } catch (err) {
-      console.error('Error posting group change', err);
-    }
-
-    // Now refresh authoritative membership for this group and update UI
-    const selected = await refreshGroupGridFor(gid);
-    console.log('Refreshed group grid for', gid, selected);
-  });
-
-  // Optionally: trigger initial load for default value on page load
-  // (This will fire once automatically when DOMContentLoaded completes)
-  (async function initialGroupLoad(){
-    try {
-      const initialG = parseInt(groupSelectEl.value || 0, 10);
-      await refreshGroupGridFor(initialG);
-    } catch(e){ console.error(e); }
-  })();
-}
-
-/* ---------- Scenes: build devices array using per-device cache (fixed) ---------- */
-(async function upgradeMultiDeviceBehavior(){
-  try {
-    // ensure helper exists (safe re-definition)
-    function getSelectedSceneDevices_fixed(){
-      const btns = Array.from(document.querySelectorAll('#sceneDeviceGrid .toggle-btn.selected'));
-      return btns.map(b => {
-        const dv = b.dataset && b.dataset.val;
-        return parseInt((dv !== undefined && dv !== null) ? dv : b.textContent, 10);
-      }).filter(n => !Number.isNaN(n));
-    }
-
-    // scene id (must be read inside the handler so it reflects current selection)
-    const sid = parseInt(document.getElementById('sceneGroupSelect')?.value || 0, 10);
-
-    // gather selected ids
-    const selectedIds = getSelectedSceneDevices_fixed();
-    console.log('upgradeMultiDeviceBehavior_fixed - sid:', sid, 'selectedIds:', selectedIds);
-
-    // fallback single device behavior if none selected
-    if (!selectedIds.length) {
-      const did = parseInt(document.getElementById('sceneDeviceSelect')?.value || 0,10);
-      const payload = {
-        fxn: FXN_SAVE_SCENE,
-        scene_id: sid,
-        device_id: did,
-        included: !!(document.getElementById('deviceIncluded')?.checked),
-        power: document.getElementById('devicePowerToggle')?.classList.contains('on') ? 1 : 0,
-        brightness: parseInt(document.getElementById('deviceBrightnessSlider')?.value || 50,10),
-        cct: parseInt(document.getElementById('deviceCctSlider')?.value || 3500,10)
-      };
-      console.log('Fallback single device save payload:', payload);
-      try {
-        const r = await postJson('/action', payload);
-        if (r && r.ok) {
-          setCache(String(sid), String(did), { included: payload.included, power: payload.power, brightness: payload.brightness, cct: payload.cct });
-          alert('Saved single device to scene');
-        } else {
-          alert('Failed to save single device');
-          console.error('fallback single save failed: ', r && await r.text());
-        }
-      } catch(e){
-        alert('Failed to save single device');
-        console.error('fallback single save error: ', e);
-      }
-      return;
-    }
-
-    // Build array where each element matches required format
-    const uiIncluded = !!(document.getElementById('deviceIncluded')?.checked);
-    const uiPower = document.getElementById('devicePowerToggle')?.classList.contains('on') ? 1 : 0;
-    const uiBrightness = parseInt(document.getElementById('deviceBrightnessSlider')?.value || 50,10);
-    const uiCct = parseInt(document.getElementById('deviceCctSlider')?.value || 3500,10);
-
-    const devicesArray = selectedIds.map(id => {
-      const cache = getCache(String(sid), String(id));
-      const included = (cache && typeof cache.included !== 'undefined') ? !!cache.included : uiIncluded;
-      const power = (cache && typeof cache.power !== 'undefined') ? cache.power : uiPower;
-      const brightness = (cache && typeof cache.brightness !== 'undefined') ? cache.brightness : uiBrightness;
-      const cct = (cache && typeof cache.cct !== 'undefined') ? cache.cct : uiCct;
-
-      return {
-        fxn: FXN_SAVE_SCENE,
-        scene_id: sid,
-        included: included,
-        power: power,
-        brightness: brightness,
-        cct: cct,
-        dali_id: id
-      };
-    });
-
-    console.log('Final multi-save devicesArray (will be sent as JSON array):', devicesArray);
-
-    // send the array itself
-    try {
-      const res = await postJson('/action', devicesArray);
-      if (res && res.ok) {
-        devicesArray.forEach(d => setCache(String(d.scene_id), String(d.dali_id), { included: d.included, power: d.power, brightness: d.brightness, cct: d.cct }));
-        alert('Saved ' + devicesArray.length + ' device(s) to scene (multi)');
-      } else {
-        alert('Failed to save devices to scene');
-        console.error('multi-save failed', res && await res.text());
-      }
-    } catch(e) {
-      alert('Failed to save devices to scene');
-      console.error('multi-save error', e);
-    }
-
-  } catch (err) {
-    console.error('upgradeMultiDeviceBehavior_fixed outer error:', err);
-    alert('An error occurred in upgradeMultiDeviceBehavior_fixed — check console.');
-  }
-})();
-
-
-function populateDropdown_2(select, min, max, defaultVal) {
-  select.innerHTML = "";
-  let found = false;
-  for (let i = min; i <= max; i++) {
-    let opt = document.createElement("option");
-    opt.value = String(i);
-    opt.text = i;
-    select.appendChild(opt);
-    if (i === defaultVal) { found = true; }
-  }
-  // Set the value for the dropdown; default or maximum if default not available
-  select.value = found ? String(defaultVal) : String(max);
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  var startSelect = document.getElementById("daliStartAddress");
-  var numSelect = document.getElementById("daliNumAddresses");
-  if (!startSelect || !numSelect) return;
-
-function updateNumAddresses(startAddr) {
-  var newDefault = startAddr + 15;
-  var maxNum = 63;
-
-  var currentValue = parseInt(numSelect.value) || 1;
-  //var newDefault = currentValue <= maxNum ? currentValue : maxNum;
-  console.log(startAddr); console.log(maxNum); console.log(newDefault);
-  populateDropdown_2(numSelect, startAddr, maxNum, newDefault);
-}
-
-  // Populate Start Address [0,63] and initial Number Of Addresses
-  populateDropdown_2(startSelect, 0, 63, 0);
-  updateNumAddresses(0);
-
-  startSelect.addEventListener("change", function () {
-    var start = parseInt(startSelect.value, 10);
-    updateNumAddresses(start);
-  });
-});
-
-
-
 </script>
-
-
-</body></html>
+</body>
+</html>

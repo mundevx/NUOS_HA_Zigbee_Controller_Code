@@ -659,6 +659,63 @@ uint8_t map_0_4_to_0_254(uint8_t input) {
 }
 
 ///////////////////////////////////////////////////////////////
+esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_){
+    esp_zb_zcl_status_t status = ESP_OK;
+    if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[index_1],
+            ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+            (uint8_t*)&state_,
+            false
+        );
+        send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+    }  
+    return status;  
+}
+
+
+
+
+
+esp_err_t nuos_set_color_temp_level_attribute_on_dali_rx(uint8_t index, uint8_t level){
+    esp_zb_zcl_status_t status = ESP_OK;
+    #ifdef USE_TUYA_BRDIGE
+    uint16_t val = map_1000(level, 0, 255, 0, 1000);
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[0],
+            ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            0xF000,
+            (uint16_t*)&val,
+            false
+        );
+        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
+    }
+    #endif
+    return status;
+}
+
+esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level){
+    /* set attribute value */
+    esp_zb_zcl_status_t status = ESP_OK;
+    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[index_1],
+            ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+            (uint8_t*)&level,
+            false
+        );
+        send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+    }
+    is_some_device_unavailable = false;
+    return status;
+}
+
 esp_err_t nuos_set_state_attribute(uint8_t index){
 
     esp_zb_zcl_status_t status = ESP_OK;
@@ -4287,20 +4344,12 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                 change_state_flag = true;
                             } 
                             nuos_zb_set_hardware(4, false); 
-                                                                     
-                                                       
-                            //global_index = 4;
-                            //toggle_state_flag = false;
-                            //set_hardware_flag = true;
+
                             if(change_state_flag || mode_change_flag){
                                 change_state_flag = false;
-                                //set_state_flag = true;
                                 set_state(4);
-                                ////nuos_set_state_attribute(4);
                             }
-                            set_level(4); 
-                            //nuos_set_color_temp_attribute(3);
-                            //set_color_flag = true;   
+                            //set_level(4);   
                             set_color_temp();                    
                         #endif
                         
@@ -4408,7 +4457,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         }                      
                         printf("color_temp:%u\n", *(uint16_t*)message->data);  
                         device_info[0].device_val = map_1000(*(uint16_t*)message->data, 0, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
-                        // printf("mapped_val:%u\n", device_info[0].device_val);                 
+                        printf("mapped_val:%u\n", device_info[0].device_val);                 
                         // nuos_zb_set_hardware(0, false); //
                         if(!device_info[0].device_state){
                             device_info[0].device_state = true;
@@ -4938,21 +4987,21 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 device_info[4].device_level = val;
                             }
                         #else
-                            uint8_t val = *(uint8_t *)message->attribute.data.value; 
-                            printf("LEVEL_VAR:%d    %d\n", val, device_info[4].device_level);
-                            if(val > 2){                        
-                                if(selected_color_mode == 0){
-                                    device_info[3].device_level = val;
-                                    nuos_zb_set_hardware(3, false);
-                                    set_level(3);
-                                    set_color_temp();                                 
-                                }else{
-                                    device_info[4].device_level = val;
-                                    nuos_zb_set_hardware(4, false);
-                                    set_level(4); 
-                                    set_color_temp();                               
-                                }
-                            }
+                            // uint8_t val = *(uint8_t *)message->attribute.data.value; 
+                            // printf("LEVEL_VAR:%d    %d\n", val, device_info[4].device_level);
+                            // if(val > 2){                        
+                            //     if(selected_color_mode == 0){
+                            //         device_info[3].device_level = val;
+                            //         nuos_zb_set_hardware(3, false);
+                            //         set_level(3);
+                            //         set_color_temp();                                 
+                            //     }else{
+                            //         device_info[4].device_level = val;
+                            //         nuos_zb_set_hardware(4, false);
+                            //         set_level(4); 
+                            //         set_color_temp();                               
+                            //     }
+                            // }
                         #endif
                     #else
                         //#ifdef USE_HOME_ASSISTANT
@@ -4965,15 +5014,8 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 if(!device_info[0].device_state){
                                     device_info[0].device_state = true;
                                     state_change_flag = true;
-
                                 }
-                                // #ifdef USE_CCT_TIME_SYNC
-                                // if(device_info[0].color_or_fan_state){
-                                //     device_info[0].color_or_fan_state = false;
-                                //     gpio_set_level(gpio_touch_led_pins[1], 0);
-                                //     stop_color_temp_timer();
-                                // }         
-                                // #endif
+
                                 is_long_press_brightness = false;
                                 nuos_set_hardware_brightness_2(0);
                                
@@ -5865,19 +5907,19 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                         #else
                             uint8_t val = *(uint8_t *)message->attribute.data.value; 
                             // printf("LEVEL_VAR:%d    %d\n", val, device_info[4].device_level);
-                            if(val > 2){                        
-                                if(selected_color_mode == 0){
-                                    device_info[3].device_level = val;
-                                    nuos_zb_set_hardware(3, false);
-                                    set_level(3);
-                                    set_color_temp();                                 
-                                }else{
-                                    device_info[4].device_level = val;
-                                    nuos_zb_set_hardware(4, false);
-                                    set_level(4); 
-                                    set_color_temp();                               
-                                }
-                            }
+                            // if(val > 2){                        
+                            //     if(selected_color_mode == 0){
+                            //         device_info[3].device_level = val;
+                            //         nuos_zb_set_hardware(3, false);
+                            //         set_level(3);
+                            //         set_color_temp();                                 
+                            //     }else{
+                            //         device_info[4].device_level = val;
+                            //         nuos_zb_set_hardware(4, false);
+                            //         set_level(4); 
+                            //         set_color_temp();                               
+                            //     }
+                            // }
                         #endif
                     #else
                         //#ifdef USE_HOME_ASSISTANT
@@ -6503,7 +6545,8 @@ static void scene_store_task(void *pvParameters){
         #endif
     #endif
 #endif
-
+int cccnntt = 0;
+int disable_cnts = 0;
 static void send_active_request_task(void* args){
     static bool pin_state = false;
     #ifdef USE_IR_UART_WS4_HW
@@ -6511,6 +6554,17 @@ static void send_active_request_task(void* args){
     #endif
     while(1){
         vTaskDelay(10 / portTICK_PERIOD_MS);
+
+        // if(cccnntt++ >= 500){
+        //     cccnntt = 0;
+        //     disable_cnts = 0;
+        //     dali_query_send(0x01, 0xA0);
+        // }
+        // if(disable_cnts++ >= 10){
+        //     disable_cnts = 0;
+        //     dali_disable_query_mode();
+        // }
+
         #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)
         if(boot_pin_toggle_counts++ >= 50){
             boot_pin_toggle_counts = 0;

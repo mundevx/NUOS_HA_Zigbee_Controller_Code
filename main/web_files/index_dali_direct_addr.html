@@ -562,7 +562,7 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 const FXN_POWER = 301, FXN_BRIGHT = 302, FXN_CCT = 303;
 const FXN_SAVE_SCENE = 202;
 const FXN_CLEAR_SCENE = 202;
-
+var v_group_id_1 = 0, v_group_id_2=0;
 /* ---------- helper: CCT -> RGB ---------- */
 function cctToRgb(kelvin){
   let temp = kelvin / 100;
@@ -665,8 +665,15 @@ fetch('/items?fxn=15')
   })
   .then(data => {
     if (!data) return;
-    document.getElementById('scene1').value = data.scene_ids[0];
-    document.getElementById('scene2').value = data.scene_ids[1];
+      document.getElementById('scene1').value = data.scene_ids[0];
+      document.getElementById('scene2').value = data.scene_ids[1];
+      // ⭐ Set group dropdown
+      if (data.group_id[0] !== undefined) {
+          v_group_id_1 = data.group_id[0];
+      }  
+      if (data.group_id[1] !== undefined) {
+          v_group_id_2 = data.group_id[1];
+      }          
   })
   .catch(err => console.error(err));
 
@@ -728,6 +735,15 @@ fetch('/items?fxn=16')
 });
 function openPopup(inputIdx) {
   currentInput = inputIdx;
+  // ⭐ Set correct group id in dropdown
+  const dropdown = document.getElementById('groupDropdown');
+  if (dropdown) {
+      if (inputIdx === 0) {
+          dropdown.value = v_group_id_1;
+      } else if (inputIdx === 1) {
+          dropdown.value = v_group_id_2;
+      }
+  }
   let selected = popupSelections[inputIdx] || [];
   for (let i = 0; i < 64; i++) {
     const btn = document.getElementById('btn' + i);
@@ -758,9 +774,12 @@ function toggleBtn(id) {
 function submitSelection() {
   if (currentInput === null) return;
 
+
   const selected = (popupSelections[currentInput] || [])
     .slice()
     .sort((a, b) => a - b);
+
+
 
   const groupId = document.getElementById('groupDropdown').value;
 
@@ -768,7 +787,11 @@ function submitSelection() {
     showToast("Please select a Group ID", "error");
     return;
   }
-
+  if (currentInput === 0) {
+    v_group_id_1 = parseInt(groupId);
+  } else if (currentInput === 1) {
+    v_group_id_2 = parseInt(groupId);
+  }
   // Show selected IDs in input
   const inputId = ['scene1', 'scene2'][currentInput];
   document.getElementById(inputId).value = selected.join(',');
@@ -821,6 +844,15 @@ document.addEventListener('DOMContentLoaded', function () {
   switchTab('sceneControl');
 });
 
+ function setGroupDropdownValue(dropdown, group_id) {
+    if (!dropdown) return;
+
+    if (Array.isArray(group_id)) {
+        dropdown.value = String(group_id[0]);  // ✅ first value only
+    } else {
+        dropdown.value = String(group_id);
+    }
+}
 
 function updateSceneInputsFromSelections() {
   const ids = ['scene1', 'scene2'];
@@ -850,7 +882,7 @@ fetch('/items?fxn=16')
     popupSelections = [[], []];
   });
 
-  
+ 
 /* ---------- initial load of saved tab data (keeps your fetch logic) ---------- */
 document.addEventListener('DOMContentLoaded', function loadSavedTabData() {
   // Tab2 saved DALI address / selection (fxn=20)
@@ -890,7 +922,7 @@ if (data && data.fade_rate !== undefined) {
 if (data && data.group_id !== undefined) {
     const group_id = document.getElementById('groupDropdown');
     if (group_id) {
-        group_id.value = data.group_id;
+        setGroupDropdownValue(group_id, data.group_id);
     }
 }
 
@@ -919,7 +951,7 @@ fetch('/items?fxn=21')
     if (data.group_id !== undefined) {
       const dropdown = document.getElementById('groupDropdown');
       if (dropdown) {
-        dropdown.value = String(data.group_id);
+        setGroupDropdownValue(dropdown, data.group_id);
       }
     }
 
@@ -1048,9 +1080,6 @@ fetch('/items?fxn=20')
   .catch(() => console.warn('fxn=20 skipped'));
 
 });
-
-
-
 
 function populateDropdown_2(select, min, max, defaultVal) {
   select.innerHTML = "";

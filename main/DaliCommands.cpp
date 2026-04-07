@@ -79,9 +79,11 @@ static void dali_task(void* arg) {
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DaliCommands::begin(bool* is_isr, QueueHandle_t rxFrameQueue) {
-    daliCore.begin(is_isr);
-    printf("rxFrameQueue = %p\n", rxFrameQueue);
+void DaliCommands::begin(bool* is_isr) {
+    daliCore.begin(is_isr); 
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
      // Create a queue capable of holding up to 10 DALI messages
     dali_msg_queue = xQueueCreate(10, sizeof(DaliMessage));
     if (dali_msg_queue == nullptr) {
@@ -100,12 +102,12 @@ void DaliCommands::begin(bool* is_isr, QueueHandle_t rxFrameQueue) {
         return;
     }
     // Create the DALI processing task (priority 14, stack 4096)
-    xTaskCreate(dali_task, "dali_task", 4096, (void*)rxFrameQueue, 14, nullptr);
-    ESP_LOGI(TAG, "DALI receiver started, processing task created");
+    xTaskCreate(dali_task, "dali_task", 4096, (void*)rxFrameQueue, 24, nullptr);
+    //ESP_LOGI(TAG, "DALI receiver started, processing task created");
 
 
    
-    
+    // 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +190,6 @@ void DaliCommands::send_command_standard32(uint8_t opcode1, uint8_t address1,
     uint8_t new_address2 = mask2 | ((address2 << 1) + 1);
    
     daliCore.sendCommandPublic32(new_address1, opcode1, new_address2, opcode2);
-    
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,6 +228,7 @@ void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {
 void DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
     
     // Set RGB
+    //printf("set_rgb_2   R:%d G:%d B:%d\n", r, g, b);
     send_command_special(SET_DTR0, r);
     send_command_special(SET_DTR1, g);
     send_command_special(SET_DTR2, b);
@@ -535,18 +537,15 @@ void DaliCommands::set_group_power_on_level(uint8_t addr, uint8_t power_on_level
 
 void DaliCommands::set_group_off(uint8_t group_id)
 {
-    
+    //daliCore.sendCommandPublic(0x80 | (group_id << 1), 0x00);
     send_command_standard(OFF, group_id | (1<<7));
     group_state = 0;
-    
 }
 
 void DaliCommands::set_group_on(uint8_t group_id)
 {
-    
     send_command_standard(GO_TO_LAST_ACTIVE_LEVEL, group_id | (1<<7));
     group_state = 1;
-    
 }
 
 
@@ -562,10 +561,8 @@ void DaliCommands::set_group_level(uint8_t group_id, uint8_t value){
 }
 
 void DaliCommands::set_group_color_cct(uint8_t group_id, uint16_t color_temp_kelvin){
-    
     uint8_t group_addr = group_id | (1<<7);
-    set_color_temperature(group_addr, color_temp_kelvin);
-    
+    set_color_temperature(group_addr, color_temp_kelvin);  
 }
 
 void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim){
@@ -647,7 +644,6 @@ void DaliCommands::set_level_scene(uint8_t addr, uint8_t scene , uint8_t scene_l
 
 void DaliCommands::set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp)
 {
-    
     set_color_temp(addr, temp);    
     daliCore.sendCommandPublic(SET_DTR0, scene_level);
     // Store what is in the temperorary color as scene color and also scene level to DTR0
@@ -655,7 +651,15 @@ void DaliCommands::set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_le
     send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
     
 }
-
+void DaliCommands::set_rgb_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint8_t r, uint8_t g, uint8_t b)
+{   
+    set_rgb_2(addr, r, g, b, 255);  
+    daliCore.sendCommandPublic(SET_DTR0, scene_level);
+    // Store what is in the temperorary color as scene color and also scene level to DTR0
+    send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
+    send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
+    
+}
 void DaliCommands::add_to_scene(uint8_t addr, uint8_t scene)
 {
     
@@ -709,9 +713,36 @@ return daliCore.scanAssignedShortAddresses(foundAddresses, maxAddresses);
 void DaliCommands::enableReceiver(bool enable){
     return daliCore.enableReceiver(enable);
 }
+void DaliCommands::disableRxInterrupt() {
+    if (rxPin != GPIO_NUM_NC) {
+        gpio_intr_disable(rxPin);
+    }
+}
+
+void DaliCommands::enableRxInterrupt() {
+    if (rxPin != GPIO_NUM_NC) {
+        gpio_intr_enable(rxPin);
+    }
+}
+
+void DaliCommands::enable_query_mode() {
+    receiver.set_query_mode(true);
+}
+
+void DaliCommands::disable_query_mode() {
+    receiver.set_query_mode(false);
+}
 
 void DaliCommands::query(uint8_t shortAddress, uint8_t queryCommand) {
+    
     daliCore.query(shortAddress, queryCommand);
+    // disableRxInterrupt();
+    // esp_rom_delay_us(2400); 
+    //   // Set to 8-bit mode
+    // enableRxInterrupt(); 
+    // vTaskDelay(50 / portTICK_PERIOD_MS);
+    // receiver.set_query_mode(false);  // Set to 16-bit mode
+    
 }
 
 

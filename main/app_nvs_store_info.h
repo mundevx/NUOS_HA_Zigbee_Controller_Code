@@ -15,6 +15,10 @@
         uint8_t power;       // 0 or 1
         uint8_t brightness;  // 0..100  (store 0..100)
         uint16_t cct;        // color temperature in K (2000..6500)
+        uint8_t color_mode;   // 0 = cct, 1 = rgb
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
     } device_scene_t;
     /* Global in-memory store (loaded at boot) */
     extern device_scene_t *g_device_scene_store;
