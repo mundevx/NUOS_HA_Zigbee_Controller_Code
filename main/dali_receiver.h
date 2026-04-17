@@ -71,6 +71,8 @@ private:
     portMUX_TYPE        spinlock_;           // critical section guard
 
     bool query_mode_;  // true = expecting 8-bit response frame
+
+    
 };
 
 } // namespace dali

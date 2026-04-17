@@ -32,8 +32,11 @@
 
     #define DEVICE_WIRELESS_GROUP_SWITCH                            24 // Currently Running Remote Switch
     #define DEVICE_SCENE_DALI                                       25 // SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
+    #define DEVICE_DALI_DIRECT_SWITCH                               26 // SW1=ON/OFF, SW2=ON/OFF for 2 endpoints 2 buttons, 2 leds
+    #define DEVICE_DALI_DIRECT_WITH_COLOR_CONTROL_SWITCH            27 // SW1=ON/OFF, SW2=ON/OFF for 2 endpoints 4 buttons, 4 leds with color control capability
+
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_SCENE_DALI
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_RGB_DALI
 
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
     //#define USE_NVS_INIT

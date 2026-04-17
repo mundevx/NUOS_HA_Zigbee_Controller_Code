@@ -138,45 +138,45 @@
     }
 
 
-#define CCT_MIN_K   2000
-#define CCT_MAX_K   6500
+    #define CCT_MIN_K   2000
+    #define CCT_MAX_K   6500
 
-#define CCT_MIN_LVL 1
-#define CCT_MAX_LVL 255
+    #define CCT_MIN_LVL 1
+    #define CCT_MAX_LVL 255
 
-uint16_t map_level_to_cct_k(uint8_t level)
-{
-    /* Clamp input */
-    if (level <= CCT_MIN_LVL)
-        return CCT_MIN_K;
+    uint16_t map_level_to_cct_k(uint8_t level)
+    {
+        /* Clamp input */
+        if (level <= CCT_MIN_LVL)
+            return CCT_MIN_K;
 
-    if (level >= CCT_MAX_LVL)
-        return CCT_MAX_K;
+        if (level >= CCT_MAX_LVL)
+            return CCT_MAX_K;
 
-    /* Linear map */
-    uint32_t num = (uint32_t)(level - CCT_MIN_LVL) * (CCT_MAX_K - CCT_MIN_K);
+        /* Linear map */
+        uint32_t num = (uint32_t)(level - CCT_MIN_LVL) * (CCT_MAX_K - CCT_MIN_K);
 
-    uint32_t den = (CCT_MAX_LVL - CCT_MIN_LVL);
+        uint32_t den = (CCT_MAX_LVL - CCT_MIN_LVL);
 
-    return (uint16_t)(CCT_MIN_K + (num / den));
-}
+        return (uint16_t)(CCT_MIN_K + (num / den));
+    }
 
-uint8_t map_cct_k_to_level(uint16_t kelvin)
-{
-    /* Clamp input */
-    if (kelvin <= CCT_MIN_K)
-        return CCT_MIN_LVL;
+    uint8_t map_cct_k_to_level(uint16_t kelvin)
+    {
+        /* Clamp input */
+        if (kelvin <= CCT_MIN_K)
+            return CCT_MIN_LVL;
 
-    if (kelvin >= CCT_MAX_K)
-        return CCT_MAX_LVL;
+        if (kelvin >= CCT_MAX_K)
+            return CCT_MAX_LVL;
 
-    /* Linear map */
-    uint32_t num = (uint32_t)(kelvin - CCT_MIN_K) * (CCT_MAX_LVL - CCT_MIN_LVL);
+        /* Linear map */
+        uint32_t num = (uint32_t)(kelvin - CCT_MIN_K) * (CCT_MAX_LVL - CCT_MIN_LVL);
 
-    uint32_t den = (CCT_MAX_K - CCT_MIN_K);
+        uint32_t den = (CCT_MAX_K - CCT_MIN_K);
 
-    return (uint8_t)(CCT_MIN_LVL + (num / den));
-}
+        return (uint8_t)(CCT_MIN_LVL + (num / den));
+    }
 
 
     uint8_t map_1_255_to_100_255(uint8_t in)
@@ -184,26 +184,26 @@ uint8_t map_cct_k_to_level(uint16_t kelvin)
         return (uint8_t)((in * dali_range_size) / 254 + dali_min_off_offset);
     }
 
-extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
-    if (input_value <= 0) return DALI_MIN; 
-    if (input_value >= 254) return DALI_MAX;
+    extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
+        if (input_value <= 0) return DALI_MIN; 
+        if (input_value >= 254) return DALI_MAX;
 
-    // Normalize input to 0..1
-    double normalized = input_value / 254.0;
+        // Normalize input to 0..1
+        double normalized = input_value / 254.0;
 
-    // Apply gamma correction
-    double calibrated = pow(normalized, CALIBRATION_GAMMA);
+        // Apply gamma correction
+        double calibrated = pow(normalized, CALIBRATION_GAMMA);
 
-    // Scale to DALI range
-    uint8_t dali_value = (uint8_t)(DALI_MIN + calibrated * (DALI_MAX - DALI_MIN) + 0.5);
+        // Scale to DALI range
+        uint8_t dali_value = (uint8_t)(DALI_MIN + calibrated * (DALI_MAX - DALI_MIN) + 0.5);
 
-    return dali_value;
-}
+        return dali_value;
+    }
 
     extern "C" void set_state(uint8_t index){
         
         if(index == 0){
-            esp_zb_lock_acquire(portMAX_DELAY);
+            //esp_zb_lock_acquire(portMAX_DELAY);
             if(!device_info[index].device_state) {
                 if(scene_group_switch_info.control_type != 0) { 
 
@@ -240,13 +240,13 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                     nuos_dali_set_group_brightness(scene_group_switch_info.scene_ids[index], index, device_info[index].device_level);
                 }  
             }
-            esp_zb_lock_release();
+            //esp_zb_lock_release();
         }
         
         nuos_set_state_attribute(0);
     }
     extern "C" void set_level(uint8_t index){
-            esp_zb_lock_acquire(portMAX_DELAY);
+            //esp_zb_lock_acquire(portMAX_DELAY);
             if(scene_group_switch_info.control_type != 0) { 
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                 dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
@@ -258,11 +258,12 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             }else{  
                 nuos_dali_set_group_brightness(scene_group_switch_info.scene_ids[index], index, device_info[index].device_level);
             }
-            esp_zb_lock_release();
+            //esp_zb_lock_release();
             nuos_set_color_temp_level_attribute(0); 
     }
 
-    extern "C" void set_color_temp(){
+    extern "C" void set_color_temp(uint8_t index){
+         //esp_zb_lock_acquire(portMAX_DELAY);
         if(scene_group_switch_info.control_type != 0) { 
             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
             dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
@@ -270,12 +271,12 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             dali.set_group_color_cct(global_group_id[0], device_info[0].device_val);
             #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
             //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
-            dali.set_color_temperature(dali.BROADCAST_C, device_info[0].device_val); 
+            dali.set_color_temperature(dali.BROADCAST_C, device_info[index].device_val); 
             #endif 
         }else{
-            dali.set_group_color_cct(scene_group_switch_info.scene_ids[0], device_info[0].device_val);  
+            dali.set_group_color_cct(scene_group_switch_info.scene_ids[index], device_info[index].device_val);  
         }
-        nuos_set_color_temperature_attribute(0);     
+        nuos_set_color_temperature_attribute(index);     
     }
 
 
@@ -1354,7 +1355,7 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
             return;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 8, NULL);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 9, NULL);
         start_dali_led_commissioning_task_flag = true;
         //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
         if (recordsSemaphore != NULL) {
@@ -1583,12 +1584,12 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
                 if(b2 == 0){
                     //printf("BROADCAST → OFF\n");
                     device_info[0].device_state = false;
-                    set_hardware(0, false);
+                    //set_hardware(0, false);
                 }else{
                     //printf("BROADCAST → LEVEL %d\n", b2);
                     device_info[0].device_state = true;
                     device_info[0].device_level = b2;
-                    set_hardware(0, false);        
+                    //set_hardware(0, false);        
                                  
                 }
                 return;
@@ -1640,14 +1641,16 @@ extern "C" uint8_t calibrate_dali_brightness(uint8_t input_value) {
     extern "C" void init_dali_hw(){
        
         dali.begin(&isr_service_installed);
-        if(wifi_webserver_active_flag == 0){
-            rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
-            if (rxFrameQueue == nullptr) {
-                return;
-            } 
-            dali.begin_rx(&isr_service_installed, rxFrameQueue);
-            xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
-        }
+        // if(wifi_webserver_active_flag == 0){
+        //     rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
+        //     if (rxFrameQueue == nullptr) {
+        //         return;
+        //     } 
+        //     dali.begin_rx(&isr_service_installed, rxFrameQueue);
+        //     xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
+        // }else{
+            
+        // }
             
     }
 #endif

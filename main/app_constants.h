@@ -571,15 +571,15 @@
         //#define USE_TWO_SWITCH_MODE
         #define TOTAL_ENDPOINTS                                     1
         #ifndef USE_TWO_SWITCH_MODE
-            #define TOTAL_BUTTONS                                       4
-            #define TOTAL_LEDS                                          4
+            #define TOTAL_BUTTONS                                   4
+            #define TOTAL_LEDS                                      4
         #else
-            #define TOTAL_BUTTONS                                       2
-            #define TOTAL_LEDS                                          2
+            #define TOTAL_BUTTONS                                   2
+            #define TOTAL_LEDS                                      2
         #endif
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4      
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
         #define FAN_INDEX                                           1 
         #define ENABLE_PWM_DIMMING
         #define USE_RGB_LED
@@ -622,21 +622,14 @@
             #define TUYA_ATTRIBUTES
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-        //#define DALI_DIRECT_ADDRESSING
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             #define TOTAL_ENDPOINTS                                     MAX_DALI_ADDRESSES
             #define TOTAL_BUTTONS                                       2
             #define TOTAL_LEDS                                          2
         #else  
-            #ifdef DALI_DIRECT_ADDRESSING
-                #define TOTAL_ENDPOINTS                                 2
-                #define TOTAL_BUTTONS                                   2
-                #define TOTAL_LEDS                                      2
-            #else
-                #define TOTAL_ENDPOINTS                                 4
-                #define TOTAL_BUTTONS                                   4
-                #define TOTAL_LEDS                                      4
-            #endif
+            #define TOTAL_ENDPOINTS                                     4
+            #define TOTAL_BUTTONS                                       4
+            #define TOTAL_LEDS                                          4
         #endif
 
         #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
@@ -663,7 +656,7 @@
         #endif
         
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V3
+        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
         #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                     254   
         
@@ -671,10 +664,6 @@
 
         #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
             #define ENABLE_PWM_DIMMING
-        #else
-            #ifdef DALI_DIRECT_ADDRESSING
-            #define ENABLE_PWM_DIMMING
-            #endif
         #endif
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
             #define USE_WIFI_WEBSERVER
@@ -699,7 +688,66 @@
             #define ESP_WIFI_SSID                                       "NUOS DALI GROUP LIGHT"
             #endif
             #define ESP_WIFI_PASS                                       "NUOS1234"
-        #endif        
+        #endif   
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+
+        //#define USE_COLOR_CONTROL
+
+        #define TOTAL_ENDPOINTS                                         2
+        #ifdef USE_COLOR_CONTROL 
+        #define TOTAL_BUTTONS                                           4
+        #define TOTAL_LEDS                                              4
+        #else
+        #define TOTAL_BUTTONS                                           2
+        #define TOTAL_LEDS                                              2
+        #endif
+        #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
+        #define USE_RGB_LED
+
+        #ifdef USE_TUYA_BRDIGE
+            #define TUYA_ATTRIBUTES
+        #endif
+
+
+        #define LONG_PRESS_BRIGHTNESS_ENABLE
+        #define DIMMING_STEPS                                           5
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                           15
+
+        #define COLOR_CHANGE_STEPS                                      500
+        #define COLOR_SET_CHECKER_COUNTS                                20
+
+        // #define MIN_CCT_VALUE                                           (int)2000
+        // #define MAX_CCT_VALUE                                           (int)6500
+   
+        #define COLOR_SET_CHECKER_COUNTS                                20 
+        #define COLOR_STEPS                                             200      
+
+        #define USE_ADD_GROUP_SCENE_CLUSTERS
+        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
+        #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
+        #define MAX_DIM_LEVEL_VALUE                                     254   
+        
+        #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1
+        #define ENABLE_PWM_DIMMING
+
+  
+        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+            #define USE_WIFI_WEBSERVER
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            
+
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       5 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            
+
+            #define ESP_WIFI_SSID                                       "NUOS DALI DIRECT SWITCH"
+            #define ESP_WIFI_PASS                                       "NUOS1234"
+        #endif                
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)
         #define TOTAL_ENDPOINTS                                         3
         #define TOTAL_BUTTONS                                           4
@@ -749,11 +797,11 @@
         #ifdef USE_TUYA_BRDIGE
             #define TUYA_ATTRIBUTES
         #endif
-        //#define ENABLE_DALI_RECEIVER
+        #define ENABLE_DALI_RECEIVER
         #define USE_RGB_LED
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1      
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 

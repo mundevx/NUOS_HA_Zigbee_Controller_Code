@@ -26,6 +26,8 @@
     esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv);
     esp_err_t nuos_set_color_temp_attribute(uint8_t index);
     unsigned int map_1000(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max); 
+    uint8_t map_0_1000_to_0_255(uint16_t x);
+    unsigned int map_cct1(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max);
     void nuos_report_curtain_blind_state(uint8_t index, uint8_t value);   
     #ifdef __cplusplus
     }

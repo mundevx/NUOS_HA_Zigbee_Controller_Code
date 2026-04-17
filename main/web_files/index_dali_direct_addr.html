@@ -370,7 +370,7 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 <!-- TAB BUTTONS -->
 <div class="tabs">
   <button class="tab-btn active" data-tab="sceneControl">Scene Control</button>
-  <button class="tab-btn" data-tab="daliAddressing">DALI Addressing</button>
+  <button class="tab-btn" data-tab="daliAddressing">Settings</button>
 </div>
 
 <!-- ---------------- TAB 1: Scene Control (from your working upload) ---------------- -->
@@ -466,7 +466,12 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
   </div>
     <button class="stylish-button" id="sendDaliAddress">Send Address</button>
   </div>
-
+  <div class="card">
+    <h2>Controller Action</h2>
+    <button class="stylish-button" id="rebootControllerBtn" style="background:#dc3545;">
+      Reboot Controller
+    </button>
+  </div>
 
   <h3>Min Dimming Offset</h3>
   <div class="two-buttons">
@@ -994,8 +999,25 @@ document.addEventListener("DOMContentLoaded", function () {
   const infoPopup = document.getElementById("daliInfoPopup");
   const okBtn = document.getElementById("daliPopupOk");
   const cancelBtn = document.getElementById("daliPopupCancel");
-  // const infoOkBtn = document.getElementById("daliInfoOk");
+  const rebootControllerBtn = document.getElementById("rebootControllerBtn");
+rebootControllerBtn.addEventListener("click", async function () {
+    const ok = confirm("Are you sure you want to reboot the controller?");
+    if (!ok) return;
 
+    try {
+      const payload = { fxn: "13" };   // change fxn if your reboot command uses another code
+      await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      alert("Controller reboot command sent.");
+    } catch (err) {
+      console.error("Reboot failed:", err);
+      alert("Failed to send reboot command.");
+    }
+  });
   // Show confirmation popup when Send Address is clicked
   sendBtn.addEventListener("click", function (e) {
     e.preventDefault();

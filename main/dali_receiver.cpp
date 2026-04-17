@@ -98,6 +98,7 @@ void IRAM_ATTR Receiver::gpio_isr_handler(void* arg) {
     self->handle_pin_change();
 }
 
+
 void IRAM_ATTR Receiver::timer_callback(void* arg) {
     auto* self = static_cast<Receiver*>(arg);
     portENTER_CRITICAL_ISR(&self->spinlock_);

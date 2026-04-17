@@ -165,71 +165,6 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
         uint32_t* io_index = &button_func_pair->pin;
         bt_index = (uint8_t)(*io_index);
-        // printf("button_index:%d", bt_index);
-        //for curtain only
-        // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-        //     #ifdef TUYA_ATTRIBUTES
-        //     if(bCalMode){
-        //         //printf("bCalMode:%d vtaskMode:%d \n", bCalMode, vTaskMode);
-        //         if(vTaskMode == TASK_CURTAIN_CAL_INIT){
-        //             if(bt_index == 0){  //if 1st switch pressed
-        //                 //printf("INIT\n");
-        //                 vTaskMode = TASK_CURTAIN_CAL_START;
-        //                 gpio_set_level(gpio_touch_led_pins[0], 0);
-        //                 start_time = esp_timer_get_time();
-        //                 pause_curtain_timer();
-        //                  device_info[0].device_state = CURTAIN_OPEN;
-        //                 nuos_zb_set_hardware_curtain(0, false);
-        //                 // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_RUN_IN_CALIBRATION_MODE;
-        //                 // esp_zb_zcl_set_attribute_val(1,
-        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        //                 //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
-        //                 //     &calibration_mode,
-        //                 //     false);
-        //                 // uint8_t cal_started = 0;
-        //                 // esp_zb_zcl_set_attribute_val(1,
-        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        //                 //     0xF001,
-        //                 //     &cal_started,
-        //                 //     false);                            
-        //             }
-        //         }else if(vTaskMode == TASK_CURTAIN_CAL_START){
-        //             if(bt_index == 1){  //if 2nd switch pressed
-        //                 vTaskMode = TASK_CURTAIN_CAL_END;
-        //                 device_info[0].device_val = (esp_timer_get_time() - start_time) / 1000;
-        //                 device_info[0].device_val = device_info[0].device_val / 1000;
-        //                 device_info[0].device_state = CURTAIN_CLOSE;
-        //                 nuos_zb_set_hardware_curtain(1, false);
-        //                 // uint8_t calibration_mode = ESP_ZB_ZCL_ATTR_WINDOW_COVERING_TYPE_MOTOR_IS_RUNNING_IN_MAINTENANCE_MODE;
-        //                 // esp_zb_zcl_set_attribute_val(1,
-        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        //                 //     ESP_ZB_ZCL_ATTR_WINDOW_COVERING_WINDOW_COVERING_TYPE_ID,
-        //                 //     &calibration_mode,
-        //                 //     false);    
-                        
-        //                 // uint8_t cal_started = 1;
-        //                 // esp_zb_zcl_set_attribute_val(1,
-        //                 //     ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        //                 //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        //                 //     0xF001,
-        //                 //     &cal_started,
-        //                 //     false);  
-
-        //                 // esp_zb_zcl_status_t state = esp_zb_zcl_set_attribute_val(
-        //                 // ENDPOINTS_LIST[0],
-        //                 // ESP_ZB_ZCL_CLUSTER_ID_WINDOW_COVERING,
-        //                 // ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        //                 // 0xF003,
-        //                 // &device_info[0].device_val,
-        //                 // false);                        
-        //             }
-        //         }
-        //     }
-        //     #endif 
-        // #endif
 
         uchKeypressed = button_func_pair->keypressed;
         switch(uchKeypressed){
@@ -694,7 +629,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
     ESP_LOGI(TAG, "cluster(0x%x), dst_endpoint(%d), src_endpoint(%d)\n", message->info.cluster, message->info.dst_endpoint, message->info.src_endpoint);
     // ESP_LOGI(TAG, "command(0x%x) size(%d)\n", message->info.command.id, message->size);
 
-    ESP_LOGI(TAG, "fc(0x%x) manuf_code(0x%x)\n", message->info.header.fc, message->info.header.manuf_code);
+    ESP_LOGI(TAG, "fc(0x%x) manuf_code(0x%x) command(0x%x)\n", message->info.header.fc, message->info.header.manuf_code, message->info.command.id);
 
     recheckTimer();
     // 0x0 0x32 0x1 0x4 0x0 0x1 0x0 0x42 0x1a 0x0 0x0 0x0 0xf 0x0 0x0
@@ -971,7 +906,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
             sequence_num = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);                        
         }
 
-    }else if(message->info.command.id == 0x00){
+    }else if(message->info.command.id == 0x00) {
         
         scene_counts = 0; 
         if(ep_cnts > TOTAL_ENDPOINTS) ep_cnts = 0;
@@ -1015,7 +950,16 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 nuos_zb_set_hardware(LIGHT_INDEX, false);
                 #endif
                 
+            }else if(thermostat_data.bytes[2] == 101 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep1 state
+                device_info[0].device_state = thermostat_data.bytes[6];
+                nuos_zb_set_hardware(0, false);    
+                //set_state(0);
+            }else if(thermostat_data.bytes[2] == 102 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep2 state
+                device_info[1].device_state = thermostat_data.bytes[6];
+                nuos_zb_set_hardware(1, false);
+                //set_state(1);
             }
+
             esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
                 .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
                 .cluster_id = message->info.cluster,
@@ -1095,8 +1039,48 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                     device_info[FAN_INDEX].fan_speed = f_speed;
                     nuos_zb_set_hardware(3, false);
                 }   
-                #endif             
-            }   
+                #endif  
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)               
+            }else if(thermostat_temp.bytes[2] == 103 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
+                device_info[0].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+                printf("LEVEL:%d\n", device_info[0].device_level);
+                // 
+                device_info[0].color_or_fan_state = 0;
+                nuos_zb_set_hardware(0, false);
+                nuos_set_hardware_brightness(0);
+                //set_level(0); 
+            }else if(thermostat_temp.bytes[2] == 104 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 level
+                device_info[1].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+                printf("LEVEL:%d\n", device_info[1].device_level);
+                // 
+                device_info[1].color_or_fan_state = 0;
+                nuos_zb_set_hardware(1, false);
+                nuos_set_hardware_brightness(1);
+                //set_level(1); 
+
+            }else if(thermostat_temp.bytes[2] == 105 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
+                device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                printf("COLOR:%d\n", device_info[0].device_val);
+                // 
+                device_info[0].color_or_fan_state = 1;
+                nuos_zb_set_hardware(0, false);
+                is_long_press_brightness = false;
+                change_cw_ww_color_flag = true;
+                nuos_set_hardware_brightness(1);
+                //set_color_temp(0);
+            }else if(thermostat_temp.bytes[2] == 106 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
+                device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                printf("COLOR:%d\n", device_info[1].device_val);
+                // 
+                device_info[1].color_or_fan_state = 1;
+                nuos_zb_set_hardware(1, false);
+                is_long_press_brightness = false;
+                change_cw_ww_color_flag = true;
+                nuos_set_hardware_brightness(1);
+                //set_color_temp(1);
+            #endif     
+            }  
+                
         }  else if(message->data.size == 2) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
                 uint8_t custom_data[2] = {0};
@@ -1106,7 +1090,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
             #endif
         }
     } else {
-        printf("default\n");
+        printf("cmd_id: %d\n", message->info.command.id);
     }
     #else
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION)
@@ -1124,6 +1108,8 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
     #endif 
     return ESP_OK;
 }
+
+
 
 extern bool is_running, was_paused, timer_stop_flag;
 static uint8_t last_percentage_val                = 255;
@@ -1621,7 +1607,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
 
 #define TOUCHLINK_TARGET_TIMEOUT                    60 /* The timeout for the Touchlink target, measured in seconds */
 
-/*
+
 #define TUYA_CLUSTER_ID 				0xEF00  // Most Tuya devices use this custom cluster
 
 bool zb_apsde_data_indication_handler(esp_zb_apsde_data_ind_t ind)
@@ -1643,6 +1629,7 @@ bool zb_apsde_data_indication_handler(esp_zb_apsde_data_ind_t ind)
     }
 
     // Only process messages for endpoint 1, Home Automation profile, and On/Off or Tuya clusters
+    printf("APSDE %d %d %d\n", ind.dst_endpoint, ind.profile_id, ind.cluster_id);
     if (ind.dst_endpoint == 0 || ind.profile_id != ESP_ZB_AF_HA_PROFILE_ID ||
         (ind.cluster_id != TUYA_CLUSTER_ID)) {
         ESP_LOGW("APSDE INDICATION", "Invalid data!!"); 
@@ -1759,7 +1746,7 @@ bool zb_apsde_data_indication_handler(esp_zb_apsde_data_ind_t ind)
             };
             response_pending = true;
     return processed;
-}*/
+}
 // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER )
 // static int zb_zcl_custom_cluster_check_value_handler(uint16_t attr_id, uint8_t endpoint, uint8_t *value)
 // {
@@ -1799,7 +1786,7 @@ static void esp_zb_task(void *pvParameters)
     //Added by Nuos 
     esp_zb_device_register(nuos_init_zb_clusters());
     nuos_init_privilege_commands(); 
-    // esp_zb_aps_data_indication_handler_register(zb_apsde_data_indication_handler); 
+    //esp_zb_aps_data_indication_handler_register(zb_apsde_data_indication_handler); 
     esp_zb_core_action_handler_register(zb_action_handler);
     esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK);
 
@@ -1868,7 +1855,7 @@ void app_main(void) {
         ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "Failed" : "Successful");
     }
     #ifdef USE_WIFI_WEBSERVER
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     while(1){
         vTaskDelay(pdMS_TO_TICKS(100));
         start_dali_led_blink_task();

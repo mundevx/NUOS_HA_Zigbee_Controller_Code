@@ -95,7 +95,7 @@ extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     // Critical section entry
-    switch_driver_gpios_intr_enabled(false); 
+    //switch_driver_gpios_intr_enabled(false); 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(gpio_evt_queue, (switch_func_pair_t*)arg, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); 
@@ -592,6 +592,7 @@ void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_tim
 }
 
 void brightness_control_tasks(uint32_t io_num){
+    uint8_t btn_index = nuos_get_button_press_index(io_num);
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
         #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
@@ -611,7 +612,21 @@ void brightness_control_tasks(uint32_t io_num){
                         nuos_set_hardware_brightness(io_num);
                     }                                                
                 }  
-            }          
+            } 
+        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            
+            if(btn_index < 2){
+                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                } 
+            }else{
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }                                                
+            }  
+                     
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             if(io_num == gpio_touch_btn_pins[0]){
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
@@ -684,7 +699,7 @@ static void switch_driver_button_detected(void *arg) {
     bool evt_flag = false;
     uint32_t switch_pressed_cnts = 0;
     bool two_switch_pressed_flag = false;
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         bool instant_two_switch_pressed_flag = false;
     #endif
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
@@ -728,7 +743,7 @@ static void switch_driver_button_detected(void *arg) {
             longpress_detected = false;
             total_press_in_secs = 0;
             two_switch_pressed_flag = false; 
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
             instant_two_switch_pressed_flag = false;
             #endif
             initTwoSwitchPressedPins();
@@ -819,7 +834,7 @@ static void switch_driver_button_detected(void *arg) {
                             }
                         }
                     }else{
-                        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                         if (IdentifyTwoSwitchPressed() >= 2) {
                             instant_two_switch_pressed_flag = true;
                             
@@ -850,7 +865,7 @@ static void switch_driver_button_detected(void *arg) {
                             }
                         }
                     }
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                     if(instant_two_switch_pressed_flag){
                         instant_two_switch_pressed_flag = false;
                         change_cw_ww_color_flag = !change_cw_ww_color_flag;

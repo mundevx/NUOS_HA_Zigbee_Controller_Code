@@ -7,6 +7,13 @@
     #include "switch_driver.h"
     #include "app_nvs_store_info.h"
 
+    #define MAX_NODES                           20
+    #define MAX_DST_EP                          4
+    #define MAX_DALI_ADDRESSES                  64
+    #define MAX_DALI_DEVICES_IN_SCENES          30
+    #define MAX_TOUCH_BTNS                      4
+    #define MAX_DALI_SCENES                     16
+
     typedef struct {
         uint16_t h; // Hue [0, 0x0168] (0 to 360 degrees)
         uint16_t s; // Saturation [0, 0x3E8] (0 to 1000)
@@ -83,16 +90,13 @@
         uint8_t mode;
     } device_overall_params_t;
 
-    typedef struct wifi_info_t
-    {
-        bool is_wifi_sta_mode;
-        uint8_t ip4;
-        char wifi_ssid[32];
-        char wifi_pass[32];
-    } wifi_info_handle_t;
-
-    #define MAX_NODES    20
-    #define MAX_DST_EP   4
+    // typedef struct wifi_info_t
+    // {
+    //     bool is_wifi_sta_mode;
+    //     uint8_t ip4;
+    //     char wifi_ssid[32];
+    //     char wifi_pass[32];
+    // } wifi_info_handle_t;
 
     typedef struct attr_data_info_s {
         bool state;
@@ -164,7 +168,6 @@
         uint8_t command;
     }identify_response_commands_t;
 
-    #define MAX_DALI_ADDRESSES    64
     typedef struct {
         uint8_t group_id;
         uint8_t scene_id[6];
@@ -181,21 +184,21 @@
         uint8_t dst_ep;
         uint16_t short_addr;
     } zb_binding_data_t;
-    #define MAX_DALI_DEVICES_IN_SCENES          30
+
     typedef struct {
         uint8_t selected_id;
-        uint8_t group_id[4];
-        uint8_t scene_ids[4];
+        uint8_t group_id[MAX_TOUCH_BTNS];
+        uint8_t scene_ids[MAX_TOUCH_BTNS];
         uint8_t control_type;
         uint8_t scn_ctrl_type;
-        uint8_t total_ids[4];
-        uint16_t device_ids[4][MAX_DALI_DEVICES_IN_SCENES];  //==>20, you can increase number of dali_ids upto 64
-        bool device_state[16][MAX_DALI_DEVICES_IN_SCENES];
-        uint8_t device_level[16][MAX_DALI_DEVICES_IN_SCENES];
-        uint16_t device_color[16][MAX_DALI_DEVICES_IN_SCENES];
-        uint8_t device_scene[16][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t total_ids[MAX_TOUCH_BTNS];
+        uint16_t device_ids[MAX_TOUCH_BTNS][MAX_DALI_DEVICES_IN_SCENES];  //==>20, you can increase number of dali_ids upto 64
+        bool device_state[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t device_level[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        uint16_t device_color[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t device_scene[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
         #ifdef ENABLE_DALI_RECEIVER
-            uint8_t device_color_mode[16];
+            uint8_t device_color_mode[MAX_DALI_SCENES];
         #endif
     } scene_switch_s;
 
@@ -291,12 +294,10 @@
          
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" }; 
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+        const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" };
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-            #ifdef DALI_DIRECT_ADDRESSING
-                const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" };
-            #else
-                const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control"};
-            #endif
+            const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control"};
         #else
             const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control" };
         #endif
@@ -336,7 +337,7 @@
         stt_scene_switch_t existing_nodes_info[4];
         stt_scene_switch_t nodes_info;
         zigbee_zcene_info_t zb_scene_info[4];
-        wifi_info_handle_t wifi_info;
+        // wifi_info_handle_t wifi_info;
         //bool timer3_running_flag                                                = true;
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
@@ -1058,26 +1059,37 @@
             const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-            const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1};
-            #ifdef USE_HOME_ASSISTANT
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
-                char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
-                char modelid []                                                 = {14, 'D', 'A', 'L', 'I', ' ', 'C', 'C', 'T', ' ', 'L', 'i', 'g', 'h', 't'};
-            #else
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {0x010C};
-                //Tuya sgzohm9w
-                char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 's', 'g', 'z', 'o', 'h', 'm', '9', 'w'};
-                // TS0505B
-                char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '4', 'B'};     
-            #endif
+            // #if(TOTAL_ENDPOINTS == 1)
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1};
+                #ifdef USE_HOME_ASSISTANT
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {ESP_ZB_HA_ON_OFF_LIGHT_DEVICE_ID};
+                    char manufname[]                                            = {4, 'N', 'U', 'O', 'S'};
+                    char modelid []                                             = {14, 'D', 'A', 'L', 'I', ' ', 'C', 'C', 'T', ' ', 'L', 'i', 'g', 'h', 't'};
+                #else
+                    const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {0x010C};
+                    //Tuya sgzohm9w
+                    char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 's', 'g', 'z', 'o', 'h', 'm', '9', 'w'};
+                    // TS0505B
+                    char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '4', 'B'};     
+                #endif
+            // #elif(TOTAL_ENDPOINTS == 2)
+            //     const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1, 2};
+            //     const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {0x010C, 0x010C};
+            //     //Tuya whtkfqqt  iahbbjaq                                                                   
+            //     //char manufname[]                                                = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};
+            //     // char manufname[]                                                = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'i', 'a', 'h', 'b', 'b', 'j', 'a', 'q'};
+            //     // // TS0505B
+            //     // char modelid[]                                                  = {7, 'T', 'S', '0', '5', '0', '4', 'B'};   
+                
+            //     // char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'i', 'a', 'h', 'b', 'b', 'j', 'a', 'q'};
+            //     // char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '2', 'B'};
+            //     //whtkfqqt
+            //     char manufname[]                                                = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
+            //     const char modelid[]                                            = {6, 'T', 'S', '0', '6', '0', '1'}; 
+            // #endif
 
-            #ifdef USE_TWO_SWITCH_MODE
-            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2};
-            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2};
-            #else
             const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_4};
             const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4};
-            #endif
  
             const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
         /*************GROUP DALI************* */  
@@ -1128,6 +1140,37 @@
                     char modelid[]                                              = {6,'T', 'S', '0', '0', '1', '4'};
                 #endif
             #endif
+
+            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
+            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
+            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+
+            #ifdef USE_HOME_ASSISTANT
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = { 1, 2};                                                                       
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                
+                char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
+                char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', 'S', 'c', 'e', 'n', 'e'};
+ 
+            #else //if tuya
+                #ifdef USE_TUYA_BRDIGE 
+                    #ifdef USE_COLOR_CONTROL 
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = {1, 2};
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {0x010C, 0x010C};
+                        //Tuya whtkfqqt
+                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
+                        const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};                        
+                    #else
+                        //lbdxarah
+                        char manufname[]                                        = {16, '_', 'T', 'Y', 'Z', 'B', '0', '1', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
+                        char modelid[]                                          = {6, 'T', 'S', '1', '1', '0', 'F'};
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = { 1, 2 };                                                                       
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};                                               
+                    #endif
+                #endif
+            #endif
+
 
             const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
             const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
@@ -1355,7 +1398,7 @@
         extern stt_scene_switch_t existing_nodes_info[4];
         extern stt_scene_switch_t nodes_info;        
         extern zigbee_zcene_info_t zb_scene_info[4];
-        extern wifi_info_handle_t wifi_info;
+        // extern wifi_info_handle_t wifi_info;
         // bool timer3_running_flag;
         
         extern uint8_t target_percentage; 
@@ -1487,9 +1530,12 @@ extern "C" {
     void switch_driver_gpios_intr_enabled(bool enabled);
     void set_state(uint8_t index);
     void set_level(uint8_t index);
-    void set_color_temp();
+    void set_color_temp(uint8_t index);
     void set_color_temp_args(uint16_t color);
     esp_err_t nuos_set_state_attribute(uint8_t index);
+    void nuos_set_state_command(uint8_t dpid, uint8_t state);
+    void nuos_set_level_command(uint8_t dpid, uint8_t state);
+    void nuos_set_color_temp_command(uint8_t dpid, uint16_t color);
     esp_err_t nuos_set_state_attribute_rgb(uint8_t index);
     esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_);
     esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level);

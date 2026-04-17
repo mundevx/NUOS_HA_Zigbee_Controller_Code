@@ -8,6 +8,7 @@ idf_component_register(
     "app_hardware_driver_light_fan_control.c"
     "app_hardware_driver_dali_dimmable_group.cpp"
     "app_hardware_driver_dali_rgb.cpp"
+    "app_hardware_driver_dali_direct_switch.cpp"
     "app_hardware_driver_dali_tunable_light.cpp"
     "app_hardware_driver_dali_tunable_light_tuya.cpp"
     "app_nvs_store_info.c"

@@ -19,7 +19,7 @@
 static const char *TAG = "ESP_ZB_NVS_STORE";
 static const char *TAG_NVS = "TAG_NVS"; 
 
-extern wifi_info_handle_t wifi_info;
+// extern wifi_info_handle_t wifi_info;
 
 extern volatile bool pir_motion_disable_flag;
 extern int32_t pir_motion_disable_timeout_counts;
@@ -225,42 +225,42 @@ uint8_t getNVSPanicAttack(){
 }
 
 #ifdef USE_WIFI_WEBSERVER
-    void writeEpWifiStruct(wifi_info_handle_t *strt){
-        #ifdef USE_NVS_INIT
-        ESP_ERROR_CHECK(nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
-        #endif
-        nvs_set_blob(my_handle, nvram_wifi_info_keys, strt, sizeof(wifi_info_handle_t));
-        ESP_ERROR_CHECK(nvs_commit(my_handle));
-        #ifdef USE_NVS_INIT
-        nvs_close(my_handle);
-        #endif
-    }
+    // void writeEpWifiStruct(wifi_info_handle_t *strt){
+    //     #ifdef USE_NVS_INIT
+    //     ESP_ERROR_CHECK(nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
+    //     #endif
+    //     nvs_set_blob(my_handle, nvram_wifi_info_keys, strt, sizeof(wifi_info_handle_t));
+    //     ESP_ERROR_CHECK(nvs_commit(my_handle));
+    //     #ifdef USE_NVS_INIT
+    //     nvs_close(my_handle);
+    //     #endif
+    // }
 
-    void readEpWifiStruct(wifi_info_handle_t* my_data, size_t* length){
-        #ifdef USE_NVS_INIT
-        ESP_ERROR_CHECK(nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
-        #endif
-        esp_err_t err = nvs_get_blob(my_handle, nvram_wifi_info_keys, my_data, length);
-        #ifdef USE_NVS_INIT
-        nvs_close(my_handle);
-        #endif
-    }
+    // void readEpWifiStruct(wifi_info_handle_t* my_data, size_t* length){
+    //     #ifdef USE_NVS_INIT
+    //     ESP_ERROR_CHECK(nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));
+    //     #endif
+    //     esp_err_t err = nvs_get_blob(my_handle, nvram_wifi_info_keys, my_data, length);
+    //     #ifdef USE_NVS_INIT
+    //     nvs_close(my_handle);
+    //     #endif
+    // }
 
     void nuos_store_wifi_info_data_to_nvs(){
-        writeEpWifiStruct(&wifi_info);
+        // writeEpWifiStruct(&wifi_info);
     }
 
     void nuos_read_wifi_info_data_from_nvs(){
         // Clear the struct
-        memset(&wifi_info, 0, sizeof(wifi_info_handle_t));
-        size_t required_size = sizeof(wifi_info_handle_t);
-        readEpWifiStruct(&wifi_info, &required_size);
+        // memset(&wifi_info, 0, sizeof(wifi_info_handle_t));
+        // size_t required_size = sizeof(wifi_info_handle_t);
+        // readEpWifiStruct(&wifi_info, &required_size);
 
-        printf("----------Stored Wifi Info-------------\n");
-        printf("wifi_ssid:%s \n", wifi_info.wifi_ssid);
-        printf("wifi_pass:%s \n", wifi_info.wifi_pass);
-        printf("wifi_info:%d \n", wifi_info.ip4);
-        printf("---------------------------------------\n");
+        // printf("----------Stored Wifi Info-------------\n");
+        // printf("wifi_ssid:%s \n", wifi_info.wifi_ssid);
+        // printf("wifi_pass:%s \n", wifi_info.wifi_pass);
+        // printf("wifi_info:%d \n", wifi_info.ip4);
+        // printf("---------------------------------------\n");
     }
 #endif
 
@@ -549,30 +549,30 @@ void write_nvs_configuration(){
 	
 	#ifdef USE_WIFI_WEBSERVER
         nuos_read_wifi_info_data_from_nvs();
-        printf("wifi_ssid:%s \n", wifi_info.wifi_ssid);
-        printf("wifi_pass:%s \n", wifi_info.wifi_pass);
-        printf("wifi_info:%d \n", wifi_info.ip4);
-        if(strlen(wifi_info.wifi_ssid) == 0){
-            strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
-            strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
-            wifi_info.ip4 = 119;
-            wifi_info.is_wifi_sta_mode = 0;
-            writeEpWifiStruct(&wifi_info);	
-        }
+        // printf("wifi_ssid:%s \n", wifi_info.wifi_ssid);
+        // printf("wifi_pass:%s \n", wifi_info.wifi_pass);
+        // printf("wifi_info:%d \n", wifi_info.ip4);
+        // if(strlen(wifi_info.wifi_ssid) == 0){
+        //     strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
+        //     strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
+        //     wifi_info.ip4 = 119;
+        //     wifi_info.is_wifi_sta_mode = 0;
+        //     writeEpWifiStruct(&wifi_info);	
+        // }
 		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
         #else
-        wifi_info.is_wifi_sta_mode = 0;
+        //wifi_info.is_wifi_sta_mode = 0;
         #endif
-		strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
-		strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
-        wifi_info.ip4 = 119;
-		writeEpWifiStruct(&wifi_info);	
+		// strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
+		// strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
+        // wifi_info.ip4 = 119;
+		// writeEpWifiStruct(&wifi_info);	
 	#endif
 }
 
 void nuos_enable_ap_mode(){
-	wifi_info.is_wifi_sta_mode = 0;
+	//wifi_info.is_wifi_sta_mode = 0;
     nuos_store_wifi_info_data_to_nvs();
 }
 
@@ -1129,9 +1129,9 @@ void nuos_get_data_from_nvs() {
                 }
             #endif
         #else
-            #ifdef USE_WIFI_WEBSERVER
-            nuos_read_wifi_info_data_from_nvs();
-            #endif
+            // #ifdef USE_WIFI_WEBSERVER
+            // nuos_read_wifi_info_data_from_nvs();
+            // #endif
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             dali_on_webpage_commissioning_counts = getNVSDaliNodesCommissioningCounts();
             // dali_on_webpage_commissioning_counts = getNVSDaliNodesStartAddrCounts();
@@ -1217,12 +1217,11 @@ void nuos_get_data_from_nvs() {
     }  
 
 
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)  
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)  
         //clear_all_groups_and_scenes_in_nvs();
         get_nvs_dali_scene_switch_webpage_data();
     #endif
-    
-    printf("------------>READ NVS DATA<---------------\n");
+    // printf("------------>READ NVS DATA<---------------\n");
     memset(device_info, 0, sizeof(device_info));
     for(int index=0; index<nvs_store_max; index++){
         size_t required_length = sizeof(led_indicator_handle_t);

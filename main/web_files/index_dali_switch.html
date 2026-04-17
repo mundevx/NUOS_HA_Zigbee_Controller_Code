@@ -459,7 +459,7 @@
         <!-- Tab Navigation -->
         <div class="tab-navigation">
             <button class="tab-btn active" data-tab="setControlType">Set Control Type</button>
-            <button class="tab-btn" data-tab="daliAddressing">DALI Addressing</button>
+            <button class="tab-btn" data-tab="daliAddressing">Settings</button>
         </div>
 
         <!-- Tab 1: Set Control Type -->
@@ -503,68 +503,75 @@
                 </div>
             </div>
             <button class="stylish-button" id="sendDaliAddress">Send Address</button>
-<h3>Min Dimming Offset</h3>
-  <div class="two-buttons">
-    <input
-      type="number"
-      id="minDimmingOffset"
-      min="0"
-      max="255"
-      step="1"
-      placeholder="Enter min dimming offset"/>
-    <button
-      id="sendMinDimmingOffset"
-      class="stylish-button"
-      style="margin:0; padding:10px 16px;">
-      Calibrate Dali Dimming
-    </button>
-  </div>
-  <div class="small-note">
-    Sets minimum dali dimming value wheer it gets lowest dimming
-  </div>
+
+            
+            <h3>Min Dimming Offset</h3>
+            <div class="two-buttons">
+                <input
+                type="number"
+                id="minDimmingOffset"
+                min="0"
+                max="255"
+                step="1"
+                placeholder="Enter min dimming offset"/>
+                <button
+                id="sendMinDimmingOffset"
+                class="stylish-button"
+                style="margin:0; padding:10px 16px;">
+                Calibrate Dali Dimming
+                </button>
+            </div>
+            <div class="small-note">
+                Sets minimum dali dimming value wheer it gets lowest dimming
+            </div>
 
 
 
-<h3>Set Fade Time </h3>
-  <div class="two-buttons">
-    <input
-      type="number"
-      id="setFadeTime"
-      min="0"
-      max="10"
-      step="1"
-      placeholder="Enter fade time"/>
-    <button
-      id="sendFadeTime"
-      class="stylish-button"
-      style="margin:0; padding:10px 16px;">
-      Set Fade Time
-    </button>
-  </div>
+            <h3>Set Fade Time </h3>
+            <div class="two-buttons">
+                <input
+                type="number"
+                id="setFadeTime"
+                min="0"
+                max="10"
+                step="1"
+                placeholder="Enter fade time"/>
+                <button
+                id="sendFadeTime"
+                class="stylish-button"
+                style="margin:0; padding:10px 16px;">
+                Set Fade Time
+                </button>
+            </div>
 
 
 
 
-<h3>Set Fade Rate</h3>
-  <div class="two-buttons">
-    <input
-      type="number"
-      id="setFadeRate"
-      min="0"
-      max="255"
-      step="1"
-      placeholder="Enter Fade Rate"/>
-    <button
-      id="sendFadeRate"
-      class="stylish-button"
-      style="margin:0; padding:10px 16px;">
-      Set Fade Rate
-    </button>
-  </div>
+            <h3>Set Fade Rate</h3>
+            <div class="two-buttons">
+                <input
+                type="number"
+                id="setFadeRate"
+                min="0"
+                max="255"
+                step="1"
+                placeholder="Enter Fade Rate"/>
+                <button
+                id="sendFadeRate"
+                class="stylish-button"
+                style="margin:0; padding:10px 16px;">
+                Set Fade Rate
+                </button>
+            </div>
 
         </div>
 
-
+        <div class="card">
+            <h2>Controller Action</h2>
+            <button class="stylish-button" id="rebootControllerBtn" style="background:#dc3545;">
+            Reboot Controller
+            </button>
+        </div>
 
 
     </div>
@@ -879,6 +886,25 @@
             const okBtn = document.getElementById('daliPopupOk');
             const cancelBtn = document.getElementById('daliPopupCancel');
 
+            const rebootControllerBtn = document.getElementById("rebootControllerBtn");
+            rebootControllerBtn.addEventListener("click", async function () {
+                const ok = confirm("Are you sure you want to reboot the controller?");
+                if (!ok) return;
+
+                try {
+                const payload = { fxn: "13" };   // change fxn if your reboot command uses another code
+                await fetch('/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                alert("Controller reboot command sent.");
+                } catch (err) {
+                console.error("Reboot failed:", err);
+                alert("Failed to send reboot command.");
+                }
+            });
             sendBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 confirmPopup.classList.add('show');

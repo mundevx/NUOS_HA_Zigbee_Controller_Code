@@ -671,7 +671,7 @@ document.getElementById('sceneForm').onsubmit = async function(e) {
   el.addEventListener('mousedown', () => pressTimer = setTimeout(tryShowPopup, 600));
   el.addEventListener('mouseup', () => clearTimeout(pressTimer));
   el.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-  el.addEventListener('touchstart', () => pressTimer = setTimeout(tryShowPopup, 600));
+  el.addEventListener('touchstart', () => pressTimer = setTimeout(tryShowPopup, 600), { passive: true });
   el.addEventListener('touchend', () => clearTimeout(pressTimer));
   el.addEventListener('click', function() { sendClickIndex(idx, id); });
 });
@@ -1401,50 +1401,156 @@ function populateDeviceUIFromData(data){
     });
   }
 
-  if (removeDeviceBtn) removeDeviceBtn.addEventListener('click', async ()=> {
-    const sid = parseInt(sceneSelector.value || 0,10);
-    const did = parseInt(deviceSelector.value || 0,10);
-    if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
-    const mode = sceneModeMap[String(sid)] || 'device';
-    try {
-      const body = {
-        fxn: FXN_CLEAR_SCENE,
-        scene_id: sid,
-        action: "remove"
-      };
-      if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
-      else body.device_id = did;
+  if (removeDeviceBtn) {
+    // removeDeviceBtn.addEventListener('click', async ()=> {
+    //   const sid = parseInt(sceneSelector.value || 0,10);
+    //   const did = parseInt(deviceSelector.value || 0,10);
+    //   if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
+    //   const mode = sceneModeMap[String(sid)] || 'device';
+    //   try {
 
-      const res = await postJson('/action', body);
-      if (res.ok) {
-        setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
-        populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
-        alert('Device cleared from scene');
-      } else {
-        alert('Failed to clear device');
-      }
-    } catch(e){ alert('Failed to clear device'); console.error(e); }
-  });
+    //     const body = {
+    //       fxn: FXN_CLEAR_SCENE,
+    //       scene_id: sid,
+    //       action: "remove",
+    //       devices
+    //     };
+    //     if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+    //     else body.device_id = did;
 
-  if (sendDeviceBrightness) sendDeviceBrightness.addEventListener('click', async ()=> {
-    const sid = parseInt(sceneSelector.value || 0,10);
-    const did = parseInt(deviceSelector.value || 0,10);
-    const val = parseInt(deviceBrightnessSlider?.value || 50,10);
-    const mode = sceneModeMap[String(sid)] || 'device';
-    try {
-      const body = { fxn: FXN_BRIGHT, val, scene_id: sid };
-      if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
-      else body.dali_id = did;
-      const res = await postJson('/action', body);
-      if (!res.ok) alert('Failed to send device brightness');
-      else {
-        const cached = getCache(String(sid), String(did)) || {};
-        cached.brightness = val;
-        setCache(String(sid), String(did), cached);
-        alert('Device brightness sent');
+    //     const res = await postJson('/action', body);
+    //     if (res.ok) {
+    //       setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
+    //       populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
+    //       alert('Device cleared from scene');
+    //     } else {
+    //       alert('Failed to clear device');
+    //     }
+    //   } catch(e){ alert('Failed to clear device'); console.error(e); }
+    // });
+
+
+
+
+
+    removeDeviceBtn.addEventListener('click', async () => {
+      try {
+        const sid = parseInt(sceneSelector.value || 0, 10);
+        const sidStr = String(sid);
+        const did = parseInt(deviceSelector.value || 0, 10);
+        const mode = sceneModeMap[String(sid)] || 'device';
+
+        if (mode === 'group') {
+          const currentMode = colorModeRGB.checked ? 'rgb' : 'cct';
+          const payload = {
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            action: "remove",
+            included: !!(deviceIncluded && deviceIncluded.checked),
+            group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+          };
+
+          const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (rGroup.ok) alert('Scene saved (group)');
+          else alert('Failed saving scene (group)');
+          return;
+        }
+
+        const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
+        const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
+
+        const cachedIncludedDevices = [];
+        for (let id = 0; id < 64; id++) {
+          const c = getCache(sidStr, String(id));
+          if (c && c.included === true) {
+            const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+            cachedIncludedDevices.push({
+              fxn: FXN_SAVE_SCENE,
+              scene_id: sid,
+              included: true,
+              dali_id: id
+            });
+
+          }
+        }
+
+        function makeWrappedFromDeviceObjects(arr) {
+            const devices = arr.map(d => {
+              const obj = {
+                power: Number(d.power) || 0,
+                brightness: Number(d.brightness) || 0,
+                dali_id: Number(d.dali_id)
+              };
+
+              if ((d.colorMode || 'cct') === 'rgb') {
+                obj.r = Number(d.r) || 0;
+                obj.g = Number(d.g) || 0;
+                obj.b = Number(d.b) || 0;
+              } else {
+                obj.cct = Number(d.cct) || 0;
+              }
+
+              return obj;
+            });
+
+            return {
+              fxn: typeof FXN_SAVE_SCENE !== "undefined" ? FXN_SAVE_SCENE : (arr[0]?.fxn || 202),
+              scene_id: sid,
+              action: "remove",
+              devices
+            };
+          }
+
+
+        if (cachedIncludedDevices.length > 0) {
+          const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+          const resp = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(wrapped) });
+          if (resp.ok) {
+            cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), {
+              included: d.included,
+              power: d.power,
+              brightness: d.brightness,
+              cct: d.cct,
+              colorMode: d.colorMode || 'cct',
+              r: d.r ?? 255,
+              g: d.g ?? 128,
+              b: d.b ?? 0
+            }));
+            alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene');
+            return;
+          }
+        }
+
+      } catch (err) {
+        console.error('saveDevice error:', err);
+        alert('Error saving devices');
       }
-    } catch(e){ alert('Failed to send device brightness'); console.error(e); }
-  });
+    });
+
+  }
+
+
+  if (sendDeviceBrightness) {
+    sendDeviceBrightness.addEventListener('click', async ()=> {
+      const sid = parseInt(sceneSelector.value || 0,10);
+      const did = parseInt(deviceSelector.value || 0,10);
+      const val = parseInt(deviceBrightnessSlider?.value || 50,10);
+      const mode = sceneModeMap[String(sid)] || 'device';
+      try {
+        const body = { fxn: FXN_BRIGHT, val, scene_id: sid };
+        if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
+        else body.dali_id = did;
+        const res = await postJson('/action', body);
+        if (!res.ok) alert('Failed to send device brightness');
+        else {
+          const cached = getCache(String(sid), String(did)) || {};
+          cached.brightness = val;
+          setCache(String(sid), String(did), cached);
+          alert('Device brightness sent');
+        }
+      } catch(e){ alert('Failed to send device brightness'); console.error(e); }
+    });
+  }
 
   if (sendDeviceCct) sendDeviceCct.addEventListener('click', async ()=> {
     const sid = parseInt(sceneSelector.value || 0,10);

@@ -102,12 +102,7 @@ void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
         return;
     }
     // Create the DALI processing task (priority 14, stack 4096)
-    xTaskCreate(dali_task, "dali_task", 4096, (void*)rxFrameQueue, 24, nullptr);
-    //ESP_LOGI(TAG, "DALI receiver started, processing task created");
-
-
-   
-    // 
+    xTaskCreate(dali_task, "dali_task", 4096, (void*)rxFrameQueue, 24, nullptr); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -710,9 +705,6 @@ return daliCore.scanAssignedShortAddresses(foundAddresses, maxAddresses);
 }
 
 
-void DaliCommands::enableReceiver(bool enable){
-    return daliCore.enableReceiver(enable);
-}
 void DaliCommands::disableRxInterrupt() {
     if (rxPin != GPIO_NUM_NC) {
         gpio_intr_disable(rxPin);

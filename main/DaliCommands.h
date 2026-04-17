@@ -161,7 +161,7 @@ public:
     void go_to_group_scene(uint8_t group_id, uint8_t scene);    
     // Scanning function
     int scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses);
-    void enableReceiver(bool enable);
+
     void disableRxInterrupt();
     void enableRxInterrupt();
 

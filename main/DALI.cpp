@@ -9,20 +9,12 @@ the Free Software Foundation, either version 3 of the License, or
 */
 
 #include "DALI.h"
-
+// At top with other includes
+#include "esp_random.h"
+#include "esp_log.h"
 
 const char *DALI::TAG               = "DALI";
 
-
-
-// static dali_rx::Receiver            receiver;
-// Structure to hold a received DALI message
-// struct DaliMessage {
-//     uint8_t data[3];
-//     size_t len;
-// };
-// Queue handle for passing messages from callback to task
-// static QueueHandle_t dali_msg_queue = nullptr;
 // ////////////////////////////////////////////////////////////////////////////////////////////////////
 DALI::DALI() : txPin(GPIO_NUM_NC),  rxPin(GPIO_NUM_NC) {}
 
@@ -66,122 +58,113 @@ void DALI::begin(bool* is_isr_handler) {
 
     // Set initial TX state (idle: release bus)
     gpio_set_level(txPin, DALI_HIGH);   // Idle = HIGH (depending on polarity)
-
-
-    // // Create a queue capable of holding up to 10 DALI messages
-    // dali_msg_queue = xQueueCreate(10, sizeof(DaliMessage));
-    // if (dali_msg_queue == nullptr) {
-    //     ESP_LOGE(TAG, "Failed to create queue");
-    //     return;
-    // }
-    // // Start the DALI receiver on GPIO 19 in C6 (active low, standard DALI)
-    // #ifdef IS_INVERTED
-    // esp_err_t err = receiver.begin(rxPin, on_dali_message, true, &isr_service_installed);
-    // #else
-    // esp_err_t err = receiver.begin(rxPin, on_dali_message, false, &isr_service_installed);
-    // #endif
-    // if (err != ESP_OK) {
-    //     ESP_LOGE(TAG, "Failed to start DALI receiver");
-    //     return;
-    // }
-
-    // // Create the DALI processing task (priority 14, stack 4096)
-    // xTaskCreate(dali_task, "dali_task_1", 4096, nullptr, 14, nullptr);
-
-    
 }
 
-// void DALI::begin() {
-//     // Configure TX pin as output
-//     gpio_config_t io_conf_tx = {};
-//     io_conf_tx.intr_type = GPIO_INTR_DISABLE;
-//     io_conf_tx.mode = GPIO_MODE_OUTPUT;
-//     io_conf_tx.pin_bit_mask = (1ULL << txPin);
-//     io_conf_tx.pull_down_en = GPIO_PULLDOWN_DISABLE;
-//     io_conf_tx.pull_up_en = GPIO_PULLUP_DISABLE;
-//     gpio_config(&io_conf_tx);
 
-//     // // Configure RX pin as input
-//     // gpio_config_t io_conf_rx = {};
-//     // io_conf_rx.intr_type = GPIO_INTR_DISABLE;
-//     // io_conf_rx.mode = GPIO_MODE_INPUT;
-//     // io_conf_rx.pin_bit_mask = (1ULL << rxPin);
-//     // io_conf_rx.pull_down_en = GPIO_PULLDOWN_DISABLE;
-//     // io_conf_rx.pull_up_en = GPIO_PULLUP_DISABLE;
-//     // gpio_config(&io_conf_rx);
+// Send a '0' bit (low-high) with collision check on the high phase
+bool DALI::sendZeroWithCheck() {
+    // First half: drive low (active) – safe, no collision possible
+    gpio_set_level(txPin, DALI_LOW);   // DALI_LOW = 1 (active)
+    esp_rom_delay_us(416);
 
-//     // Set initial TX state (idle: release bus)
-//     gpio_set_level(txPin, DALI_HIGH);   // Idle = HIGH (depending on polarity)
-
-
-//     // Create a queue capable of holding up to 10 DALI messages
-//     dali_msg_queue = xQueueCreate(10, sizeof(DaliMessage));
-//     if (dali_msg_queue == nullptr) {
-//         ESP_LOGE(TAG, "Failed to create queue");
-//         return;
-//     }
-//     bool is_isr_handler = true; 
-//     // Start the DALI receiver on GPIO 19 in C6 (active low, standard DALI)
-//     esp_err_t err = receiver.begin(rxPin, on_dali_message, &is_isr_handler);
-//     if (err != ESP_OK) {
-//         ESP_LOGE(TAG, "Failed to start DALI receiver");
-//         return;
-//     }
-
-//     // Create the DALI processing task (priority 14, stack 4096)
-//     xTaskCreate(dali_task, "dali_task", 4096, nullptr, 14, nullptr);
-
-//     ESP_LOGI(TAG, "DALI receiver started, processing task created");
-
-// }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::sendZero(void) {
-    gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(416);
-    gpio_set_level(txPin, DALI_HIGH);
-    task_delayMicroseconds(416);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::sendOne(void) {
-    gpio_set_level(txPin, DALI_HIGH);
-    task_delayMicroseconds(416);
-    gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(416);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-bool DALI::isBusIdle() {
-    for (int i = 0; i < 10; i++) {
-        if (gpio_get_level(rxPin) != DALI_HIGH) {
-            return false;
-        }
-        task_delayMicroseconds(10);
+    // Second half: release to high (inactive) – check if bus actually goes high
+    gpio_set_level(txPin, DALI_HIGH);  // DALI_HIGH = 0 (released)
+    esp_rom_delay_us(20);              // settle time
+    int bus_level = gpio_get_level(rxPin);
+    // Because of inversion: DALI_HIGH=0 means bus released (logic 1)
+    // If another master is pulling low (DALI_LOW=1), rxPin will be 1, which is NOT DALI_HIGH.
+    if (bus_level != DALI_HIGH) {
+        ESP_LOGW(TAG, "Collision in sendZero: bus level %d, expected %d", bus_level, DALI_HIGH);
+        return false;
     }
+    esp_rom_delay_us(396);  // complete the half-bit
+    return true;
+}
+
+// Send a '1' bit (high-low) with collision check on the first high phase
+bool DALI::sendOneWithCheck() {
+    // First half: release bus (high) – collision possible here
+    gpio_set_level(txPin, DALI_HIGH);
+    esp_rom_delay_us(20);
+    if (gpio_get_level(rxPin) != DALI_HIGH) {
+        ESP_LOGW(TAG, "Collision in sendOne (first half)");
+        return false;
+    }
+    esp_rom_delay_us(396);
+
+    // Second half: drive low – safe
+    gpio_set_level(txPin, DALI_LOW);
+    esp_rom_delay_us(416);
     return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::sendCommand(uint8_t command, uint8_t data) {
+bool DALI::sendZero(void) {
+    gpio_set_level(txPin, DALI_LOW);
+    task_delayMicroseconds(416);
+    gpio_set_level(txPin, DALI_HIGH);
+    task_delayMicroseconds(416);
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool DALI::sendOne(void) {
+    gpio_set_level(txPin, DALI_HIGH);
+    task_delayMicroseconds(416);
+    gpio_set_level(txPin, DALI_LOW);
+    task_delayMicroseconds(416);
+    return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool DALI::isBusBusy() {
+    #ifdef IS_INVERTED
+        // Inverted: idle = HIGH, busy = LOW
+        return (gpio_get_level(rxPin) == DALI_LOW);
+    #else
+        // Non-inverted: idle = LOW, busy = HIGH
+        return (gpio_get_level(rxPin) == DALI_HIGH);
+    #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// bool DALI::waitForBusFree(uint8_t maxTries, uint32_t delayUs) {
+//     for (uint8_t attempt = 0; attempt < maxTries; attempt++) {
+//         if (!isBusBusy()) {
+//             return true;
+//         }
+//         ESP_LOGW(TAG, "DALI bus busy, retry %d/%d", attempt + 1, maxTries);
+//         task_delayMicroseconds(delayUs);
+//     }
+//     ESP_LOGE(TAG, "DALI bus still busy after %d tries", maxTries);
+//     return false;
+// }
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#define MAX_RETRIES 2
+bool DALI::sendCommand(uint8_t command, uint8_t data) {
+    // Disable RX interrupt to avoid processing our own edges
+    //disableRxInterrupt();
+    // if (!isBusBusy()) {
+    //     return true;
+    // }
     uint16_t info = (uint16_t)((command << 8) | data);
     sendOne();   // Start bit
-
     for (uint8_t i = 0; i < 16; i++) {
         if (info & 0x8000)
             sendOne();
         else
             sendZero();
         info <<= 1;
-    }
-
+    } 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(2700);
+    task_delayMicroseconds(6700); 
+    
+    //enableRxInterrupt();
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2) {
-    task_delay(5);
+    //task_delay(5);
 
     uint16_t cd1 = (uint16_t)((command1 << 8) | data1);
     uint16_t cd2 = (uint16_t)((command2 << 8) | data2);
@@ -205,7 +188,7 @@ void DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint
     }
 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(1700);
+    task_delayMicroseconds(2700);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -216,11 +199,11 @@ bool DALI::sendSearchAddr(uint32_t addr) {
     sendCommand(COMPARE, 0);
 
     for (uint32_t n = 0; n < 50000; n++) {
-#ifdef IS_INVERTED
+    #ifdef IS_INVERTED
         if (!gpio_get_level(rxPin))
-#else
+    #else
         if (gpio_get_level(rxPin))
-#endif
+    #endif
         {
             task_delay(20);
             return true;
@@ -244,7 +227,7 @@ int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
     uint32_t searchDifference;
     uint32_t searchTop;
     int ret = 0;
-    enableReceiver(false);
+
     // Reset modules
     sendCommand(COMMAND_BROADCAST, RESET);
     task_delay(10);
@@ -303,7 +286,6 @@ int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
                 return ret;
         }
     }
-    enableReceiver(true);
     return 0;
 }
 
@@ -335,11 +317,11 @@ bool DALI::sendProgramShortAddr(uint8_t nodeNumber) {
     sendCommand(VERIFY_SHORT_ADDRESS, 1 | (nodeNumber << 1));
 
     for (uint32_t n = 0; n < 50000; n++) {
-#ifdef IS_INVERTED
+    #ifdef IS_INVERTED
         if (!gpio_get_level(rxPin))
-#else
+    #else
         if (gpio_get_level(rxPin))
-#endif
+    #endif
         {
             task_delay(20);
             return true;
@@ -360,17 +342,6 @@ void DALI::sendCommandPublic32(uint8_t command1, uint8_t data1,
     sendCommand32(command1, data1, command2, data2);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// bool DALI::receiveFrame(uint32_t* frame, int* bitCount, TickType_t timeout) {
-//     if (rxFrameQueue == nullptr) return false;
-//     // Wait for a frame from the queue
-//     if (xQueueReceive(rxFrameQueue, frame, timeout) == pdTRUE) {
-//         // bitCount not implemented in this simple version; set to 16 by default
-//         if (bitCount) *bitCount = 16;
-//         return true;
-//     }
-//     return false;
-// }
 void DALI::disableRxInterrupt() {
     if (rxPin != GPIO_NUM_NC) {
         gpio_intr_disable(rxPin);
@@ -397,7 +368,7 @@ void DALI::query(uint8_t address, uint8_t queryCommand) {
 
 int DALI::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses) {
     int found = 0;
-    enableReceiver(false);
+ 
     for (uint8_t addr = 0; addr < 64; ++addr) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
        
@@ -406,11 +377,11 @@ int DALI::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddress
        
         // Wait for response
         for (uint32_t n = 0; n < 100000; n++) {
-#ifdef IS_INVERTED
+    #ifdef IS_INVERTED
             if (!gpio_get_level(rxPin))
-#else
+    #else
             if (gpio_get_level(rxPin))
-#endif
+    #endif
             {
                 foundAddresses[found++] = addr;
                 ESP_LOGD(TAG, "Found address: %d", addr >> 1);
@@ -419,20 +390,8 @@ int DALI::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddress
             task_delayMicroseconds(1);
         }
     }
-    enableReceiver(true);
+
     return found;
 
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Receiver control
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::enableReceiver(bool enable) {
-    //printf("Receiver:%s\n", enable?"Enabled":"Disabled");
-    // rxEnabled = enable;
-    // if (!enable) {
-    //     // Reset state machine when disabled
-    //     rxState = RX_IDLE;
-    //     rxBitCount = 0;
-    // }
-}

@@ -188,7 +188,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 				ESP_LOGI(TAG, "retry to connect to the AP");
 			} else {
 				xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-				wifi_info.is_wifi_sta_mode = 0;
+				//wifi_info.is_wifi_sta_mode = 0;
 				#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
 				nuos_store_wifi_info_data_to_nvs();
@@ -359,15 +359,15 @@ void wifi_init_sta()
         	};
 
 
-		// Populate the structure with string variables
-		strncpy((char *)wifi_config.sta.ssid, wifi_info.wifi_ssid, sizeof(wifi_info.wifi_ssid) - 1);
-		wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
+		// // Populate the structure with string variables
+		// strncpy((char *)wifi_config.sta.ssid, wifi_info.wifi_ssid, sizeof(wifi_info.wifi_ssid) - 1);
+		// wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
 
-		strncpy((char *)wifi_config.sta.password, wifi_info.wifi_pass, sizeof(wifi_info.wifi_pass) - 1);
-		wifi_config.sta.password[sizeof(wifi_info.wifi_pass) - 1] = '\0';
+		// strncpy((char *)wifi_config.sta.password, wifi_info.wifi_pass, sizeof(wifi_info.wifi_pass) - 1);
+		// wifi_config.sta.password[sizeof(wifi_info.wifi_pass) - 1] = '\0';
 
-		printf("-------wifi_ssid: %s size:%d\n", wifi_config.sta.ssid, sizeof(wifi_info.wifi_ssid));
-		printf("-------wifi_pass: %s size:%d\n", wifi_config.sta.password, sizeof(wifi_info.wifi_pass));
+		// printf("-------wifi_ssid: %s size:%d\n", wifi_config.sta.ssid, sizeof(wifi_info.wifi_ssid));
+		// printf("-------wifi_pass: %s size:%d\n", wifi_config.sta.password, sizeof(wifi_info.wifi_pass));
 
         //add additional config info
 		ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -420,13 +420,13 @@ void wifi_init_sta()
 		/* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
 		 * happened. */
 		if (bits & WIFI_CONNECTED_BIT) {
-			ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-					wifi_info.wifi_ssid, wifi_info.wifi_pass);
+			// ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
+			// 		wifi_info.wifi_ssid, wifi_info.wifi_pass);
 		} else if (bits & WIFI_FAIL_BIT) {
-			ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-					wifi_info.wifi_ssid, wifi_info.wifi_pass);
+			// ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
+			// 		wifi_info.wifi_ssid, wifi_info.wifi_pass);
 			// //start in AP mode
-			wifi_info.is_wifi_sta_mode = 0;
+			//wifi_info.is_wifi_sta_mode = 0;
 			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
 			nuos_store_wifi_info_data_to_nvs();
@@ -523,10 +523,10 @@ void start_wifi_scanning(){
 }
 
 void change_wifi_config(char* SECOND_SSID, char*SECOND_PASSWORD){
-	if(wifi_info.is_wifi_sta_mode){
+	//if(wifi_info.is_wifi_sta_mode){
 		stop_wifi();
 		wifi_init_sta();
-	}
+	//}
 }
 
 bool wifi_station_main(void)
@@ -546,7 +546,7 @@ bool wifi_station_main(void)
 		wifi_init_softap();
 		// #endif
 	#endif
-	return wifi_info.is_wifi_sta_mode;
+	return true;
 }
 
 #endif

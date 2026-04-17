@@ -1027,7 +1027,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
         nuos_set_scene_button_attribute(button_index);
     #else
-        
         // Added by Nuos
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
             #ifdef USE_TWO_SWITCH_MODE
@@ -1046,7 +1045,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 
                 nuos_zb_set_hardware(button_index, false);
                 if(device_info[0].color_or_fan_state){
-                    set_color_temp();
+                    set_color_temp(0);
                 }else{
                     set_level(0); 
                 }
@@ -1054,51 +1053,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             }
         #else
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                // if(button_index == TOTAL_BUTTONS-1){
-                //     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                //     selected_color_mode = 1;
-                //     #else
-                //     selected_color_mode = 0;
-                //     #endif
-                 
-                // }else{
-                //     selected_color_mode = 1;
-                // }
-                // if(last_selected_color_mode != selected_color_mode){
-                //     last_selected_color_mode = selected_color_mode;
-                //     mode_change_flag = true;  
-                // }
-                // store_color_mode_value(selected_color_mode); 
-                // #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                // if(button_index == 3){
-                //     device_info[4].device_state = !device_info[4].device_state;
-                // }
-                // #endif                       
-                // global_index = button_index; 
-                // printf("index:%d color_mode:%d\n", button_index, selected_color_mode);
-                // nuos_zb_set_hardware(button_index, true);
-                // bool send_color = true;
-                // if(mode_change_flag){
-                //     send_color = false;
-                //     set_color_temp();
-                // }                
-                // #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                //     set_color_temp();
-                //     set_level(3);                
-                // #else
-                
-                // if(button_index < 3){
-                //     set_state(4);
-                //     //set_level(4);
-                //     if(send_color){
-                //         set_color_temp();
-                //     }
-                // }else{
-                //     set_state(3);
-                //     //set_level(3);
-                // }
-
-                // #endif
 
                 if(button_index == TOTAL_BUTTONS-1){
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
@@ -1124,16 +1078,14 @@ void nuos_switch_single_click_task(uint32_t io_num) {
 
                 nuos_zb_set_hardware(button_index, true);
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    set_color_temp();
+                    set_color_temp(0);
                     set_level(3);                
                 #else
-                set_color_temp();
+                set_color_temp(0);
                 if(button_index < 3){
-                    //set_state(4);
-                    //set_level(4);
+
                 }else{
-                    //set_state(3);
-                    //set_level(3);
+                    set_state(3);
                 }
                 #endif                
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)    
@@ -1141,10 +1093,19 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 device_info[0].fan_speed = 0xff;
                 nuos_zb_set_hardware(button_index, true); 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)    
-                // if(button_index < 2) 
-                //     nuos_zb_set_hardware(0, true);  
-                // else if(button_index >=2 && button_index <4)
-                    nuos_zb_set_hardware(button_index, true);                
+                    nuos_zb_set_hardware(button_index, true);   
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+                if(button_index < 2){
+                    //change_cw_ww_color_flag = false;  
+                    nuos_zb_set_hardware(button_index, true);  
+                }
+                #ifdef USE_COLOR_CONTROL
+                else{
+                    //change_cw_ww_color_flag = false;  
+                    //nuos_zb_set_hardware(button_index-2, false); 
+                    nuos_set_hardware_brightness(gpio_touch_btn_pins[button_index]);                    
+                }  
+                #endif      
             #else
                 nuos_zb_set_hardware(button_index, true);
             #endif    
@@ -1153,6 +1114,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
         if((is_my_device_commissionned == true) && (!wifi_webserver_active_flag)){
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                 // nuos_set_zigbee_attribute(0); 
+                
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
@@ -1246,10 +1208,11 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
             nuos_set_zigbee_attribute(0);
             switch_driver_gpios_intr_enabled(true);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            
+            nuos_set_level_attribute(button_index);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-            #ifdef DALI_DIRECT_ADDRESSING
-                nuos_set_level_attribute(button_index);
-            #endif
+
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
 
         #else

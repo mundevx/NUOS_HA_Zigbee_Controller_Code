@@ -125,35 +125,52 @@ public:
     int scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses);
 
     // Receiver control
-    void enableReceiver(bool enable);                 // Enable/disable interrupt receiver
     void query(uint8_t shortAddress, uint8_t queryCommand);
     // QueueHandle_t rxFrameQueue;           // Queue for received frames (each is uint32_t)
 
     void disableRxInterrupt();
     void enableRxInterrupt();
 
+    // Bus-busy / collision statistics (readable by application)
+    struct BusStats {
+        uint32_t collisions;        // frames aborted mid-tx due to collision
+        uint32_t busyWaits;         // times we had to wait for bus idle before tx
+        uint32_t retryExhausted;    // frames dropped after all retries failed
+    };
+    // const BusStats& getBusStats() const { return busStats_; }
+    // void clearBusStats()               { busStats_ = {}; }
+
+    // Tuning knobs (set before begin() or at runtime)
+    uint8_t  txMaxRetries   = 5;      // max send attempts per frame
+    uint32_t txBackoffMinTE = 2;      // minimum back-off in TE units (~416 µs each)
+    uint32_t txBackoffMaxTE = 8;      // maximum back-off in TE units
 
 private:
-    void sendZero(void);
-    void sendOne(void);
-    bool isBusIdle();
-    void sendCommand(uint8_t command, uint8_t data);
+    bool sendZero(void);
+    bool sendOne(void);
+    bool sendZeroWithCheck();
+    bool sendOneWithCheck();
+  
+    // Returns false if a collision was detected; aborts TX immediately.
+    bool sendCommandWithRetry(uint8_t command, uint8_t data);
+    bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
+                                uint8_t command2, uint8_t data2);
+
+    bool sendCommand(uint8_t command, uint8_t data);
     void sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     bool sendSearchAddr(uint32_t addr);
     bool sendProgramShortAddr(uint8_t nodeNumber);
     void withdrawNode(uint32_t addr);
 
-    // Interrupt handler
-    static void IRAM_ATTR gpio_isr_handler(void* arg);
-    void handleRxInterrupt(uint64_t now, int level);
-    
+    // Bus-busy helpers
+    bool isBusBusy();
+    bool waitForBusFree(uint8_t maxRetries, uint32_t retryDelayMs);
+
     gpio_num_t txPin;
     gpio_num_t rxPin;
+    // BusStats   busStats_ = {};
     static const char *TAG;
 
-    // Receiver members
-    bool rxEnabled;
-    
 };
 
 #endif // __DALI_H__

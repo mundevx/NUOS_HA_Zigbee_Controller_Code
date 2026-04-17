@@ -30,7 +30,7 @@
 #define MAX_HTTP_RECV_BUFFER 			4096
 
 static const char *TAG                  = "WEBSERVER";
-extern wifi_info_handle_t wifi_info;
+//extern wifi_info_handle_t wifi_info;
 static int decode_type                  = 0;
 bool state                              = false;
 cJSON *ac_model                         = NULL;
@@ -50,11 +50,12 @@ cJSON *calibration_json                 = NULL;
 
 typedef struct {
     char json[JSON_MAX_LEN];
+    // TaskHandle_t http_task;   // task to notify when done
 } json_msg_t;
 
 QueueHandle_t json_queue;
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle);
 #endif
 uint8_t node_index, ep_index;
@@ -114,51 +115,51 @@ void parse_json(const char *json_string) {
     printf("Function: %d\n", fxnInt);
     switch(fxnInt){
         case 1:
-            cJSON *wifi_ssid = cJSON_GetObjectItem(root, "ssid");
-            cJSON *wifi_pswd = cJSON_GetObjectItem(root, "password");
+            // cJSON *wifi_ssid = cJSON_GetObjectItem(root, "ssid");
+            // cJSON *wifi_pswd = cJSON_GetObjectItem(root, "password");
            
-            if (wifi_ssid == NULL || wifi_pswd == NULL) {
-                printf("Missing JSON keys wifi_ssid && wifi_pswd\n");
-                cJSON_Delete(root);
-                return;
-            }
+            // if (wifi_ssid == NULL || wifi_pswd == NULL) {
+            //     printf("Missing JSON keys wifi_ssid && wifi_pswd\n");
+            //     cJSON_Delete(root);
+            //     return;
+            // }
           
-            printf("wifi_ssid: %s\n", wifi_ssid->valuestring);
-            printf("wifi_pswd: %s\n", wifi_pswd->valuestring);
+            // printf("wifi_ssid: %s\n", wifi_ssid->valuestring);
+            // printf("wifi_pswd: %s\n", wifi_pswd->valuestring);
 
-            memset(&wifi_info, 0, sizeof(wifi_info));
+            // memset(&wifi_info, 0, sizeof(wifi_info));
             
-            wifi_info.is_wifi_sta_mode = true;
-            strncpy(wifi_info.wifi_ssid, wifi_ssid->valuestring, strlen(wifi_ssid->valuestring));
-            strncpy(wifi_info.wifi_pass, wifi_pswd->valuestring, strlen(wifi_pswd->valuestring));
+            // wifi_info.is_wifi_sta_mode = true;
+            // strncpy(wifi_info.wifi_ssid, wifi_ssid->valuestring, strlen(wifi_ssid->valuestring));
+            // strncpy(wifi_info.wifi_pass, wifi_pswd->valuestring, strlen(wifi_pswd->valuestring));
 
-            cJSON *ip4 = cJSON_GetObjectItem(root, "ip4");
-            if (ip4 == NULL) {
-                printf("Missing JSON keys ip4\n");
-                wifi_info.ip4 = 110;
-            }else{
-                wifi_info.ip4 = (uint8_t)atoi(ip4->valuestring);
-            }  
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+            // cJSON *ip4 = cJSON_GetObjectItem(root, "ip4");
+            // if (ip4 == NULL) {
+            //     printf("Missing JSON keys ip4\n");
+            //     wifi_info.ip4 = 110;
+            // }else{
+            //     wifi_info.ip4 = (uint8_t)atoi(ip4->valuestring);
+            // }  
+            // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
-            nuos_store_wifi_info_data_to_nvs();
-            #endif
-            esp_restart();
+            // nuos_store_wifi_info_data_to_nvs();
+            // #endif
+            // esp_restart();
         break;
         case 6: 
-            cJSON *data = cJSON_GetObjectItem(root, "data");
-            if (data == NULL) {
-                printf("Missing JSON keys data\n");
-                cJSON_Delete(root);
-                return;
-            }        
-            if(data->valueint == 0) wifi_info.is_wifi_sta_mode = 1;
-            else wifi_info.is_wifi_sta_mode = 0;
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
+            // cJSON *data = cJSON_GetObjectItem(root, "data");
+            // if (data == NULL) {
+            //     printf("Missing JSON keys data\n");
+            //     cJSON_Delete(root);
+            //     return;
+            // }        
+            // if(data->valueint == 0) wifi_info.is_wifi_sta_mode = 1;
+            // else wifi_info.is_wifi_sta_mode = 0;
+            // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 
-            nuos_store_wifi_info_data_to_nvs();
-            #endif
-            esp_restart();
+            // nuos_store_wifi_info_data_to_nvs();
+            // #endif
+            // esp_restart();
         break; 
         
         case 4:  //cancel
@@ -520,7 +521,7 @@ void parse_json(const char *json_string) {
 
             
     #else
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI )
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI )
             case 10:
                 cJSON *sindex = cJSON_GetObjectItem(root, "index");
                 if (sindex == NULL) {
@@ -796,7 +797,7 @@ void parse_json(const char *json_string) {
                 nuos_store_dali_data_to_nvs(index);
                 break;
         #endif
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             case 12:  //Set Intensity of DALI Group
                 //{fxn: 12, start_addr: 0, max_addr: 15}
                 sindex = cJSON_GetObjectItem(root, "max_addr");
@@ -834,7 +835,7 @@ case 40:
 
            // {"fxn":"40","scene_ids":[1],"control_type":1}
 
-           #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+           #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             cJSON *sscnid = cJSON_GetObjectItem(root, "scene_ids");
             if (sscnid == NULL) {
                 printf("Missing JSON keys scene_ids\n");
@@ -875,7 +876,7 @@ case 40:
                 return;
             }  
             
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH )
             int index33 = sindex6->valueint;
             if(scene_group_switch_info.control_type == 2){
                 process_dali_tasks(index33, false);
@@ -887,7 +888,7 @@ case 40:
 
         case 38:
             //{"fxn":38,"input_id":0,"group_id":10,"selected_ids":[1,2,3,4]}
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             cJSON * sindex22 = cJSON_GetObjectItem(root, "input_id");
             cJSON *ids = cJSON_GetObjectItem(root, "selected_ids");
             cJSON *group = cJSON_GetObjectItem(root, "group_id");
@@ -964,15 +965,10 @@ case 40:
             printf("Array without zeros and duplicates: ");
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
-                // #ifndef DALI_DIRECT_ADDRESSING
-                // if(scene_group_switch_info.control_type == 1 ){
-                // #endif
-                   //printf("------Done-------\n");
-                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
-                   vTaskDelay(60 / portTICK_PERIOD_MS);
-                // #ifndef DALI_DIRECT_ADDRESSING    
-                // }
-                // #endif
+
+                nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
+                vTaskDelay(60 / portTICK_PERIOD_MS);
+
             }
             printf("\n");
             for (int p = scene_group_switch_info.total_ids[index22]; p < MAX_DALI_DEVICES_IN_SCENES; p++) {
@@ -985,7 +981,7 @@ case 40:
         break;
 
         case 39:
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             sindex22 = cJSON_GetObjectItem(root, "input_id");
             ids = cJSON_GetObjectItem(root, "selected_ids");
             group = cJSON_GetObjectItem(root, "group_id");
@@ -1060,12 +1056,14 @@ case 40:
             printf("Array without zeros and duplicates: ");
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
-                #ifndef DALI_DIRECT_ADDRESSING
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                #else
                 if(scene_group_switch_info.control_type == 1 ){
                 #endif
                    nuos_dali_remove_light_from_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                    vTaskDelay(60 / portTICK_PERIOD_MS);
-                #ifndef DALI_DIRECT_ADDRESSING    
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                #else  
                 }
                 #endif
             }
@@ -1079,7 +1077,7 @@ case 40:
             #endif         
         break;
         case 41:
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             sindex22 = cJSON_GetObjectItem(root, "input_id");
             ids = cJSON_GetObjectItem(root, "selected_ids");
             group = cJSON_GetObjectItem(root, "group_id");
@@ -1113,7 +1111,9 @@ case 40:
                 return;
             }
             //remove 
-            #ifndef DALI_DIRECT_ADDRESSING
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+
+            #else
             if(scene_group_switch_info.control_type == 1 ){
             
                 printf("Removed from group: %d the ids: ", scene_group_switch_info.group_id[index22]);
@@ -1169,18 +1169,20 @@ case 40:
             printf("Array without zeros and duplicates: ");
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
-                #ifndef DALI_DIRECT_ADDRESSING
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-
+                
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
                 #else
-                if(scene_group_switch_info.control_type == 1 ){
-                #endif
-                   nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
-                   vTaskDelay(50 / portTICK_PERIOD_MS);
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
-                #else  
-                }
-                #endif
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+
+                    #else
+                    if(scene_group_switch_info.control_type == 1 ){
+                    #endif
+                        nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
+                        vTaskDelay(50 / portTICK_PERIOD_MS);
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
+                    #else  
+                    }
+                    #endif
                 #endif
             }
             printf("\n");
@@ -1194,7 +1196,7 @@ case 40:
         break;
         /////////////////////////////////////////////////////////////////////
 
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         case 70:
             cJSON *smin_dim = cJSON_GetObjectItem(root, "min_dimming_offset");
             if (!smin_dim) { cJSON_Delete(root); return; }
@@ -1286,8 +1288,10 @@ case 40:
             }
         }
         break;
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         case 303:  //CCT control group id
         {
+
             // Immediate toggle / longpress command for a DALI address
             // payload: { fxn:53, dali_id: <int>, state: 0|1|2, group_id: <int> }
             cJSON *dali_id = cJSON_GetObjectItem(root, "dali_id");
@@ -1344,6 +1348,7 @@ case 40:
             }
         }
         break;
+        #endif
         case 53:
         {
             // Immediate toggle / longpress command for a DALI address
@@ -1625,7 +1630,7 @@ case 40:
 
         // }//munish
         // break;
-
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         case 202:
         {
             cJSON *devices  = cJSON_GetObjectItem(root, "devices");
@@ -1726,8 +1731,10 @@ case 40:
                                                         cct);
                         }
                     } else {
-                        ESP_LOGI(TAG, "fxn202: REMOVE device %d from scene %d", did, sid);
-                        nuos_dali_remove_device_from_scene((uint8_t)did, (uint8_t)sid);
+                        if (is_remove) {
+                            ESP_LOGI(TAG, "fxn202: REMOVE device %d from scene %d", did, sid);
+                            nuos_dali_remove_device_from_scene((uint8_t)did, (uint8_t)sid);
+                        }
                     }
 
                     vTaskDelay(pdMS_TO_TICKS(20));
@@ -1760,7 +1767,8 @@ case 40:
                 break;
             }
         }
-        break;        
+        break;  
+        #endif      
         #endif
         
         default: break;
@@ -1866,24 +1874,27 @@ char* replaceSubstring(const char* original, const char* toReplace, const char* 
 
 
 
-void json_worker_task(void *arg)
-{
-    json_msg_t msg;
 
+void json_worker_task(void *arg) {
+    json_msg_t msg;
     while (1) {
         if (xQueueReceive(json_queue, &msg, portMAX_DELAY)) {
-
             ESP_LOGI("JSON_WORKER", "Processing JSON in worker task");
+            //switch_driver_gpios_intr_enabled(false);
+            parse_json(msg.json);
+            switch_driver_gpios_intr_enabled(true);
+            //switch_driver_gpios_intr_enabled(true);
 
-            parse_json(msg.json);   // Your existing function
-
+            // // Notify the waiting HTTP task
+            // if (msg.http_task != NULL) {
+            //     xTaskNotifyGive(msg.http_task);
+            // }
         }
     }
 }
 
-// Handler to process the form data sent via POST request
 esp_err_t submit_post_handler(httpd_req_t *req) {
-    char content[MAX_HTTP_RECV_BUFFER];
+ char content[MAX_HTTP_RECV_BUFFER];
     int total_len = req->content_len;
     int received = 0;
     int ret;
@@ -1918,35 +1929,40 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
 	}
    
     ESP_LOGI("content", " : %s", content);
-    //parse_json(content);
-    
+
     json_msg_t msg;
     strncpy(msg.json, content, JSON_MAX_LEN - 1);
     msg.json[JSON_MAX_LEN - 1] = '\0';
+    // msg.http_task = xTaskGetCurrentTaskHandle();   // store the waiting task
 
     if (xQueueSend(json_queue, &msg, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE("HTTP", "Queue full, dropping request");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
     }
-
     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
+    // // Wait for worker to complete (timeout 5 seconds)
+    // if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000)) == 1) {
+    //     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
+    // } else {
+    //     ESP_LOGE("HTTP", "Worker timeout");
+    //     httpd_resp_send_500(req);
+    // }
 
     cb_requests_counts = 0;
     cb_response_counts = 0;
-    
     return ESP_OK;
 }
 
 // Modify your http_get_handler to serve the embedded HTML
 esp_err_t http_get_handler(httpd_req_t *req) {
     // Add these external declarations for the embedded HTML
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-    #ifdef DALI_DIRECT_ADDRESSING
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
     extern const char index_html_start[] asm("_binary_index_dali_direct_addr_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_direct_addr_html_end");
-    #else
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
     extern const char index_html_start[] asm("_binary_index_dali_master_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_master_html_end");
-    #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");
@@ -1964,7 +1980,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     return httpd_resp_send(req,  (const char*)index_html_start, html_size);
 }
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
     char* prepare_json(uint8_t index){
         int total_item = 0;
@@ -2130,13 +2146,13 @@ esp_err_t http_get_handler(httpd_req_t *req) {
 
                 int fxn = atoi(value_fxn);  
                 if(fxn == 0){
-                    if(wifi_info.is_wifi_sta_mode){
-                        #ifdef USE_WIFI_WEBSERVER
-                        wifi_scan();
-                        httpd_resp_send(req, jsonWiFiScanListStr, HTTPD_RESP_USE_STRLEN);
-                        return ESP_OK;
-                        #endif
-                    }
+                    //if(wifi_info.is_wifi_sta_mode){
+                        // #ifdef USE_WIFI_WEBSERVER
+                        // wifi_scan();
+                        // httpd_resp_send(req, jsonWiFiScanListStr, HTTPD_RESP_USE_STRLEN);
+                        // return ESP_OK;
+                        // #endif
+                    //}
                 }else if(fxn == 1){
                     if (httpd_query_key_value(query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
                         ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
@@ -2190,31 +2206,31 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                     response = cJSON_Print(json);
                     cJSON_Delete(json);
                 }else if(fxn == 12){  // read new dali addresses
-                        uint8_t foundAddresses[MAX_DALI_DEVICES_IN_SCENES];
-                        dali_nvs_stt[0].total_ids = get_all_dali_addresses(foundAddresses);
+                        // uint8_t foundAddresses[MAX_DALI_DEVICES_IN_SCENES];
+                        // dali_nvs_stt[0].total_ids = get_all_dali_addresses(foundAddresses);
 
-                        cJSON *json = cJSON_CreateArray();
-                        for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
-                            // Start creating a cJSON object
-                            cJSON *item_json = cJSON_CreateObject();
-                            // Add fields to the cJSON object
-                            cJSON_AddNumberToObject(item_json, "Id", foundAddresses[i]>>1);
-                            cJSON_AddNumberToObject(item_json, "state", 0);
-                            cJSON_AddNumberToObject(item_json, "toggle", 0);
-                            cJSON_AddItemToArray(json, item_json);
-                        }
+                        // cJSON *json = cJSON_CreateArray();
+                        // for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
+                        //     // Start creating a cJSON object
+                        //     cJSON *item_json = cJSON_CreateObject();
+                        //     // Add fields to the cJSON object
+                        //     cJSON_AddNumberToObject(item_json, "Id", foundAddresses[i]>>1);
+                        //     cJSON_AddNumberToObject(item_json, "state", 0);
+                        //     cJSON_AddNumberToObject(item_json, "toggle", 0);
+                        //     cJSON_AddItemToArray(json, item_json);
+                        // }
                                                 
-                        for (int p = 0; p < dali_nvs_stt[0].total_ids; p++) {
-                            dali_nvs_stt[0].device_ids[p] = foundAddresses[p]>>1;
-                        }       
+                        // for (int p = 0; p < dali_nvs_stt[0].total_ids; p++) {
+                        //     dali_nvs_stt[0].device_ids[p] = foundAddresses[p]>>1;
+                        // }       
 
-                        for (int p = dali_nvs_stt[0].total_ids; p < MAX_DALI_ADDRESSES; p++) {
-                            dali_nvs_stt[0].device_ids[p] = DALI_INVALID_ADDRESS;
-                        }  
-                        nuos_store_dali_data_to_nvs(index); 
+                        // for (int p = dali_nvs_stt[0].total_ids; p < MAX_DALI_ADDRESSES; p++) {
+                        //     dali_nvs_stt[0].device_ids[p] = DALI_INVALID_ADDRESS;
+                        // }  
+                        // nuos_store_dali_data_to_nvs(index); 
                    
-                        response = cJSON_Print(json);
-                        cJSON_Delete(json);
+                        // response = cJSON_Print(json);
+                        // cJSON_Delete(json);
 
                 }else if(fxn == 11){
                     if (httpd_query_key_value(query, "id", value_data, sizeof(value_data)) == ESP_OK) {
@@ -2253,22 +2269,22 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                         if(scene_group_switch_info.scn_ctrl_type > 1){
                         scene_group_switch_info.scn_ctrl_type = 0; 
                         }  
+                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                        if(scene_group_switch_info.control_type > 1){
+                            scene_group_switch_info.control_type = 0; 
+                        }
+                        if(scene_group_switch_info.scn_ctrl_type > 1){
+                            scene_group_switch_info.scn_ctrl_type = 0; 
+                        } 
                     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                        #ifdef DALI_DIRECT_ADDRESSING
-                            if(scene_group_switch_info.control_type > 1){
+
+                        if(scene_group_switch_info.control_type > 2){
                             scene_group_switch_info.control_type = 0; 
-                            }
-                            if(scene_group_switch_info.scn_ctrl_type > 1){
+                        }
+                        if(scene_group_switch_info.scn_ctrl_type > 2){
                             scene_group_switch_info.scn_ctrl_type = 0; 
-                            } 
-                        #else
-                            if(scene_group_switch_info.control_type > 2){
-                            scene_group_switch_info.control_type = 0; 
-                            }
-                            if(scene_group_switch_info.scn_ctrl_type > 2){
-                            scene_group_switch_info.scn_ctrl_type = 0; 
-                            } 
-                        #endif
+                        } 
+
                     #else
                         if(scene_group_switch_info.control_type > 2){
                         scene_group_switch_info.control_type = 0; 
@@ -2412,6 +2428,7 @@ esp_err_t http_get_handler(httpd_req_t *req) {
                 }                
             }
         }
+        
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
         return ESP_OK;
     }
@@ -2432,6 +2449,8 @@ esp_err_t curtain_values_get_handler(httpd_req_t *req) {
 void start_webserver() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;  // Increase the stack size
+    // config.lru_purge_enable = true;   // purge least recently used sessions
+    // config.send_wait_timeout = 2;     // seconds to wait for send completion (default is unlimited)
     httpd_handle_t server = NULL;
     httpd_uri_t index_uri = {
         .uri       = "/",
@@ -2446,7 +2465,7 @@ void start_webserver() {
         .handler   = submit_post_handler,
         .user_ctx  = NULL
     };
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         httpd_uri_t items_uri = {
             .uri       = "/items",
             .method    = HTTP_GET,
@@ -2464,7 +2483,7 @@ void start_webserver() {
     if (httpd_start(&server, &config) == ESP_OK) {
     	httpd_register_uri_handler(server, &index_uri);
 		httpd_register_uri_handler(server, &submit_uri);
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             httpd_register_uri_handler(server, &items_uri);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
             httpd_register_uri_handler(server, &items_uri);
@@ -2492,22 +2511,11 @@ void remove_duplicates(int* array, int size, int* result, int* result_size) {
 bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
         json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
-
-        xTaskCreate(
-            json_worker_task,
-            "json_worker_task",
-            8192,
-            NULL,
-            21,
-            NULL
-        );
-        bool station_mode = wifi_station_main();
-        start_webserver();
-        
-        return station_mode;
-    #else
-        return true;
+        xTaskCreate(json_worker_task, "json_worker_task", 8092, NULL, 21, NULL);
+        wifi_station_main();
+        start_webserver();  
     #endif
+    return true;
 }
 #endif
 
