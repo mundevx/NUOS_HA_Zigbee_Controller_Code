@@ -328,7 +328,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
         }
     }
 
-    extern "C" void set_color_temp(uint8_t index){
+    extern "C" void set_color_temp(uint8_t index, bool is_brightness_change){
         set_color_flag = false;
         if(is_init_done){  
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
@@ -338,7 +338,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                                                            
                 nuos_set_color_xy_attribute(4, &hsv2);
             #else  
-            //printf("set_color_temp   R:%d G:%d B:%d\n", dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]);
+
             if(selected_color_mode == 0){
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                 if(scene_group_switch_info.control_type != 0) { 
@@ -349,10 +349,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                         
                     }  
                     if(device_info[3].device_state){
-                        //printf("color device_val:%d\n", device_info[3].device_val);
-                        // dali.set_color_temperature(dali.BROADCAST_C, device_info[3].device_val);
                         dali.set_color_temperature(dali.BROADCAST_C, device_info[3].device_val);  
-                        //dali.set_broadcast_level(device_info[3].device_level);  
                     }
                 }else{
                     if(mode_change_flag){
@@ -361,10 +358,8 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                         dali.set_group_color_rgb(scene_group_switch_info.group_id[0], 0, 0, 0, device_info[3].device_level);
                         mode_change_flag = false;
                         change_cw_ww_color_flag = true;
-                        vTaskDelay(20 / portTICK_PERIOD_MS); 
-                        
+                        vTaskDelay(20 / portTICK_PERIOD_MS);
                     }  
-                    //printf("Group id for control: %d %d\n", scene_group_switch_info.group_id[0], device_info[3].device_state);
                     if(device_info[3].device_state){
                         printf("color device_val:%d level:%d\n", device_info[3].device_val, device_info[3].device_level);
                         dali.set_group_color_cct(scene_group_switch_info.group_id[0], device_info[3].device_val);
@@ -412,9 +407,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                             mode_change_flag = false;
                         }  
                     #endif    
-                    // printf("Group id for control: %d %d\n", scene_group_switch_info.group_id[0], device_info[4].device_state); 
-                    // printf("DMX data R:%d G:%d B:%d\n", dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]);      
-                    dali.set_group_color_rgb(scene_group_switch_info.group_id[0], 
+                   dali.set_group_color_rgb(scene_group_switch_info.group_id[0], 
                         dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], 
                         dmx_data[dmx_start_address+2], device_info[4].device_level);
                 }
@@ -440,7 +433,11 @@ uint8_t map_1_255_to_100_255(uint8_t in)
  
                 if(!brightness_control_flag){
                     rgb_t rgb = {dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]}; // Example RGB values
-                    hsv_t hsv2 = rgb_to_hsv(rgb);                                              
+                    hsv_t hsv2 = rgb_to_hsv(rgb);  
+                    // if(is_brightness_change){
+                    hsv2.v = device_info[4].device_val; // Store brightness level for later use in brightness control 
+                    //     hsv2.s = device_info[4].light_color_y;
+                    // }                               
                     nuos_set_color_xy_attribute(4, &hsv2);   
                 }
             }
@@ -480,7 +477,7 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
     *g = (uint8_t)((rgb565 >>  5) << 2);  // 6-bit G -> 8-bit (0-63 << 2 = 0-252)
     *b = (uint8_t)((rgb565 & 0x001F) << 3); // 5-bit B -> 8-bit (0-31 << 3 = 0-248)
 }
-
+    uint8_t dali_rx_selected_color_mode = 0; // 0 for CCT, 1 for RGB
     void interpret_frame(uint8_t b1, uint8_t b2)
     {
         static uint8_t last_dtr0 = 0;
@@ -509,14 +506,14 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
             last_color_dtr0 = last_dtr0;
             last_color_dtr1 = b2;
             //last_dtr1 = b2;
-            selected_color_mode = 0;
+            dali_rx_selected_color_mode = 0;
             return;
         }
         if(b1 == dali.SET_DTR2){
             last_color_dtr0 = last_dtr0;
             //last_color_dtr1 = last_dtr1;  
             last_color_dtr2 = b2;          
-            selected_color_mode = 1;
+            dali_rx_selected_color_mode = 1;
             return;
         }
         // ---------------------------
@@ -544,11 +541,12 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                 if(addr == scene_group_switch_info.device_ids[0][i]){
                     scene_group_switch_info.device_scene[scene][i] = scene;  
                     scene_group_switch_info.device_level[scene][i] = last_dtr0;
-                    printf("selected_color_mode:%d\n", selected_color_mode);
+                    printf("dali_rx_selected_color_mode:%d\n", dali_rx_selected_color_mode);
+
                     #ifdef ENABLE_DALI_RECEIVER
-                        scene_group_switch_info.device_color_mode[scene] = selected_color_mode;
+                        scene_group_switch_info.device_color_mode[scene] = dali_rx_selected_color_mode;
                     #endif
-                    if(selected_color_mode == 0){
+                    if(dali_rx_selected_color_mode == 0){
                         scene_group_switch_info.device_color[scene][i] = last_color_dtr0;
                         uint16_t color_temp_mirek = ((last_color_dtr1 << 8) & 0xff00) | last_color_dtr0;
                         uint16_t kelvin_cct = 1000000 / color_temp_mirek;
@@ -599,6 +597,7 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                         }
                         if(scene_group_switch_info.device_level[scene][j] > max_level)
                             max_level = scene_group_switch_info.device_level[scene][j];
+
                         if(scene_group_switch_info.device_color_mode[scene] == 0){
                             if(scene_group_switch_info.device_color[scene][j] > max_cct)
                                 max_cct = scene_group_switch_info.device_color[scene][j]; 
@@ -606,18 +605,18 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                             if(scene_group_switch_info.device_color[scene][j] > max_rgb){
                                 max_rgb = scene_group_switch_info.device_color[scene][j];
                                 printf("max_rgb updated:0x%x\n", max_rgb);
-                            }
-                               
-                        }  
-      
+                            }   
+                        }
                     }
                 }
                 #ifdef ENABLE_DALI_RECEIVER
                 if(scene_group_switch_info.device_color_mode[scene] != selected_color_mode){
+                    selected_color_mode = scene_group_switch_info.device_color_mode[scene];
                     mode_change_flag = true;
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                     store_color_mode_value(selected_color_mode);
                 }        
-                //printf("Selected Color Mode:%d\n", scene_group_switch_info.device_color_mode[scene]);        
+   
                 if(scene_group_switch_info.device_color_mode[scene] == 0){
                     device_info[0].device_state = false;
                     device_info[1].device_state = false;
@@ -665,8 +664,6 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                         set_hardware(4, false);
                         nuos_set_state_attribute(4); 
                     }else{
-                        
-
                         rgb565_to_rgb(max_rgb, 
                             &device_info[0].device_level, 
                             &device_info[1].device_level, 
@@ -675,9 +672,6 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                         printf("r:%d g:%d b:%d\n", device_info[0].device_level, 
                             device_info[1].device_level, 
                             device_info[2].device_level);
-                        device_info[0].device_level = device_info[0].device_level;
-                        device_info[1].device_level = device_info[1].device_level;
-                        device_info[2].device_level = device_info[2].device_level;
 
                         if(device_info[0].device_level == 0) device_info[0].device_state = false;
                         else device_info[0].device_state = true;
@@ -685,46 +679,21 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                         else device_info[1].device_state = true;
                         if(device_info[2].device_level == 0) device_info[2].device_state = false;
                         else device_info[2].device_state = true;
-                        if(device_info[3].device_level == 0) device_info[3].device_state = false;
-                        else device_info[3].device_state = true;
+
 
                         for(int rgb=0; rgb<3; rgb++){
                             if(device_info[rgb].device_level <= MIN_DIM_LEVEL_VALUE) {
                                 device_info[rgb].device_level = MIN_DIM_LEVEL_VALUE;
-                                device_info[rgb].device_state = false;
-                            }else{
-                                device_info[rgb].device_state = true;
                             }
                             if(device_info[rgb].device_level == 0xff){
                                 device_info[rgb].device_level = 0xfe;
                             }
                         } 
-
-                        device_info[3].device_state = false;
                         if(!device_info[4].device_state){
                             device_info[4].device_state = true;
-                            // change_state_flag = true;
                         } 
                         nuos_zb_set_hardware(4, false); 
-                        nuos_set_state_attribute(4); 
-                        // if(change_state_flag || mode_change_flag){
-                        //     change_state_flag = false;
-                        //     set_state(4);
-                        // }
-
-                        // if(!device_info[4].device_state) {
-                        //     ledc_set_duty(LEDC_MODE, pwm_channels[3], 0);            
-                        //     ledc_update_duty(LEDC_MODE, pwm_channels[3]);
-                        //     nuos_set_state_attribute(0); 
-                        //     //nuos_set_color_temp_level_attribute(0);          
-                        // } else {
-
-                        //     ledc_set_duty(LEDC_MODE, pwm_channels[3], device_info[3].device_level);            
-                        //     ledc_update_duty(LEDC_MODE, pwm_channels[3]);
-                        //     nuos_set_state_attribute(0);
-                        //     nuos_set_color_temp_level_attribute(0);
-                        //     //nuos_set_color_temperature_attribute(0);
-                        // }   
+                        nuos_set_state_attribute(4);   
                     }          
 
                 }  
@@ -843,9 +812,8 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                     if(!device_info[3].device_state){
                         device_info[4].device_state = false;
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[3], 0));
-                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));
-                        //ledc_set_                         
-                    }else{                              //if CCT state TRUE    
+                        ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                       
+                    }else{ //if CCT state TRUE    
                         device_info[4].device_state = true;  // ALL ON     
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[3], device_info[3].device_level));
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                                   
@@ -894,7 +862,8 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
                                 ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
                             } else { 
-                                dmx_data[dmx_start_address+i] = device_info[i].device_level;                              
+                                dmx_data[dmx_start_address+i] = device_info[i].device_level;   
+                                printf("LED%d ON at level %d\n", i, device_info[i].device_level);                           
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], dmx_data[dmx_start_address+i]));
                                 ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));                
                             } 
@@ -1170,7 +1139,7 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                     // printf("change_cw_ww_color_flag = TRUE\n");
                     if(nuos_set_hw_color_temperature(3)){
                         set_hardware(3, false);
-                        set_color_temp(0);
+                        set_color_temp(0, false);
                         
                     }                
                 } 
@@ -1218,12 +1187,10 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
                         device_info[4].device_level = MIN_DIM_LEVEL_VALUE;
                     }                    
                     #endif                    
-                    set_color_temp(0);
+                    set_color_temp(0, false);
                     if(xxcounts++ % 20 == 0){
                         nuos_set_level_attribute(4);
-                        // rgb_t rgb = {dmx_data[dmx_start_address] , dmx_data[dmx_start_address+1] , dmx_data[dmx_start_address+2]}; // Example RGB values
-                        // hsv_t hsv2 = rgb_to_hsv(rgb);  
-                        // nuos_set_color_xy_attribute(4, &hsv2); 
+
                     }
                 }
             } 

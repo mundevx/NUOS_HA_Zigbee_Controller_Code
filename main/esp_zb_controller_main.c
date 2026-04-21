@@ -1043,44 +1043,26 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)               
             }else if(thermostat_temp.bytes[2] == 103 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
                 device_info[0].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+                if(device_info[0].device_level == 255) device_info[0].device_level = MAX_DIM_LEVEL_VALUE;
                 printf("LEVEL:%d\n", device_info[0].device_level);
-                // 
-                device_info[0].color_or_fan_state = 0;
                 nuos_zb_set_hardware(0, false);
-                nuos_set_hardware_brightness(0);
-                //set_level(0); 
             }else if(thermostat_temp.bytes[2] == 104 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 level
                 device_info[1].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+                if(device_info[1].device_level == 255) device_info[1].device_level = MAX_DIM_LEVEL_VALUE;
                 printf("LEVEL:%d\n", device_info[1].device_level);
-                // 
-                device_info[1].color_or_fan_state = 0;
                 nuos_zb_set_hardware(1, false);
-                nuos_set_hardware_brightness(1);
-                //set_level(1); 
-
             }else if(thermostat_temp.bytes[2] == 105 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
-                device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
                 printf("COLOR:%d\n", device_info[0].device_val);
-                // 
-                device_info[0].color_or_fan_state = 1;
                 nuos_zb_set_hardware(0, false);
-                is_long_press_brightness = false;
-                change_cw_ww_color_flag = true;
-                nuos_set_hardware_brightness(1);
-                //set_color_temp(0);
+                set_color_temp(0, false);
             }else if(thermostat_temp.bytes[2] == 106 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
-                device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
                 printf("COLOR:%d\n", device_info[1].device_val);
-                // 
-                device_info[1].color_or_fan_state = 1;
                 nuos_zb_set_hardware(1, false);
-                is_long_press_brightness = false;
-                change_cw_ww_color_flag = true;
-                nuos_set_hardware_brightness(1);
-                //set_color_temp(1);
-            #endif     
-            }  
-                
+                set_color_temp(1, false);
+            #endif
+            }        
         }  else if(message->data.size == 2) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
                 uint8_t custom_data[2] = {0};

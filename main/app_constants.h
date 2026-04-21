@@ -217,7 +217,7 @@
         #define BRIGHTNESS_SET_CHECKER_COUNTS                       2//8 
         #define DIMMING_STEPS                                       1    
         #define ENABLE_PWM_DIMMING           
-        #define MIN_DIM_LEVEL_VALUE                                 1 // (0 to 255)
+        #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                 255
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_LIGHT
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_COLOR_DIMMABLE_LIGHT)
@@ -579,7 +579,7 @@
         #endif
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4      
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V3
+        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
         #define FAN_INDEX                                           1 
         #define ENABLE_PWM_DIMMING
         #define USE_RGB_LED
@@ -710,17 +710,14 @@
 
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
+
         #define DIMMING_STEPS                                           5
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                           15
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                           2
+        #define DIMMING_LAST_REACH_OFFSET                               50
 
-        #define COLOR_CHANGE_STEPS                                      500
-        #define COLOR_SET_CHECKER_COUNTS                                20
-
-        // #define MIN_CCT_VALUE                                           (int)2000
-        // #define MAX_CCT_VALUE                                           (int)6500
-   
-        #define COLOR_SET_CHECKER_COUNTS                                20 
-        #define COLOR_STEPS                                             200      
+        #define COLOR_SET_CHECKER_COUNTS                                10
+        #define COLOR_STEPS                                             100 
+        #define COLOR_LAST_REACH_OFFSET                                 500     
 
         #define USE_ADD_GROUP_SCENE_CLUSTERS
         #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
@@ -815,15 +812,15 @@
             #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 254)
             #define MAX_DIM_LEVEL_VALUE                                 254  
         #else
-            #define BRIGHTNESS_SET_CHECKER_COUNTS                       10
+            #define BRIGHTNESS_SET_CHECKER_COUNTS                       5
             #define DIMMING_STEPS                                       5
-            #define DIMMING_RGB_STEPS                                   20
+            //#define DIMMING_RGB_STEPS                                   20
 
             #define COLOR_SET_CHECKER_COUNTS                            20
             #define COLOR_STEPS                                         200
 
-            #define MIN_DIM_LEVEL_VALUE                                 20 // (0 to 254)
-            #define MAX_DIM_LEVEL_VALUE                                 254  
+            #define MIN_DIM_LEVEL_VALUE                                 5  // (0 to 254)
+            #define MAX_DIM_LEVEL_VALUE                                 254
         #endif
   
 

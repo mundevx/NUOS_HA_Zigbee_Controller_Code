@@ -156,8 +156,7 @@ bool DALI::sendCommand(uint8_t command, uint8_t data) {
         info <<= 1;
     } 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(6700); 
-    
+    task_delayMicroseconds(2700); 
     //enableRxInterrupt();
     return false;
 }

@@ -995,9 +995,8 @@ void nuos_init_rgb_led(){
     #endif
 }
 
-
 void nuos_switch_single_click_task(uint32_t io_num) {
-
+    
     button_index = nuos_get_button_press_index(io_num);
     printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
     brightness_control_flag = false;
@@ -1029,25 +1028,36 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     #else
         // Added by Nuos
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-            #ifdef USE_TWO_SWITCH_MODE
-            if(button_index == 0){
-            #else
-            if(button_index == 0 || button_index == 1){
-            #endif    
+
+            if(button_index == 0 ){
+  
                 nuos_zb_set_hardware(button_index, true);
                 #ifdef USE_CCT_TIME_SYNC
                 if(button_index == 0) set_state(button_index);
                 #else
                 set_state(button_index);
                 #endif
+            #ifndef USE_TWO_SWITCH_MODE
+            }else if(button_index == 1){  
+                if(device_info[0].device_state){
+                    nuos_zb_set_hardware(button_index, true);
+                    #ifdef USE_CCT_TIME_SYNC
+                    if(button_index == 0) set_state(button_index);
+                    #else
+                    set_state(button_index);
+                    #endif 
+                }   
+            #endif    
             }else{
                 #ifndef USE_TWO_SWITCH_MODE
-                
-                nuos_zb_set_hardware(button_index, false);
-                if(device_info[0].color_or_fan_state){
-                    set_color_temp(0);
-                }else{
-                    set_level(0); 
+                if(device_info[0].device_state){
+                    nuos_zb_set_hardware(button_index, false);
+                    
+                    if(device_info[0].color_or_fan_state){
+                        set_color_temp(0, false);
+                    }else{
+                        set_level(0); 
+                    }
                 }
                 #endif
             }
@@ -1056,32 +1066,43 @@ void nuos_switch_single_click_task(uint32_t io_num) {
 
                 if(button_index == TOTAL_BUTTONS-1){
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    selected_color_mode = 1;
+                    last_selected_color_mode = 1;
                     #else
-                    selected_color_mode = 0;
+                    last_selected_color_mode = 0;
                     #endif
                 }else{
-                    selected_color_mode = 1;
+                    last_selected_color_mode = 1;
                 }
                 if(last_selected_color_mode != selected_color_mode){
-                    last_selected_color_mode = selected_color_mode;
-                    mode_change_flag = true;  
+                    if(selected_color_mode == 0){
+                        if(!device_info[3].device_state){
+                            device_info[3].device_state = true;
+                        }
+                    }else{
+                        if(!device_info[4].device_state){
+                            device_info[4].device_state = true;
+                        }
+                    }  
+                    selected_color_mode = last_selected_color_mode;
+                    mode_change_flag = true;
+                    nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                    store_color_mode_value(selected_color_mode);   
 
                 }
-                store_color_mode_value(selected_color_mode); 
+
+                
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
                 if(button_index == 3){
                     device_info[4].device_state = !device_info[4].device_state;
                 }
                 #endif                       
-                global_index = button_index; 
-
+                global_index = button_index;
                 nuos_zb_set_hardware(button_index, true);
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    set_color_temp(0);
+                    set_color_temp(0, false);
                     set_level(3);                
                 #else
-                set_color_temp(0);
+                set_color_temp(0, false);
                 if(button_index < 3){
 
                 }else{

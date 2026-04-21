@@ -26,7 +26,7 @@
     extern volatile uint16_t total_press_in_secs;
     extern "C" void nuos_set_state_touch_leds(bool state);
     extern "C" bool nuos_check_state_touch_leds();
-    extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_);
+    // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_);
     void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
 
     #define LEDC_TIMER              		                    LEDC_TIMER_0
@@ -97,214 +97,7 @@
             }
         }
     }
-    struct DaliMessage {
-        uint8_t data[3];
-        size_t len;
-    };
-    typedef enum
-    {
-        CMD_UNKNOWN,
-        CMD_SET_DTR0,
-        CMD_SET_DTR1,
-        CMD_ENABLE_DT8,
-        CMD_SET_COLOR_TEMP,
-        CMD_COLOR_ACTIVATE,
-        CMD_STORE_SCENE,
-        CMD_RECALL_SCENE_BROADCAST
-    } dali_cmd_t;
 
-
-    #define MAX_DEVICES 64
-    #define MAX_SCENES 16
-    #define MAX_GROUPS 16
-
-    uint8_t last_dtr0 = 0;
-    uint8_t scene_table[MAX_DEVICES][MAX_SCENES];
-
-
-    void interpret_frame(uint8_t b1, uint8_t b2)
-    {
-        uint8_t addr;
-        uint8_t scene;
-
-        // ---------------------------
-        // SET_DTR0
-        // ---------------------------
-        if(b1 == 0xC3)
-        {
-            // last_dtr0 = b2;
-            // printf("SET_DTR0 = %d\n", last_dtr0);
-            return;
-        }
-
-        // ---------------------------
-        // ENABLE DEVICE TYPE
-        // ---------------------------
-        if(b1 == 0xC1 && b2 == 0x08)
-        {
-            printf("ENABLE DEVICE TYPE 8\n");
-            return;
-        }
-
-        // ---------------------------
-        // SET COLOR TEMPERATURE (DT8)
-        // ---------------------------
-        if(b2 == 0xE7)
-        {
-            addr = (b1 >> 1) & 0x3F;
-            printf("SET COLOR TEMP → Device %d\n", addr);
-            return;
-        }
-
-        // ---------------------------
-        // STORE SCENE
-        // ---------------------------
-        if(b2 >= 0x40 && b2 <= 0x4F)
-        {
-            addr = (b1 >> 1) & 0x3F;
-            scene = b2 - 0x40;
-
-            scene_table[addr][scene] = last_dtr0;
-
-            printf("STORE SCENE %d → Device %d  Level=%d\n",
-                scene, addr, last_dtr0);
-            for(int b=0; b<2; b++){
-                for(int i=0; i<scene_group_switch_info.total_ids[b]; i++){
-                    if(addr == scene_group_switch_info.device_ids[b][i]){
-                        scene_group_switch_info.device_scene[scene-1][i] = scene;  
-                        scene_group_switch_info.device_level[scene-1][i] = last_dtr0; 
-                        if(last_dtr0 == 0) scene_group_switch_info.device_state[scene-1][i]  = false;
-                        else scene_group_switch_info.device_state[scene-1][i]  = true;
-                        printf("=======DATA SAVED SUCCESSFULLY=======");
-                        nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
-                        break;
-                    }
-                }     
-            }           
-            return;
-        }
-
-        // ---------------------------
-        // BROADCAST SCENE RECALL
-        // ---------------------------
-        if(b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F)
-        {
-            scene = b2 - 0x10;
-            printf("BROADCAST RECALL SCENE %d\n", scene);
-            //scene_group_switch_info.scene_ids[0] = scene;
-
-            bool all_off[2] = {true, true};
-            uint8_t max_level[2] = {0};
-            for(int b=0; b<2; b++){
-                //printf("records:%d\n", scene_group_switch_info.total_ids[b]);
-                for(int j=0; j<scene_group_switch_info.total_ids[b]; j++){
-                    //printf("Device %d found in Records!!\n", scene_group_switch_info.device_ids[b][j]);
-                    if(scene_group_switch_info.device_scene[scene-1][j] == scene){
-                       // printf("Scene %d found in Records!!\n", scene); 
-                        if(scene_group_switch_info.device_state[scene-1][j]){
-                            all_off[b] = false;
-                        }
-                        if(scene_group_switch_info.device_level[scene-1][j] > max_level[b]){
-                            max_level[b] = scene_group_switch_info.device_level[scene-1][j];
-                        }
-                    }
-                }  
-                if(all_off[b]){
-                    device_info[b].device_state = false;
-                    //device_info[b].device_level = 0;
-                    // nuos_zb_set_hardware(b, false);
-                    process_dali_receive_tasks(b, false, 0);
-                }else{
-                    device_info[b].device_state = true;
-                    device_info[b].device_level = max_level[b];
-                    // nuos_zb_set_hardware(b, false);
-                    process_dali_receive_tasks(b, true, max_level[b]);  
-                }   
-            }         
-            return;
-        }
-        // ---------------------------
-        // COLOR ACTIVATE
-        // ---------------------------
-        if(b1 == 0xA3)
-        {
-            //printf("COLOR ACTIVATE\n");
-            last_dtr0 = b2;
-            printf("SET_DTR0 = %d\n", last_dtr0);
-            return;
-        }
-        // ---------------------------
-        // ARC POWER CONTROL (DAPC)
-        // ---------------------------
-        if(b2 <= 0xFE)
-        {
-            // Broadcast
-            if(b1 == 0xFE)
-            {
-                if(b2 == 0){
-                    printf("BROADCAST → OFF\n");
-                    device_info[0].device_state = false;
-                    ///nuos_zb_set_hardware(0, false);
-                }else{
-                    printf("BROADCAST → LEVEL %d\n", b2);
-                    device_info[0].device_state = true;
-                    device_info[0].device_level = b2;
-                    //nuos_zb_set_hardware(0, false);                    
-                }
-                return;
-            }
-            // Group command
-            if(b1 & 0x80)
-            {
-                uint8_t group = (b1 >> 1) & 0x0F;
-                if(b2 == 0)
-                    printf("GROUP %d → OFF\n", group);
-                else
-                    printf("GROUP %d → LEVEL %d\n", group, b2);
-
-                return;
-            }
-            // Short address command
-            addr = (b1 >> 1) & 0x3F;
-            if(b2 == 0){
-                printf("DEVICE %d → OFF\n", addr);
-            }else{
-                printf("DEVICE %d → LEVEL %d\n", addr, b2);
-            }
-            return;
-        }
-        // ---------------------------
-        // UNKNOWN
-        // ---------------------------
-        printf("UNKNOWN FRAME: %02X %02X\n", b1, b2);
-    }
-
-    void dali_enable_query_mode() {
-        dali.enable_query_mode();
-    }
-
-    void dali_disable_query_mode() {
-        dali.disable_query_mode();
-    }
-
-    static void receiveDaliFrame(void *arg) {
-        DaliMessage msg;
-        while (1) {
-            if (rxFrameQueue != nullptr) {
-                if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {  
-                    // When sending a query command (expecting 8-bit response):
-                    // if(msg.data[1] == 0xA0){
-                    //     dali.enable_query_mode();
-                    // }
-                    #ifdef DALI_DIRECT_ADDRESSING 
-                    interpret_frame(msg.data[0], msg.data[1]);
-                    #endif
-                }
-            }else{
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
-        }
-    }
 
     extern "C" void nuos_zb_init_hardware(){
         // Prepare and then apply the LEDC PWM timer configuration
@@ -345,22 +138,7 @@
     }
    
     void init_dali_hw() {
-
-        #ifdef DALI_DIRECT_ADDRESSING
-        if(wifi_webserver_active_flag == 0){
-        #ifdef IS_USE_DALI_HARDWARE
-            rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
-            if (rxFrameQueue == nullptr) {
-                
-            }   
-                 
-            dali.begin_rx(&isr_service_installed, rxFrameQueue);  
-        #endif
-            if(wifi_webserver_active_flag == 0){
-                xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
-            }
-        }
-        #endif            
+          
         is_init_done = true;  
     }
 
@@ -462,7 +240,7 @@
         } else if(scene_group_switch_info.control_type == 1) { //group control
             if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
             if(!device_info[index].device_state) {
-                printf("DALI Group OFF :%d , btn_id:%d\n", index, scene_group_switch_info.scene_ids[index]);
+                // printf("DALI Group OFF :%d , btn_id:%d\n", index, scene_group_switch_info.scene_ids[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[index]);
@@ -471,7 +249,7 @@
                 #endif
                 dali.set_group_off(scene_group_switch_info.scene_ids[index]);
             } else {
-                printf("DALI Group ON :%d , btn_id:%d\n", index, scene_group_switch_info.scene_ids[index]);
+                // printf("DALI Group ON :%d , btn_id:%d\n", index, scene_group_switch_info.scene_ids[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[index]);
@@ -512,37 +290,27 @@
     }
 
 
-    extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_){
-        send_command_flag = true;
-        button_pressed_index = index;
+    // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_){
+    //     send_command_flag = true;
+    //     button_pressed_index = index;
 
-        if(!_state_) {
-            // printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
-            #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
-                ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-            #else
-                gpio_set_level(gpio_touch_led_pins[index], 0);
-            #endif
-            #ifdef DALI_DIRECT_ADDRESSING 
-                nuso_set_state_attribute_on_dali_rx(index, false);
-            #endif
-            // dali.set_group_off(scene_group_switch_info.group_id[index]);
-        } else {
-            //printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
-            #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                ledc_set_duty(LEDC_MODE, pwm_channels[index], _level_);            
-                ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-            #else
-                gpio_set_level(gpio_touch_led_pins[index], 1);
-            #endif
-            #ifdef DALI_DIRECT_ADDRESSING 
-                nuos_set_level_attribute_on_dali_rx(index, _level_);
-            #endif
-            // nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, _level_);
-        }                    
-        nuos_store_data_to_nvs(index);   
-    }
+    //     if(!_state_) {
+    //         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+    //             ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
+    //             ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+    //         #else
+    //             gpio_set_level(gpio_touch_led_pins[index], 0);
+    //         #endif
+    //     } else {
+    //         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+    //             ledc_set_duty(LEDC_MODE, pwm_channels[index], _level_);            
+    //             ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+    //         #else
+    //             gpio_set_level(gpio_touch_led_pins[index], 1);
+    //         #endif
+    //     }                    
+    //     nuos_store_data_to_nvs(index);   
+    // }
 
     void set_all_leds_to_original_state(){
         if(is_init_done){

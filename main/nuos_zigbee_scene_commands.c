@@ -965,12 +965,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
 
     }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT) {
         uint8_t val = *(uint8_t *)value;
-        //if(index_1 == 0){
-            printf("====SCENE val:%d \n", val);    
-        //}else{
-        //    device_info[0].ac_temperature = ac_temp_values[device_info[0].device_level];
-        //    printf("====SCENE level:%d,   ac_temp:%d \n", device_info[0].device_level, device_info[0].ac_temperature);              
-        //}
+        printf("====SCENE val:%d \n", val);    
     }else if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         // printf("index_1:%d My device_state:%d \n", index_1, device_info[index_1].device_state);
@@ -985,7 +980,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             
             is_long_press_brightness = false;
             nuos_set_hardware_brightness_2(1); 
-            set_color_temp(0);
+            set_color_temp(0, false);
             set_level(0);               
         }
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
@@ -1014,7 +1009,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                         device_info[3].device_state = true;
                         nuos_zb_set_hardware(3, false);
                         //set_state(3); 
-                        set_color_temp(0);
+                        set_color_temp(0, false);
                         set_level(3);
                     }                      
                 }else if(colorControlExtensionField->raw[0] == 1){
@@ -1075,7 +1070,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                         store_color_mode_value(selected_color_mode);
                         nuos_zb_set_hardware(4, false); 
                         //set_state(4);
-                        set_color_temp(0);
+                        set_color_temp(0, false);
                         set_level(4);                        
                     }            
                 }

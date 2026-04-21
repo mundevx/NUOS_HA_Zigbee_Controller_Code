@@ -57,9 +57,6 @@
 
         uint16_t device_val;
 
-        // //RGB
-        // bool rgbw_state[4]; 
-        // uint8_t rgbw[4];
         #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         #else
         bool color_or_fan_state;
@@ -193,9 +190,15 @@
         uint8_t scn_ctrl_type;
         uint8_t total_ids[MAX_TOUCH_BTNS];
         uint16_t device_ids[MAX_TOUCH_BTNS][MAX_DALI_DEVICES_IN_SCENES];  //==>20, you can increase number of dali_ids upto 64
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+        bool device_state[2][MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        uint8_t device_level[2][MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        uint16_t device_color[2][MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        #else
         bool device_state[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
         uint8_t device_level[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
         uint16_t device_color[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
+        #endif
         uint8_t device_scene[MAX_DALI_SCENES][MAX_DALI_DEVICES_IN_SCENES];
         #ifdef ENABLE_DALI_RECEIVER
             uint8_t device_color_mode[MAX_DALI_SCENES];
@@ -1171,11 +1174,14 @@
                 #endif
             #endif
 
-
-            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4};
-            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
+            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};  
+            #ifdef USE_COLOR_CONTROL 
+            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_4}; 
+            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4}; 
+            #else
+            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4}; 
             const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
-        
+            #endif
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 
             #ifdef USE_HOME_ASSISTANT
@@ -1530,7 +1536,7 @@ extern "C" {
     void switch_driver_gpios_intr_enabled(bool enabled);
     void set_state(uint8_t index);
     void set_level(uint8_t index);
-    void set_color_temp(uint8_t index);
+    void set_color_temp(uint8_t index, bool is_color_change);
     void set_color_temp_args(uint16_t color);
     esp_err_t nuos_set_state_attribute(uint8_t index);
     void nuos_set_state_command(uint8_t dpid, uint8_t state);
@@ -1546,7 +1552,7 @@ extern "C" {
     extern bool nuos_set_hardware_brightness(uint32_t pin);
     extern void nuos_init_hardware_dimming_up_down(uint32_t pin);
     extern void init_dali_hw();
-    
+    extern void set_color_temp(uint8_t index, bool is_color_change);
     extern void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_remove_light_from_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_toggle_group(uint8_t group_id, uint8_t index, bool toggle_state, uint8_t brightness);

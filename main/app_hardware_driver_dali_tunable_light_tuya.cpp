@@ -216,8 +216,8 @@
                     #endif
                    
                 }else{
-                    printf("gid0:%d\n", scene_group_switch_info.scene_ids[index]);
-                    dali.set_group_off(scene_group_switch_info.scene_ids[index]);
+                    printf("gid0:%d\n", scene_group_switch_info.group_id[index]);
+                    dali.set_group_off(scene_group_switch_info.group_id[index]);
                 }
             
             } else {
@@ -236,8 +236,8 @@
                     dali.set_broadcast_level(map_1_255_to_100_255(device_info[index].device_level)); 
                     #endif 
                 }else{
-                    printf("gid1:%d\n", scene_group_switch_info.scene_ids[index]);
-                    nuos_dali_set_group_brightness(scene_group_switch_info.scene_ids[index], index, device_info[index].device_level);
+                    printf("gid1:%d\n", scene_group_switch_info.group_id[index]);
+                    nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                 }  
             }
             //esp_zb_lock_release();
@@ -256,13 +256,13 @@
                 dali.set_broadcast_level(map_1_255_to_100_255(device_info[index].device_level));
                 #endif 
             }else{  
-                nuos_dali_set_group_brightness(scene_group_switch_info.scene_ids[index], index, device_info[index].device_level);
+                nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
             }
             //esp_zb_lock_release();
             nuos_set_color_temp_level_attribute(0); 
     }
 
-    extern "C" void set_color_temp(uint8_t index){
+    extern "C" void set_color_temp(uint8_t index, bool status){
          //esp_zb_lock_acquire(portMAX_DELAY);
         if(scene_group_switch_info.control_type != 0) { 
             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
@@ -274,7 +274,7 @@
             dali.set_color_temperature(dali.BROADCAST_C, device_info[index].device_val); 
             #endif 
         }else{
-            dali.set_group_color_cct(scene_group_switch_info.scene_ids[index], device_info[index].device_val);  
+            dali.set_group_color_cct(scene_group_switch_info.group_id[index], device_info[index].device_val);  
         }
         nuos_set_color_temperature_attribute(index);     
     }
@@ -491,7 +491,7 @@
     void set_hardware_for_dali_rx(uint8_t index, bool device_state, uint8_t device_level){
         if(index == 0){
             if(!device_state) {
-                printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
+                printf("DALI ID:%d OFF\n", scene_group_switch_info.group_id[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     #ifndef USE_TWO_SWITCH_MODE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
@@ -515,7 +515,7 @@
                 #endif    
                 nuso_set_state_attribute_on_dali_rx(index, device_state);        
             } else {
-                printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
+                printf("DALI ID:%d ON\n", scene_group_switch_info.group_id[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     #ifndef USE_TWO_SWITCH_MODE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], device_level);            
@@ -586,7 +586,7 @@
         if(index == 0){
             if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
             if(!device_info[index].device_state) {
-                printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
+                printf("DALI ID:%d OFF\n", scene_group_switch_info.group_id[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     #ifndef USE_TWO_SWITCH_MODE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
@@ -882,7 +882,7 @@
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
 
                         if(scene_group_switch_info.control_type == 0) { 
-                            nuos_dali_set_group_brightness(scene_group_switch_info.scene_ids[index], index, device_info[index].device_level);
+                            nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                         }else{
                             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                             dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
@@ -909,7 +909,7 @@
                         color_backup = device_info[0].device_val;
 
                         if(scene_group_switch_info.control_type == 0) { 
-                            dali.set_group_color_cct(scene_group_switch_info.scene_ids[0], device_info[0].device_val);
+                            dali.set_group_color_cct(scene_group_switch_info.group_id[0], device_info[0].device_val);
                         }else{
                             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                             dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
@@ -1641,16 +1641,16 @@
     extern "C" void init_dali_hw(){
        
         dali.begin(&isr_service_installed);
-        // if(wifi_webserver_active_flag == 0){
-        //     rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
-        //     if (rxFrameQueue == nullptr) {
-        //         return;
-        //     } 
-        //     dali.begin_rx(&isr_service_installed, rxFrameQueue);
-        //     xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
-        // }else{
+        if(wifi_webserver_active_flag == 0){
+            rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
+            if (rxFrameQueue == nullptr) {
+                return;
+            } 
+            dali.begin_rx(&isr_service_installed, rxFrameQueue);
+            xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
+        }else{
             
-        // }
+        }
             
     }
 #endif

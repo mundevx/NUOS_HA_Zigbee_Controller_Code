@@ -1056,16 +1056,16 @@ case 40:
             printf("Array without zeros and duplicates: ");
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
-                #else
-                if(scene_group_switch_info.control_type == 1 ){
-                #endif
+                // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                // #else
+                // if(scene_group_switch_info.control_type == 0){
+                // #endif
                    nuos_dali_remove_light_from_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                    vTaskDelay(60 / portTICK_PERIOD_MS);
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
-                #else  
-                }
-                #endif
+                // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                // #else  
+                // }
+                // #endif
             }
             printf("\n");
             for (int p = scene_group_switch_info.total_ids[index22]; p < MAX_DALI_DEVICES_IN_SCENES; p++) {
@@ -1954,31 +1954,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// Modify your http_get_handler to serve the embedded HTML
-esp_err_t http_get_handler(httpd_req_t *req) {
-    // Add these external declarations for the embedded HTML
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-    extern const char index_html_start[] asm("_binary_index_dali_direct_addr_html_start");
-    extern const char index_html_end[]   asm("_binary_index_dali_direct_addr_html_end");
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-    extern const char index_html_start[] asm("_binary_index_dali_master_html_start");
-    extern const char index_html_end[]   asm("_binary_index_dali_master_html_end");
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-    extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
-    extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-    extern const char index_html_start[] asm("_binary_index_curtain_html_start");
-    extern const char index_html_end[]   asm("_binary_index_curtain_html_end");    
-    #endif
 
-    // Calculate HTML size from embedded binary
-    size_t html_size = index_html_end - index_html_start;
-    
-    // Set proper UTF-8 headers
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
-    return httpd_resp_send(req,  (const char*)index_html_start, html_size);
-}
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
@@ -2446,6 +2422,33 @@ esp_err_t curtain_values_get_handler(httpd_req_t *req) {
     return httpd_resp_send(req, json_response, strlen(json_response));
 }
 #endif
+
+// Modify your http_get_handler to serve the embedded HTML
+esp_err_t http_get_handler(httpd_req_t *req) {
+    // Add these external declarations for the embedded HTML
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+    extern const char index_html_start[] asm("_binary_index_dali_direct_addr_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_direct_addr_html_end");
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    extern const char index_html_start[] asm("_binary_index_dali_master_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_master_html_end");
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+    extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+    extern const char index_html_start[] asm("_binary_index_curtain_html_start");
+    extern const char index_html_end[]   asm("_binary_index_curtain_html_end");    
+    #endif
+
+    // Calculate HTML size from embedded binary
+    size_t html_size = index_html_end - index_html_start;
+    
+    // Set proper UTF-8 headers
+    httpd_resp_set_type(req, "text/html; charset=utf-8");
+    httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
+    return httpd_resp_send(req,  (const char*)index_html_start, html_size);
+}
+
 void start_webserver() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;  // Increase the stack size
