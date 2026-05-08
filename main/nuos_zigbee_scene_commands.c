@@ -615,10 +615,14 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
             if(selected_color_mode == 0)  brightness_val = device_info[3].device_level;
 
              printf("BRIGHTNESS_VAL:%d\n", brightness_val);
+             uint8_t level[3] = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
+            if(!device_info[0].device_state) level[0] = 0;
+            if(!device_info[1].device_state) level[1] = 0;
+            if(!device_info[2].device_state) level[2] = 0;
 
             nuos_zb_scenes_add_scene_color_request(message->group_id, message->scene_id, 0, ENDPOINTS_LIST[index], esp_zb_get_short_address(), 
                                             device_info[4].device_state, brightness_val, 
-                                            device_info[0].device_level, device_info[1].device_level, device_info[2].device_level, 
+                                            level[0], level[1], level[2], 
                                             selected_color_mode, device_info[3].device_val);
             #endif
 
@@ -1002,16 +1006,16 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                         device_info[3].device_val = val;//map_1000(val, 0, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
                         device_info[3].device_level = colorControlExtensionField->fields.bright;
                     //}
-                    for(int rgb=0; rgb<3; rgb++){
-                        device_info[rgb].device_state = false;
-                    } 
-                    if(device_info[4].device_state){
+                    // for(int rgb=0; rgb<3; rgb++){
+                    //     device_info[rgb].device_state = false;
+                    // } 
+                    //if(device_info[4].device_state){
                         device_info[3].device_state = true;
                         nuos_zb_set_hardware(3, false);
                         //set_state(3); 
                         set_color_temp(0, false);
                         set_level(3);
-                    }                      
+                    //}                      
                 }else if(colorControlExtensionField->raw[0] == 1){
                     if(selected_color_mode != 1){
                         mode_change_flag = true;
@@ -1032,7 +1036,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                     printf("BRIGHTNESS:%d\n", device_info[4].device_level);
 
                     rgb_t rgb = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level}; // Example RGB values
-                    hsv_t hsv2 = rgb_to_hsv(rgb);
+                    //hsv_t hsv2 = rgb_to_hsv(rgb);
 
                     device_info[0].device_level = rgb.r;
                     device_info[1].device_level = rgb.g;
@@ -1044,15 +1048,15 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                     else device_info[1].device_state = true;
                     if(device_info[2].device_level == 0) device_info[2].device_state = false;
                     else device_info[2].device_state = true;
-                    if(device_info[3].device_level == 0) device_info[3].device_state = false;
-                    else device_info[3].device_state = true;
+                    // if(device_info[3].device_level == 0) device_info[3].device_state = false;
+                    // else device_info[3].device_state = true;
 
                     for(int rgb=0; rgb<3; rgb++){
                         if(device_info[rgb].device_level <= MIN_DIM_LEVEL_VALUE) {
                             device_info[rgb].device_level = MIN_DIM_LEVEL_VALUE;
-                            device_info[rgb].device_state = false;
+                            //device_info[rgb].device_state = false;
                         }else{
-                            device_info[rgb].device_state = true;
+                            //device_info[rgb].device_state = true;
                         }
                         if(device_info[rgb].device_level == 0xff){
                             device_info[rgb].device_level = 0xfe;
@@ -1063,16 +1067,16 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                     uint8_t index = 4;
                     device_info[3].device_state = true;
                     #else
-                    uint8_t index = 4;
-                    device_info[3].device_state = false;
+                    //uint8_t index = 4;
+                    //device_info[3].device_state = false;
                     #endif
-                    if(device_info[index].device_state){
+                    //if(device_info[index].device_state){
                         store_color_mode_value(selected_color_mode);
                         nuos_zb_set_hardware(4, false); 
                         //set_state(4);
                         set_color_temp(0, false);
                         set_level(4);                        
-                    }            
+                    //}            
                 }
             }
         #endif

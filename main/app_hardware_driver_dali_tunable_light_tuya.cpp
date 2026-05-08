@@ -54,7 +54,7 @@
 
     #define MAX_CCT_SCENES_VALUES    6
 
-    uint16_t cct_values[MAX_CCT_SCENES_VALUES] = {0, MIN_CCT_VALUE, MIN_CCT_VALUE_1, MIN_CCT_VALUE_2, MIN_CCT_VALUE_3, MAX_CCT_VALUE};
+    uint16_t cct_values[MAX_CCT_SCENES_VALUES] = {MIN_CCT_VALUE, MIN_CCT_VALUE_1, MIN_CCT_VALUE_2, MIN_CCT_VALUE_3, MIN_CCT_VALUE_4, MAX_CCT_VALUE};
 
     #define MAX_DIMMING_VALUES      15
 
@@ -397,7 +397,7 @@
                     }
                     device_info[0].device_val = cct_values[device_info[0].fan_speed];
                 }else{
-                    if(device_info[0].fan_speed == 1){
+                    if(device_info[0].fan_speed == 0){
                         gpio_set_level(gpio_touch_led_pins[3], 0);
                         gpio_set_level(gpio_touch_led_pins[2], 1);
                     }else if(device_info[0].fan_speed == MAX_CCT_SCENES_VALUES-1){
@@ -445,8 +445,9 @@
                         gpio_set_level(gpio_touch_led_pins[2], 0);
                     } 
                     device_info[0].device_level = dim_values[device_info[0].ac_temperature];
-                    ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[0].device_level);            
-                    ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+                    printf("Increment level:%d\n", device_info[0].device_level);
+                    ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[0]);
                 }else if(index == 3) {
                     if(device_info[0].ac_temperature > 2){
                         gpio_set_level(gpio_touch_led_pins[3], 1);
@@ -458,8 +459,10 @@
                         gpio_set_level(gpio_touch_led_pins[2], 1);
                     }
                     device_info[0].device_level = dim_values[device_info[0].ac_temperature];
-                    ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[0].device_level);            
-                    ledc_update_duty(LEDC_MODE, pwm_channels[index]);                
+                    printf("Decrement level:%d\n", device_info[0].device_level);
+                    ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[0]); 
+
                 }else{
                     printf("ac_temperature:%d\n", device_info[0].ac_temperature);
                     if(device_info[0].ac_temperature == 1){
@@ -472,6 +475,9 @@
                         gpio_set_level(gpio_touch_led_pins[3], 1);
                         gpio_set_level(gpio_touch_led_pins[2], 1);
                     }
+                    printf("No Change level:%d\n", device_info[0].device_level);
+                    ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level);            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[0]);
                 }
                 nuos_store_data_to_nvs(0);
             }
@@ -767,19 +773,25 @@
     }
 
     int find_closest_index(uint16_t value) {
-        for (int i = 1; i < MAX_CCT_SCENES_VALUES; i++) {
-            if (value < cct_values[i]) {
-                return i - 1; // Return previous index as the closest lower bound
+        for (int i = 0; i < MAX_CCT_SCENES_VALUES-1; i++) {
+            
+            if (value <= cct_values[i]) {
+                printf("closest index 0:%d\n", i);
+                return i; // Return previous index as the closest lower bound
             }
         }
+        printf("closest index 3:%d\n", MAX_CCT_SCENES_VALUES-1);
         return MAX_CCT_SCENES_VALUES - 1; // If greater than all, return last index
     }
+
     int find_closest_index_2(uint16_t value) {
         for (int i = 1; i < MAX_DIMMING_VALUES; i++) {
             if (value < dim_values[i]) {
+                printf("closest index:%d\n", i-1);
                 return i - 1; // Return previous index as the closest lower bound
             }
         }
+        printf("closest index 2:%d\n", MAX_DIMMING_VALUES-1);
         return MAX_DIMMING_VALUES - 1; // If greater than all, return last index
     }
     void convert_colors_to_index(bool is_long_press){
@@ -1007,14 +1019,12 @@
             printf("color_state:%d \n", device_info[0].color_or_fan_state);
             if(device_info[0].color_or_fan_state){
                 gpio_set_level(gpio_touch_led_pins[1], 1);
-                //find_closest_index(device_info[0].device_val);
                 device_info[0].fan_speed = find_closest_index(device_info[0].device_val);
                 set_color_temp_leds(0);
             }else{
-                // gpio_set_level(gpio_touch_led_pins[1], 0);
-                // //find_closest_index_2(device_info[0].device_level);
-                // device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
-                // set_dimming_control_leds(0);
+                gpio_set_level(gpio_touch_led_pins[1], 0);
+                device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
+                set_dimming_control_leds(0);
             }
         }
         #if 0
@@ -1479,10 +1489,10 @@
                         if(scene_group_switch_info.device_state[scene][j]){
                             all_off = false;
                         }
-                        if(scene_group_switch_info.device_level[scene][j] > max_level)
+                        //if(scene_group_switch_info.device_level[scene][j] > max_level)
                             max_level = scene_group_switch_info.device_level[scene][j];
 
-                        if(scene_group_switch_info.device_color[scene][j] > max_cct)
+                        //if(scene_group_switch_info.device_color[scene][j] > max_cct)
                             max_cct = scene_group_switch_info.device_color[scene][j];        
                     }
                 }  
@@ -1490,16 +1500,16 @@
                     device_info[0].device_state = false;
                     //device_info[0].device_level = 0;
                     set_hardware(0, false);
+                    nuos_set_state_attribute(0);
                 }else{
                     device_info[0].device_state = true;
                     device_info[0].device_level = max_level;
-                    device_info[0].device_val = max_cct;  //2000 to 6500
-                    //printf("max_level:%d max_cct:%d\n", max_level, max_cct);
+                    device_info[0].device_val = max_cct;
+                    printf("max_level:%d max_cct:%d\n", max_level, max_cct);
                     #ifndef USE_TWO_SWITCH_MODE
-                    device_info[0].fan_speed = find_closest_index(device_info[0].device_val);
+                    device_info[0].fan_speed = find_closest_index(max_cct);
                     device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
                     #endif
-                    // set_hardware(0, false);
 
                     if(!device_info[0].device_state) {
                         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE

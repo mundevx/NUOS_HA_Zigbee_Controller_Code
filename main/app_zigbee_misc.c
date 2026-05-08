@@ -1030,7 +1030,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 
             if(button_index == 0 ){
-  
                 nuos_zb_set_hardware(button_index, true);
                 #ifdef USE_CCT_TIME_SYNC
                 if(button_index == 0) set_state(button_index);
@@ -1104,7 +1103,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #else
                 set_color_temp(0, false);
                 if(button_index < 3){
-
+                    set_state(4);
                 }else{
                     set_state(3);
                 }
@@ -1139,7 +1138,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                // nuos_set_zigbee_attribute(0); 
+                //nuos_set_zigbee_attribute(0); 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX) 
                 nuos_set_zigbee_attribute(0);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)   

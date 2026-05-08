@@ -1161,8 +1161,8 @@
                     #ifdef USE_COLOR_CONTROL 
                         const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = {1, 2};
                         const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {0x010C, 0x010C};
-                        //Tuya whtkfqqt
-                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
+                        //_TZE204_ Tuya whtkfqqt
+                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
                         const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};                        
                     #else
                         //lbdxarah

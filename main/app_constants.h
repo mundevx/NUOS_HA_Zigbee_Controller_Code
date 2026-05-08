@@ -38,6 +38,7 @@
     #define COMMISSIONING_TIMEOUT                                   600 //60 seconds
 
     #define MAX_CCT_VALUE                                           6500
+    #define MIN_CCT_VALUE_4                                         5500
     #define MIN_CCT_VALUE_3                                         5000
     #define MIN_CCT_VALUE_2                                         4000  
     #define MIN_CCT_VALUE_1                                         3000
@@ -632,6 +633,8 @@
             #define TOTAL_LEDS                                          4
         #endif
 
+        #define USE_C3_ADAPTER_UART_HW
+        
         #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
         #define USE_RGB_LED
 
@@ -691,7 +694,7 @@
         #endif   
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
-        //#define USE_COLOR_CONTROL
+        #define USE_COLOR_CONTROL
 
         #define TOTAL_ENDPOINTS                                         2
         #ifdef USE_COLOR_CONTROL 

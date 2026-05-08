@@ -139,13 +139,8 @@ bool DALI::isBusBusy() {
 //     return false;
 // }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#define MAX_RETRIES 2
+#define MAX_RETRIES         2
 bool DALI::sendCommand(uint8_t command, uint8_t data) {
-    // Disable RX interrupt to avoid processing our own edges
-    //disableRxInterrupt();
-    // if (!isBusBusy()) {
-    //     return true;
-    // }
     uint16_t info = (uint16_t)((command << 8) | data);
     sendOne();   // Start bit
     for (uint8_t i = 0; i < 16; i++) {
@@ -156,14 +151,12 @@ bool DALI::sendCommand(uint8_t command, uint8_t data) {
         info <<= 1;
     } 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(2700); 
-    //enableRxInterrupt();
+    task_delayMicroseconds(3700);
     return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
 void DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2) {
-    //task_delay(5);
 
     uint16_t cd1 = (uint16_t)((command1 << 8) | data1);
     uint16_t cd2 = (uint16_t)((command2 << 8) | data2);
@@ -228,10 +221,10 @@ int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
     int ret = 0;
 
     // Reset modules
-    sendCommand(COMMAND_BROADCAST, RESET);
-    task_delay(10);
-    sendCommand(COMMAND_BROADCAST, RESET);
-    task_delay(300);
+    // sendCommand(COMMAND_BROADCAST, RESET);
+    // task_delay(10);
+    // sendCommand(COMMAND_BROADCAST, RESET);
+    // task_delay(300);
    
     // Terminate any nodes in configuration
     sendCommand(TERMINATE, 0);
@@ -244,10 +237,10 @@ int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
     task_delay(200);
    
     // Randomize node addresses
-    sendCommand(RANDOMISE, 0);
-    task_delay(10);
-    sendCommand(RANDOMISE, 0);
-    task_delay(200);
+    // sendCommand(RANDOMISE, 0);
+    // task_delay(10);
+    // sendCommand(RANDOMISE, 0);
+    // task_delay(200);
    
     while (1) {
         searchLower = 0;

@@ -32,6 +32,7 @@
 #include "app_zigbee_clusters.h"
 #include "esp_netif.h"
 #include "esp_event.h"
+#include "zigbee_2_uart.h"
 #ifdef USE_OTA
 #include "esp_ota_ops.h"
 #if CONFIG_ZB_DELTA_OTA
@@ -65,10 +66,6 @@
     #define OTA_UPGRADE_QUERY_INTERVAL (1 * 10) // 1 minutes
 
 #endif
-
-// #if defined ZB_ED_ROLE
-//     #error Define ZB_COORDINATOR_ROLE in idf.py menuconfig to compile light switch source code.
-// #endif
 
 static const char *TAG = "ZB_MAIN_FILE";
 
@@ -213,6 +210,11 @@ static esp_err_t deferred_driver_init(void)
         init_color_temp_timer(); 
     #endif
     init_nvs_for_zb_devices();
+
+    #ifdef USE_C3_ADAPTER_UART_HW
+    uart_init();
+    send_serial("{\"fxn\":12");
+    #endif
     //don't uncomment below line,keep it commented!!
     // for(int i=0; i<15; i++) {
     // 	esp_err_t status = esp_zb_zcl_scenes_table_clear_by_index(i);
@@ -1561,6 +1563,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             break;
         #endif 
         default:
+            printf("Unhandled callback ID: %d\n", callback_id);
             //Added by Nuos 
             nuos_zigbee_action_handler(callback_id, message);
             if (response_pending) {

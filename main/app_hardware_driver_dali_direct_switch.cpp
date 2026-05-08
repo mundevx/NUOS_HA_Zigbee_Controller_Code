@@ -262,12 +262,12 @@
             {
                 if(b2 == 0){
                     printf("BROADCAST → OFF\n");
-                    device_info[0].device_state = false;
+                    //device_info[0].device_state = false;
                     //nuos_zb_set_hardware(0, false);
                 }else{
                     printf("BROADCAST → LEVEL %d\n", b2);
-                    device_info[0].device_state = true;
-                    device_info[0].device_level = b2;
+                    // device_info[0].device_state = true;
+                    // device_info[0].device_level = b2;
                     //nuos_zb_set_hardware(0, false);                    
                 }
                 return;
@@ -666,7 +666,7 @@
                     device_info[index-2].device_val = MIN_CCT_VALUE;
                     device_info[index-2].level_up = 1;
                 }
-     
+                printf("==============>index:%d    color cct:%d\n", index, device_info[index-2].device_val);
                 if(device_info[index-2].device_state){
                     if(device_info[index-2].level_up == 1){
                         if(device_info[index-2].device_val + COLOR_STEPS <= (MAX_CCT_VALUE)){
@@ -682,8 +682,8 @@
                         } 
                     }
                     printf("CCT: %d\n", device_info[index-2].device_val);
-                    ledc_set_duty(LEDC_MODE, pwm_channels[index+2], map_1000(device_info[index-2].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MAX_DIM_LEVEL_VALUE, MIN_DIM_LEVEL_VALUE));            
-                    ledc_update_duty(LEDC_MODE, pwm_channels[index+2]);
+                    ledc_set_duty(LEDC_MODE, pwm_channels[index], map_1000(device_info[index-2].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MAX_DIM_LEVEL_VALUE, MIN_DIM_LEVEL_VALUE));            
+                    ledc_update_duty(LEDC_MODE, pwm_channels[index]);
                     nuos_set_color_temperature_attribute(index-2);
                     nuos_dali_set_group_color_temperature(scene_group_switch_info.group_id[index-2], index-2, device_info[index-2].device_val);
                     
@@ -869,9 +869,9 @@
             return;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 8, NULL);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 9, NULL);
         start_dali_led_commissioning_task_flag = true;
-        //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
+
         if (recordsSemaphore != NULL) {
             // Wait for the semaphore to be given by thaddre records task
             xSemaphoreTake(recordsSemaphore, portMAX_DELAY);

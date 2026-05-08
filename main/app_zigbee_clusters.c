@@ -689,6 +689,7 @@ esp_err_t nuos_set_color_temp_level_attribute_on_dali_rx(uint8_t index, uint8_t 
     esp_zb_zcl_status_t status = ESP_OK;
     #ifdef USE_TUYA_BRDIGE
     uint16_t val = map_1000(level, 0, 255, 10, 1000);
+    if(val >= 1000) val = 1000;
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
 
         #ifdef USE_COLOR_CONTROL
@@ -781,7 +782,7 @@ void nuos_set_level_command(uint8_t index, uint8_t level){
     }
 
     uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
-
+    if(mapValue >= 1000) mapValue = 1000; 
     level_data[8] = mapValue >> 8;
     level_data[9] = mapValue & 0xFF;
 
@@ -827,8 +828,9 @@ void nuos_set_level_command(uint8_t index, uint8_t level){
 void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     uint8_t color_data[10] = {0x0, 0x5f, 0x69, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
 
-    uint16_t mapValue = map_1000(color, 2000, 6500, 10, 1000);
-
+    uint16_t mapValue = map_1000(color, 2000, 6500, 1000, 10);
+    if(mapValue >= 1000) mapValue = 1000; 
+    if(mapValue <= 10) mapValue = 10; 
     if(index == 0){
         color_data[2] = 0x69;
     }else if(index == 1){
@@ -1215,6 +1217,8 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
     #ifdef USE_TUYA_BRDIGE
         /* set attribute value */
         uint16_t mapValue = map_1000(device_info[index].device_val, 2000, 6500, 10, 1000);
+        if(mapValue >= 1000) mapValue = 1000;
+        printf("mapValue:%d\n", mapValue);
         
         esp_zb_zcl_status_t status = ESP_OK;
         if (is_my_device_commissionned && !wifi_webserver_active_flag){
@@ -1259,6 +1263,7 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
     esp_zb_zcl_status_t status = ESP_OK;
     #ifdef USE_TUYA_BRDIGE
     uint16_t val = map_1000(device_info[index].device_level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
+    if(val >= 1000) val = 1000;
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
@@ -1469,6 +1474,7 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
         send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
     
         uint16_t color_temp = map_1000(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 10, 1000);
+        if(color_temp >= 1000) color_temp = 1000;
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1482,6 +1488,7 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
     #else
 
     uint16_t mapValue = map_1000(device_info[3].device_val, 2000, 6500, 158, 500);
+    if(mapValue >= 500) mapValue = 500;
     printf("mapValue:%d\n", mapValue);
 
     status = esp_zb_zcl_set_attribute_val(
@@ -2761,9 +2768,13 @@ void nuos_zb_bind_cb(esp_zb_zdp_status_t zdo_status, esp_zb_ieee_addr_t ieee_add
             esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]); 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
             #ifdef USE_COLOR_CONTROL 
-            bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL;
-            ESP_LOGI(TAG, "Try to bind Light %d Color", light_zb_info[index].endpoint);
-            esp_zb_zdo_device_bind_req(&bind_req, bind_color_cb, (void *)&light_zb_info[index]);
+            bind_req.cluster_id = 0xEF00;
+            ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
+            esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);
+
+            // bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL;
+            // ESP_LOGI(TAG, "Try to bind Light %d Color", light_zb_info[index].endpoint);
+            // esp_zb_zdo_device_bind_req(&bind_req, bind_color_cb, (void *)&light_zb_info[index]);
             #endif  
             bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL;
             ESP_LOGI(TAG, "Try to bind Light %d Dimmmer", light_zb_info[index].endpoint);
@@ -2771,7 +2782,9 @@ void nuos_zb_bind_cb(esp_zb_zdp_status_t zdo_status, esp_zb_ieee_addr_t ieee_add
 
             bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_ON_OFF;
             ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
-            esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);         
+            esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);    
+            
+            
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 
             // #ifdef DALI_DIRECT_ADDRESSING 
@@ -4271,10 +4284,23 @@ void nuos_init_privilege_commands(){
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0XF1); // scene
             //
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0XF2); // music
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0XF0); //brightness
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF1); //scene data
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE0); // set color temperature
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEE00, 0X01);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEE00, 0X01);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEF00, 0X02);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEF00, 0X02);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEF00, 0X03);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEF00, 0X03);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEF00, 0X04);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEF00, 0X04);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEF00, 0X05);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEF00, 0X05);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xEF00, 0X10);
+            // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xEF00, 0X10);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)
             // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 6, 1); //on
             // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 6, 0); //off
@@ -4381,6 +4407,9 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                             device_info[rgb].device_level = 0xfe;
                                         }
                                     } 
+                                    // printf("SR:%d SG:%d SB:%d\n", device_info[0].device_state, device_info[1].device_state, device_info[2].device_state);
+                                    // printf("R:%d G:%d B:%d\n", device_info[0].device_level, device_info[1].device_level, device_info[2].device_level);
+                                    // printf("DR:%d DG:%d DB:%d\n", dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]);
                                     nuos_zb_set_hardware(4, false); 
                                     set_state(4); 
                                     set_level(4); 
@@ -4554,7 +4583,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         // device_info[4].light_color_x = h;
                         // device_info[4].light_color_y = s;
                         device_info[4].device_level = map_1000(v, 10, 1000, 0, 254);
-                        printf("LEVELYZ:%d   v:%d\n", device_info[4].device_level, v);
+                        if(device_info[4].device_level >= 254) device_info[4].device_level = 254;
+                        //printf("LEVELYZ:%d   v:%d\n", device_info[4].device_level, v);
                         #endif  
           
                         hsv_t hsv = {.h=h, .s=s, .v=v}; // Example HSV values
@@ -4563,6 +4593,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         device_info[0].device_level = rgb.r;
                         device_info[1].device_level = rgb.g;
                         device_info[2].device_level = rgb.b;
+
+                        printf("RGB:%d  %d  %d\n", device_info[0].device_level, device_info[1].device_level, device_info[2].device_level);
 
                         if(device_info[0].device_level == 0) device_info[0].device_state = false;
                         else device_info[0].device_state = true;
@@ -4612,10 +4644,9 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                 set_state(4);
                             } 
                             set_color_temp(0, true);                    
-                        #endif
-                        
-                           
+                        #endif     
                     break;
+
                     case 0xE0:
                         if(selected_color_mode == 1){
                             selected_color_mode = 0;
@@ -4624,9 +4655,10 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         }
                         uint16_t val = *(uint16_t*)message->data;
                         device_info[3].device_val = map_1000(val, 10, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
-                        for(int rgb=0; rgb<3; rgb++){
-                            device_info[rgb].device_state = false;
-                        } 
+                        if(device_info[3].device_val >= MAX_CCT_VALUE) device_info[3].device_val = MAX_CCT_VALUE;
+                        // for(int rgb=0; rgb<3; rgb++){
+                        //     device_info[rgb].device_state = false;
+                        // } 
                         if(!device_info[3].device_state){
                             device_info[3].device_state = true;
                             change_state_flag = true;
@@ -4720,6 +4752,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         }                      
                         printf("color_temp:%u\n", *(uint16_t*)message->data);  
                         device_info[0].device_val = map_1000(*(uint16_t*)message->data, 10, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
+                        if(device_info[0].device_val >= MAX_CCT_VALUE) device_info[0].device_val = MAX_CCT_VALUE;
                         printf("mapped_val:%u\n", device_info[0].device_val);                 
                         // nuos_zb_set_hardware(0, false); //
                         if(!device_info[0].device_state){
@@ -4727,8 +4760,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             state_change_flag = true;
                         }                        
                         is_long_press_brightness = false;
+                        device_info[0].color_or_fan_state = 1;
                         nuos_set_hardware_brightness_2(1);
-                        //nuos_zb_set_hardware(0, false);
                         if(state_change_flag){
                             state_change_flag = false;
                             set_state(0);
@@ -4748,11 +4781,13 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             ep_cnts++;
                         }                        
                         device_info[0].device_level = map_1000(*(uint16_t*)message->data, 10, 1000, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE);
+                        if(device_info[0].device_level >= MAX_DIM_LEVEL_VALUE) device_info[0].device_level = MAX_DIM_LEVEL_VALUE;
                         printf("LEVELX:%d\n", device_info[0].device_level);
                         if(!device_info[0].device_state){
                             device_info[0].device_state = true;
                             state_change_flag = true;
                         } 
+                        device_info[0].color_or_fan_state = 0;
                         is_long_press_brightness = false;
                         nuos_set_hardware_brightness_2(0);
 
@@ -4998,9 +5033,9 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
                             
                             if(selected_color_mode == 0){
-                                for(int rgb=0; rgb<3; rgb++){
-                                    device_info[rgb].device_state = false;
-                                } 
+                                // for(int rgb=0; rgb<3; rgb++){
+                                //     device_info[rgb].device_state = false;
+                                // } 
                                 // if(device_info[3].device_state){
                                 //     device_info[4].device_state = true;
                                 // }
@@ -5915,9 +5950,9 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
                             
                             if(selected_color_mode == 0){
-                                for(int rgb=0; rgb<3; rgb++){
-                                    device_info[rgb].device_state = false;
-                                } 
+                                // for(int rgb=0; rgb<3; rgb++){
+                                //     device_info[rgb].device_state = false;
+                                // } 
                             }else if(selected_color_mode == 1){
                                 // if(device_info[0].device_level == 0) device_info[0].device_state = false;
                                 // else device_info[0].device_state = true;

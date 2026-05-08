@@ -13,6 +13,7 @@
     #include "driver/ledc.h"
     #include "DaliCommands.h"
     #include "DALI.h"
+    #include "zigbee_2_uart.h" 
     #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
     #include "esp_wifi_station.h"
     // instantiate global object (adjust constructor args as needed)
@@ -209,14 +210,11 @@
     extern "C" void process_dali_tasks(uint8_t index, uint8_t is_toggle){
         send_command_flag = true;
         button_pressed_index = index;
-        //pause_my_task();
+        
         _state_ = (bool)device_info[index].device_state;
-        // printf("control_type:%d \n", scene_group_switch_info.control_type); 
-        // printf("_state_:%d \n", _state_); 
         if(scene_group_switch_info.control_type == 0) {  //individual control
             if(is_toggle>0) device_info[index].device_state = !_state_;
             if(!device_info[index].device_state) {
-                // printf("DALI ID:%d OFF\n", scene_group_switch_info.scene_ids[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[index]);
@@ -225,7 +223,6 @@
                 #endif
                 printf("group_id:%d\n", scene_group_switch_info.group_id[index]);
                 dali.set_group_off(scene_group_switch_info.group_id[index]);
-                // xTaskCreate(esp_dali_off_task, "dali_off_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
             } else {
                 //printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
@@ -338,8 +335,9 @@
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle) {
         if(is_init_done){  
             call_common_check_auto_off();
+            esp_stop_timer();
             process_dali_tasks(index, is_toggle);  
-             
+            esp_start_timer(); 
         }
     }
 
@@ -598,9 +596,11 @@
         
         // // Pause WiFi to reduce interference
         #ifdef USE_WIFI_WEBSERVER
+        #ifndef USE_C3_ADAPTER_UART_HW
         esp_wifi_stop();
         printf("WiFi stopped for DALI commissioning\n");
         vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
+        #endif
         #endif
         switch_driver_gpios_intr_enabled(false); 
         printf("Starting DALI addressing...\n");
@@ -621,11 +621,12 @@
         }
         switch_driver_gpios_intr_enabled(true); 
         ESP_LOGI("DALI", "=== DALI addressing complete ===");
-        wifi_webserver_active_flag = true;  
-                            
+        #ifndef USE_C3_ADAPTER_UART_HW
+        wifi_webserver_active_flag = true;           
         setNVSCommissioningFlag(0);
         setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
-        esp_restart();	        
+        esp_restart();	
+        #endif        
         vTaskDelete(NULL);
     }
 
@@ -637,9 +638,9 @@
             return;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 8, NULL);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 11, NULL);
         start_dali_led_commissioning_task_flag = true;
-        //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
+
         if (recordsSemaphore != NULL) {
             // Wait for the semaphore to be given by thaddre records task
             xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
@@ -669,7 +670,6 @@
 
     } 
 
-    
     void start_dali_led_blink_task() {
         if(start_dali_led_commissioning_task_flag){
             for(int i=0; i<TOTAL_LEDS; i++){
@@ -683,6 +683,7 @@
             }
             _toggle_ = !_toggle_;
         }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 
     extern "C" void nuos_set_state_touch_leds(bool state) {

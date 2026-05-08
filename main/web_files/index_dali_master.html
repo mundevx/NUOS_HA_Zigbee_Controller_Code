@@ -208,11 +208,17 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 </head>
 <body>
 
-<div class="tabs">
+<!-- <div class="tabs">
   <button class="tab-btn active" data-tab="sceneControl">Home</button>
   <button class="tab-btn" data-tab="groupMembership">Group Assignment</button>
   <button class="tab-btn" data-tab="sceneManagement">Scene Assignment</button>
   <button class="tab-btn" data-tab="daliAddressing">Settings</button>
+</div> -->
+<div class="tabs">
+  <button id="tabSceneControl" class="tab-btn active" data-tab="sceneControl">Home</button>
+  <button id="tabGroup" class="tab-btn" data-tab="groupMembership">Group Assignment</button>
+  <button id="tabSceneMgmt" class="tab-btn" data-tab="sceneManagement">Scene Assignment</button>
+  <button id="tabSettings" class="tab-btn" data-tab="daliAddressing">Settings</button>
 </div>
 
 <div id="sceneControl" class="tab-content active">
@@ -392,7 +398,14 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
         <label style="margin:0;">Include in Add/Clear</label>
         <input type="checkbox" id="deviceIncluded">
       </div>
-
+      
+     <div style="display:flex;align-items:center;justify-content:space-between;">
+        <label style="margin:0;color:#e65100;font-weight:bold;">
+          Apply Same Values To All Selected Devices
+        </label>
+        <input type="checkbox" id="syncSelectedDevices">
+      </div>
+    
       <div class="toggle-onoff" style="margin-top:6px;">
         <div style="font-weight:bold;color:#2193b0;">Device ON/OFF</div>
         <div style="display:flex;align-items:center;gap:12px;">
@@ -591,6 +604,7 @@ function updateGroupIdVisibility(show) {}
 
 document.getElementById('control_type').addEventListener('change', function() {
   var val = this.value;
+  updateTabVisibility(val);   // 👈 ADD THIS
   var sceneLabels = [
     document.getElementById('scene1Label'),
     document.getElementById('scene2Label'),
@@ -714,41 +728,43 @@ function closePopup() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  const ctrl = document.getElementById('control_type');
+  updateTabVisibility(ctrl.value);   // 👈 ensures correct state after refresh
   // Restore DALI Addressing values
-  fetch('/items?fxn=12')
-    .then(res => res.json())
-    .then(data => {
-      console.log('DALI restore data:', data);
+  // fetch('/items?fxn=12')
+  //   .then(res => res.json())
+  //   .then(data => {
+  //     console.log('DALI restore data:', data);
 
-      if (!data) return;
+  //     if (!data) return;
 
-      const startEl = document.getElementById('daliStartAddress');
-      const numEl   = document.getElementById('daliNumAddresses');
+  //     const startEl = document.getElementById('daliStartAddress');
+  //     const numEl   = document.getElementById('daliNumAddresses');
 
-      // support multiple possible backend key names
-      const start =
-        data.startaddr ??
-        data.start_addr ??
-        data.startAddress ??
-        data.start ??
-        0;
+  //     // support multiple possible backend key names
+  //     const start =
+  //       data.startaddr ??
+  //       data.start_addr ??
+  //       data.startAddress ??
+  //       data.start ??
+  //       0;
 
-      const num =
-        data.maxaddr ??
-        data.numaddr ??
-        data.num_addresses ??
-        data.numberOfAddresses ??
-        data.count ??
-        0;
+  //     const num =
+  //       data.maxaddr ??
+  //       data.numaddr ??
+  //       data.num_addresses ??
+  //       data.numberOfAddresses ??
+  //       data.count ??
+  //       0;
 
-      if (startEl) startEl.value = String(start);
-      if (numEl)   numEl.value   = String(num);
+  //     if (startEl) startEl.value = String(start);
+  //     if (numEl)   numEl.value   = String(num);
 
-      console.log('Restored start/num =', startEl?.value, numEl?.value);
-    })
-    .catch(err => {
-      console.error('Failed to restore DALI addressing values:', err);
-    });
+  //     console.log('Restored start/num =', startEl?.value, numEl?.value);
+  //   })
+  //   .catch(err => {
+  //     console.error('Failed to restore DALI addressing values:', err);
+  //   });
 
     // Restore saved Scene Control values on page refresh
   fetch('/items?fxn=15')
@@ -806,11 +822,26 @@ document.addEventListener('DOMContentLoaded', function () {
   tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
   switchTab('sceneControl');
 
-
-
-
-
 });
+
+
+function updateTabVisibility(controlType) {
+  const tabGroup = document.getElementById('tabGroup');
+  const tabSceneMgmt = document.getElementById('tabSceneMgmt');
+
+  if (controlType === 'Individual Control') {
+    tabGroup.style.display = 'none';
+    tabSceneMgmt.style.display = 'none';
+  } 
+  else if (controlType === 'Group Control') {
+    tabGroup.style.display = 'block';
+    tabSceneMgmt.style.display = 'none';
+  } 
+  else if (controlType === 'Scene Control') {
+    tabGroup.style.display = 'none';
+    tabSceneMgmt.style.display = 'block';
+  }
+}
 
 function createToggleGrid(container, count, idPrefix){
   if (!container) return;
@@ -1005,20 +1036,28 @@ document.addEventListener('DOMContentLoaded', ()=> {
       rgbModeLabel.classList.remove('active');
     }
     cacheCurrentUI();
+    applyValuesToAllSelectedDevices();
   }
 
   colorModeCCT.addEventListener('change', () => switchColorMode('cct'));
   colorModeRGB.addEventListener('change', () => switchColorMode('rgb'));
 
-  [redSlider, greenSlider, blueSlider].forEach(sl => {
-    sl.addEventListener('input', () => {
-      redVal.textContent   = redSlider.value;
-      greenVal.textContent = greenSlider.value;
-      blueVal.textContent  = blueSlider.value;
-      updateRgbPreview();
-      cacheCurrentUI();
-    });
+[redSlider, greenSlider, blueSlider].forEach(sl => {
+
+  sl.addEventListener('input', () => {
+
+    redVal.textContent   = redSlider.value;
+    greenVal.textContent = greenSlider.value;
+    blueVal.textContent  = blueSlider.value;
+
+    updateRgbPreview();
+
+    cacheCurrentUI();
+
+    applyValuesToAllSelectedDevices();
   });
+
+});
 
   document.getElementById('sendDeviceRgb').addEventListener('click', async () => {
     const r = parseInt(redSlider.value), g = parseInt(greenSlider.value), b = parseInt(blueSlider.value);
@@ -1142,7 +1181,48 @@ function populateDeviceUIFromData(data){
     }
     switchColorMode(cm);
   }
+function applyValuesToAllSelectedDevices() {
 
+  const syncEnabled = document.getElementById('syncSelectedDevices')?.checked;
+
+  if (!syncEnabled) return;
+
+  const sid = String(parseInt(sceneSelector.value || 0, 10));
+  const currentDid = String(parseInt(deviceSelector.value || 0, 10));
+
+  const mode = (document.getElementById('colorModeRGB')?.checked)
+    ? 'rgb'
+    : 'cct';
+
+  const sharedData = {
+    included: true,
+    power: devicePowerToggle.classList.contains('on') ? 1 : 0,
+    brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+    cct: parseInt(deviceCctSlider?.value || 3500, 10),
+    colorMode: mode,
+    r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
+    g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
+    b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
+  };
+
+  for (let id = 0; id < 64; id++) {
+
+    const did = String(id);
+
+    if (did === currentDid) continue;
+
+    const cache = getCache(sid, did);
+
+    if (cache && cache.included === true) {
+
+      setCache(sid, did, {
+        ...cache,
+        ...sharedData
+      });
+
+    }
+  }
+}
   function cacheCurrentUI(){
   const sid = String(parseInt(sceneSelector.value || 0, 10));
   const did = String(parseInt(deviceSelector.value || 0, 10));
@@ -1164,15 +1244,34 @@ function populateDeviceUIFromData(data){
 }
 
 
-  if (deviceIncluded) deviceIncluded.addEventListener('change', ()=> cacheCurrentUI());
-  if (deviceBrightnessSlider) deviceBrightnessSlider.addEventListener('input', ()=>{ deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%'; cacheCurrentUI(); });
-  if (deviceCctSlider) deviceCctSlider.addEventListener('input', ()=>{ deviceCctValue.textContent = deviceCctSlider.value + 'K'; updateDeviceCCTPreview(deviceCctSlider.value); cacheCurrentUI(); });
+if (deviceIncluded) {
+  deviceIncluded.addEventListener('change', ()=> {
+    cacheCurrentUI();
+    applyValuesToAllSelectedDevices();
+  });
+}
+if (deviceBrightnessSlider) {
+  deviceBrightnessSlider.addEventListener('input', ()=> {
+    deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
+    cacheCurrentUI();
+    applyValuesToAllSelectedDevices();
+  });
+}
+if (deviceCctSlider) {
+  deviceCctSlider.addEventListener('input', ()=> {
+    deviceCctValue.textContent = deviceCctSlider.value + 'K';
+    updateDeviceCCTPreview(deviceCctSlider.value);
+    cacheCurrentUI();
+    applyValuesToAllSelectedDevices();
+  });
+}
 
   if (devicePowerToggle) {
     devicePowerToggle.addEventListener('click', async ()=> {
       const newOn = !devicePowerToggle.classList.contains('on');
       setDevicePowerUI(newOn);
       cacheCurrentUI();
+      applyValuesToAllSelectedDevices();
       const sid = parseInt(sceneSelector.value || 0,10);
       const did = parseInt(deviceSelector.value || 0,10);
       const mode = sceneModeMap[String(sid)] || 'device';
@@ -1583,3 +1682,5 @@ function populateDeviceUIFromData(data){
 </script>
 </body>
 </html>
+
+

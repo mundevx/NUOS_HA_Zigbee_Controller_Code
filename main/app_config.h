@@ -6,7 +6,7 @@
     #define DEVICE_2T_ANALOG_DIMMABLE_LIGHT 			            3
     #define DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT 			            4
     #define DEVICE_1CH_CURTAIN 					                    5
-    #define DEVICE_2CH_CURTAIN 					                    6  // rarely used
+    #define DEVICE_2CH_CURTAIN 					                    6  // Rarely Used
 
     #define DEVICE_1_LIGHT_1_FAN                                    7
     #define DEVICE_IR_BLASTER                                       8
@@ -24,7 +24,7 @@
     #define DEVICE_SENSOR_MOTION                                    17
     #define DEVICE_SENSOR_CONTACT_SWITCH                            18
     #define DEVICE_SENSOR_GAS_LEAK                                  19
-    #define DEVICE_SENSOR_TEMPERATURE_HUMIDITY                      20
+    #define DEVICE_SENSOR_TEMPERATURE_HUMIDITY                      20 
     #define DEVICE_SENSOR_LUX                                       21 // TSL2561
 
     #define DEVICE_WIRELESS_REMOTE_SWITCH                           22 // SW1=DEVICES_BIND, SW2=DEVICES_BIND, SW3=DEVICES_BIND, SW4=DEVICES_BIND

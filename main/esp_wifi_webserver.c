@@ -18,6 +18,7 @@
 #include "esp_http_server.h"
 #include "esp_wifi_webserver.h"
 #include "cJSON.h"
+#include "light_driver.h"
 #include "app_nvs_store_info.h"
 #include "app_hardware_driver.h"
 #include "nvs_flash.h"
@@ -26,7 +27,9 @@
 #include "app_zigbee_scene_commands.h"
 #include "app_zigbee_misc.h"
 #include "app_zigbee_query_nodes.h"
-
+#ifdef USE_C3_ADAPTER_UART_HW
+#include "zigbee_2_uart.h"
+#endif
 #define MAX_HTTP_RECV_BUFFER 			4096
 
 static const char *TAG                  = "WEBSERVER";
@@ -44,13 +47,16 @@ cJSON *dcolor                           = NULL;
 cJSON *dcheck                           = NULL;
 cJSON *offset_json                      = NULL;
 cJSON *calibration_json                 = NULL;
+cJSON *cobj_webserver                   = NULL;
 
 #define JSON_QUEUE_SIZE                 80
-#define JSON_MAX_LEN                    2048
+#define JSON_MAX_LEN                    1048
 
 typedef struct {
     char json[JSON_MAX_LEN];
-    // TaskHandle_t http_task;   // task to notify when done
+    #if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
+        TaskHandle_t http_task;   // task to notify when done
+    #endif
 } json_msg_t;
 
 QueueHandle_t json_queue;
@@ -103,7 +109,7 @@ void parse_json(const char *json_string) {
     cJSON *fxn = cJSON_GetObjectItem(root, "fxn");
     if (fxn == NULL){  printf("------------ERROR returning back----------\n");  cJSON_Delete(root); return;}
 
-    recheckTimer();
+    recheckTimer();  
 
     int fxnInt = 0;//atoi( fxn->valuestring);
     if(cJSON_IsNumber(fxn)){
@@ -113,64 +119,33 @@ void parse_json(const char *json_string) {
             fxnInt = atoi( fxn->valuestring);
     }
     printf("Function: %d\n", fxnInt);
-    switch(fxnInt){
-        case 1:
-            // cJSON *wifi_ssid = cJSON_GetObjectItem(root, "ssid");
-            // cJSON *wifi_pswd = cJSON_GetObjectItem(root, "password");
-           
-            // if (wifi_ssid == NULL || wifi_pswd == NULL) {
-            //     printf("Missing JSON keys wifi_ssid && wifi_pswd\n");
-            //     cJSON_Delete(root);
-            //     return;
-            // }
-          
-            // printf("wifi_ssid: %s\n", wifi_ssid->valuestring);
-            // printf("wifi_pswd: %s\n", wifi_pswd->valuestring);
-
-            // memset(&wifi_info, 0, sizeof(wifi_info));
-            
-            // wifi_info.is_wifi_sta_mode = true;
-            // strncpy(wifi_info.wifi_ssid, wifi_ssid->valuestring, strlen(wifi_ssid->valuestring));
-            // strncpy(wifi_info.wifi_pass, wifi_pswd->valuestring, strlen(wifi_pswd->valuestring));
-
-            // cJSON *ip4 = cJSON_GetObjectItem(root, "ip4");
-            // if (ip4 == NULL) {
-            //     printf("Missing JSON keys ip4\n");
-            //     wifi_info.ip4 = 110;
-            // }else{
-            //     wifi_info.ip4 = (uint8_t)atoi(ip4->valuestring);
-            // }  
-            // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-
-            // nuos_store_wifi_info_data_to_nvs();
-            // #endif
-            // esp_restart();
-        break;
-        case 6: 
-            // cJSON *data = cJSON_GetObjectItem(root, "data");
-            // if (data == NULL) {
-            //     printf("Missing JSON keys data\n");
-            //     cJSON_Delete(root);
-            //     return;
-            // }        
-            // if(data->valueint == 0) wifi_info.is_wifi_sta_mode = 1;
-            // else wifi_info.is_wifi_sta_mode = 0;
-            // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-
-            // nuos_store_wifi_info_data_to_nvs();
-            // #endif
-            // esp_restart();
-        break; 
-        
+    switch(fxnInt){ 
+        case 13:
         case 4:  //cancel
+            wifi_webserver_active_flag = false;
+            light_driver_set_power(false);
             setNVSWebServerEnableFlag(false);
-            nuos_store_wifi_info_data_to_nvs();
             esp_restart();
         break;
 
-        case 13:  //reboot
-            esp_restart();
-
+        case 9:
+        //"{\"fxn\": 9, \"webserver\": 0"
+        cobj_webserver = cJSON_GetObjectItem(root, "webserver");
+        if (cobj_webserver == NULL) {
+            printf("Missing JSON keys\n");
+            cJSON_Delete(root);
+            return;
+        }
+        wifi_webserver_active_flag = (uint8_t)(cobj_webserver->valueint);
+        if(wifi_webserver_active_flag == 0){
+            printf("Stopping Web Server...\n"); 
+            esp_stop_timer();
+        }else{
+            printf("Starting Web Server...\n");
+            wifi_webserver_active_counts = 0;
+            init_timer();
+            esp_start_timer();
+        }
         break;
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
         case 2:
@@ -1873,22 +1848,22 @@ char* replaceSubstring(const char* original, const char* toReplace, const char* 
 }
 
 
-
+json_msg_t msg;
 
 void json_worker_task(void *arg) {
-    json_msg_t msg;
+    
     while (1) {
         if (xQueueReceive(json_queue, &msg, portMAX_DELAY)) {
             ESP_LOGI("JSON_WORKER", "Processing JSON in worker task");
             //switch_driver_gpios_intr_enabled(false);
             parse_json(msg.json);
-            switch_driver_gpios_intr_enabled(true);
             //switch_driver_gpios_intr_enabled(true);
-
-            // // Notify the waiting HTTP task
-            // if (msg.http_task != NULL) {
-            //     xTaskNotifyGive(msg.http_task);
-            // }
+            #if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
+            // Notify the waiting HTTP task
+            if (msg.http_task != NULL) {
+                xTaskNotifyGive(msg.http_task);
+            }
+            #endif
         }
     }
 }
@@ -1930,17 +1905,27 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
    
     ESP_LOGI("content", " : %s", content);
 
-    json_msg_t msg;
+    
     strncpy(msg.json, content, JSON_MAX_LEN - 1);
     msg.json[JSON_MAX_LEN - 1] = '\0';
+    //switch_driver_gpios_intr_enabled(false);
+    //esp_stop_timer();
+    //parse_json(msg.json);
+    
+    //switch_driver_gpios_intr_enabled(true);
+    //esp_start_timer();
+    // #if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
     // msg.http_task = xTaskGetCurrentTaskHandle();   // store the waiting task
-
+    // #endif
     if (xQueueSend(json_queue, &msg, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE("HTTP", "Queue full, dropping request");
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
+    // #if( USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+    // httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
+    // #else
     // // Wait for worker to complete (timeout 5 seconds)
     // if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000)) == 1) {
     //     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
@@ -1948,7 +1933,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     //     ESP_LOGE("HTTP", "Worker timeout");
     //     httpd_resp_send_500(req);
     // }
-
+    // #endif
     cb_requests_counts = 0;
     cb_response_counts = 0;
     return ESP_OK;
@@ -1973,8 +1958,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
                     webpageItem[total_item].check = 0;
                     strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].ep_name);
                     strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
-                    total_item++;
-               // }               
+                    total_item++;             
                
             }
         } 
@@ -2122,13 +2106,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
 
                 int fxn = atoi(value_fxn);  
                 if(fxn == 0){
-                    //if(wifi_info.is_wifi_sta_mode){
-                        // #ifdef USE_WIFI_WEBSERVER
-                        // wifi_scan();
-                        // httpd_resp_send(req, jsonWiFiScanListStr, HTTPD_RESP_USE_STRLEN);
-                        // return ESP_OK;
-                        // #endif
-                    //}
+
                 }else if(fxn == 1){
                     if (httpd_query_key_value(query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
                         ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
@@ -2146,6 +2124,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
                         index = atoi(value_data);
                         node_counts = existing_nodes_info[index].scene_switch_info.total_records;
                         ESP_LOGI(TAG, "total_records=%d", node_counts);
+
                         response = prepare_json(index);
 
                         for(int i=0; i<existing_nodes_info[index].scene_switch_info.total_records; i++){
@@ -2156,8 +2135,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
                             for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts; j++){
                                 for(uint8_t k=0; k<existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].clusters_count; k++){                                
                                     printf("cluster_id:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k]);
-                                    printf("........ATTRIBUTE VALUES........\n");
-                                    
+                                    printf("........ATTRIBUTE VALUES........\n");  
                                     printf("dst_ep:%d  state:%d  level:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].dst_ep,
                                     existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.state,
                                     existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.level);
@@ -2298,6 +2276,8 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
                 }else if (fxn == 20) {
                     // Return saved Tab2 selection
                     cJSON *obj = cJSON_CreateObject();
+
+                    
                     //int saved_addr = nuos_read_selected_dali_address_from_nvs(); // implement
                     int saved_addr = getNVSDaliNodesCommissioningCounts(); // implement
                     cJSON_AddNumberToObject(obj, "selected_address", saved_addr);
@@ -2514,9 +2494,13 @@ void remove_duplicates(int* array, int size, int* result, int* result_size) {
 bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
         json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
-        xTaskCreate(json_worker_task, "json_worker_task", 8092, NULL, 21, NULL);
+        xTaskCreate(json_worker_task, "json_worker_task", 16384, NULL, 21, NULL);
+        #ifdef USE_C3_ADAPTER_UART_HW
+        //uart_init();
+        #else
         wifi_station_main();
-        start_webserver();  
+        start_webserver(); 
+        #endif 
     #endif
     return true;
 }

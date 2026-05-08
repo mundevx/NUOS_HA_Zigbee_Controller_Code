@@ -232,6 +232,7 @@ void DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(SET_TEMP_RGB_DIM, addr);
     
+    
 }
 
 void DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
@@ -246,6 +247,8 @@ void DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
     send_command_standard(SET_TEMP_RGB_DIM, addr);
    
     send_command_special(SET_DTR0, 0);
+    send_command_special(SET_DTR1, 0);
+    send_command_special(SET_DTR2, 0);
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(SET_TEMP_WAF_DIM, addr);
     
@@ -272,7 +275,7 @@ void DaliCommands::set_off_waf_channels(uint8_t addr) {
     // Enable device type 8
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(SET_TEMP_WAF_DIM, addr);
-   
+
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
     
@@ -331,8 +334,8 @@ void DaliCommands::set_rgbwaf_ctrl() {
     static uint8_t _data = 0b00111111;  // Setting channels
     
     send_command_special(SET_DTR0, _data);
-    send_command_standard(SET_TEMP_RGB_WAF_DIM, 0xff);
-    send_command_standard(SET_TEMP_RGB_WAF_DIM, 0xff);
+    send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+    send_command_standard(SET_TEMP_RGB_WAF_DIM, 0);
     
 }
 
@@ -346,11 +349,10 @@ void DaliCommands::set_cct_dimming(uint8_t dim) {
 
 void DaliCommands::set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
     
-    set_rgb_2(addr, r, g, b, dim);
+    set_rgb_3(addr, r, g, b, dim);
     // Enable device type 8
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
-    
 }
 
 void DaliCommands::set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {

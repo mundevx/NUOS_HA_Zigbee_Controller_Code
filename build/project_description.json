@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "on_off_light_bulb",
-    "project_version":    "d1229d4-dirty",
+    "project_version":    "e8903b9-dirty",
     "project_path":       "C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code",
     "idf_path":           "C:/Users/procu/esp/v5.5/esp-idf",
     "build_dir":          "C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build",

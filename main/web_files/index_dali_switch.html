@@ -490,7 +490,7 @@
 
         <!-- Tab 2: DALI Addressing -->
         <div id="daliAddressing" class="tab-content">
-            <div class="dali-control-group">
+            <!-- <div class="dali-control-group">
                 <div>
                     <label for="daliStartAddress">Start Address:</label>
                     <select id="daliStartAddress">
@@ -502,7 +502,7 @@
                     <select id="daliNumAddresses"></select>
                 </div>
             </div>
-            <button class="stylish-button" id="sendDaliAddress">Send Address</button>
+            <button class="stylish-button" id="sendDaliAddress">Send Address</button> -->
 
             
             <h3>Min Dimming Offset</h3>
@@ -880,7 +880,7 @@
 
         // DALI Addressing Event Handlers
         function setupDaliAddressing() {
-            const sendBtn = document.getElementById('sendDaliAddress');
+            //const sendBtn = document.getElementById('sendDaliAddress');
             const confirmPopup = document.getElementById('daliConfirmPopup');
             const infoPopup = document.getElementById('daliInfoPopup');
             const okBtn = document.getElementById('daliPopupOk');
@@ -905,10 +905,10 @@
                 alert("Failed to send reboot command.");
                 }
             });
-            sendBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                confirmPopup.classList.add('show');
-            });
+            // sendBtn.addEventListener('click', function(e) {
+            //     e.preventDefault();
+            //     confirmPopup.classList.add('show');
+            // });
 
             cancelBtn.addEventListener('click', function() {
                 confirmPopup.classList.remove('show');
@@ -1065,7 +1065,7 @@ if (data && data.group_id !== undefined) {
 
 document.addEventListener('DOMContentLoaded', function () {
   const input = document.getElementById('minDimmingOffset');
-  const sendBtn = document.getElementById('sendMinDimmingOffset');
+  const sendBtn_d_o = document.getElementById('sendMinDimmingOffset');
 
   const input_f_t = document.getElementById('setFadeTime');
   const sendBtn_f_t = document.getElementById('sendFadeTime');
@@ -1073,9 +1073,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const input_f_r = document.getElementById('setFadeRate');
   const sendBtn_f_r = document.getElementById('sendFadeRate');
   
-  if (!input || !sendBtn || !input_f_t || !sendBtn_f_t || !input_f_r || !sendBtn_f_r) return;
+  if (!input || !sendBtn_d_o || !input_f_t || !sendBtn_f_t || !input_f_r || !sendBtn_f_r) return;
 
-  sendBtn.addEventListener('click', async () => {
+  sendBtn_d_o.addEventListener('click', async () => {
     const value = parseInt(input.value, 10);
 
     if (Number.isNaN(value)) {

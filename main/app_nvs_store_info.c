@@ -1292,21 +1292,21 @@ void nuos_get_data_from_nvs() {
       
     #endif
 
-    #ifdef USE_WIFI_WEBSERVER
-    dali_min_off_offset = getNVSDaliMinDimOffset();
-    dali_range_size = 254 - dali_min_off_offset;
+    // #ifdef USE_WIFI_WEBSERVER
+    // dali_min_off_offset = getNVSDaliMinDimOffset();
+    // dali_range_size = 254 - dali_min_off_offset;
 
 
-    dali_fade_time = getNVSDaliFadeTime();
-    if(dali_fade_time > MAX_DALI_FADE_TIME){
-        dali_fade_time = DEFAULT_DALI_FADE_TIME;
-    }
+    // dali_fade_time = getNVSDaliFadeTime();
+    // if(dali_fade_time > MAX_DALI_FADE_TIME){
+    //     dali_fade_time = DEFAULT_DALI_FADE_TIME;
+    // }
 
-    dali_fade_rate = getNVSDaliFadeRate();
-    if(dali_fade_rate > MAX_DALI_FADE_RATE){
-        dali_fade_rate = DEFAULT_DALI_FADE_RATE;
-    }
-    #endif
+    // dali_fade_rate = getNVSDaliFadeRate();
+    // if(dali_fade_rate > MAX_DALI_FADE_RATE){
+    //     dali_fade_rate = DEFAULT_DALI_FADE_RATE;
+    // }
+    // #endif
     selected_color_mode = read_color_mode_value();
     last_selected_color_mode = selected_color_mode;
     
@@ -1355,6 +1355,22 @@ void get_nvs_dali_scene_switch_webpage_data(){
         printf("}, \n");
 
     }
+
+    #ifdef USE_WIFI_WEBSERVER
+    dali_min_off_offset = getNVSDaliMinDimOffset();
+    dali_range_size = 254 - dali_min_off_offset;
+
+
+    dali_fade_time = getNVSDaliFadeTime();
+    if(dali_fade_time > MAX_DALI_FADE_TIME){
+        dali_fade_time = DEFAULT_DALI_FADE_TIME;
+    }
+
+    dali_fade_rate = getNVSDaliFadeRate();
+    if(dali_fade_rate > MAX_DALI_FADE_RATE){
+        dali_fade_rate = DEFAULT_DALI_FADE_RATE;
+    }
+    #endif
     
 }
 

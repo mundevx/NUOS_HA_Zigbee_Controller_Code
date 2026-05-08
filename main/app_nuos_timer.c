@@ -66,10 +66,12 @@ void init_timer() {
 
 void esp_start_timer(){
 	#ifndef DONT_USE_ZIGBEE
-	if(!timer_started_flag){
-		timer_started_flag = true;
-			// Start the timer
-		ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, 100000)); // 100 milli second period	
+	if(timer_initialized_ok){
+		if(!timer_started_flag){
+			timer_started_flag = true;
+				// Start the timer
+			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, 100000)); // 100 milli second period	
+		}
 	}
     timer_led_blink_counts = 0;
 	timer_commissioning_counts = 0;
@@ -80,22 +82,22 @@ void esp_start_timer(){
 
 void esp_stop_timer(){
 	#ifndef DONT_USE_ZIGBEE
-	if(timer_started_flag){
-		timer_started_flag = false;
-		if(my_timer_handle != NULL)
-			esp_timer_stop(my_timer_handle);	
+	if(timer_initialized_ok){
+		if(timer_started_flag){
+			timer_started_flag = false;
+			if(my_timer_handle != NULL)
+				esp_timer_stop(my_timer_handle);	
+		}
 	}
 	#endif
 }
 
 
 void nuos_start_commissioning(){
-	printf("set_commissioning\n");
 	setNVSCommissioningFlag(1);
 }
 
 void nuos_stop_commissioning(unsigned char timeout){
-	printf("========start_commissioning:%d========\n", start_commissioning);
 	if(!start_commissioning){
 		start_commissioning = false;
 		
@@ -108,11 +110,11 @@ void nuos_stop_commissioning(unsigned char timeout){
 		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
 			init_timer();
 			esp_start_timer();
-			printf("##############START_TIMER###########\n");
+			///printf("##############START_TIMER###########\n");
 		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
 			init_timer();
 			esp_start_timer();	
-			printf("##############START_TIMER###########\n");
+			///printf("##############START_TIMER###########\n");
 		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 		init_timer();
 		esp_start_timer();
@@ -124,7 +126,7 @@ void nuos_stop_commissioning(unsigned char timeout){
 		
 		#else
 			esp_stop_timer();
-			printf("##############STOP_TIMER###########\n");			
+			///printf("##############STOP_TIMER###########\n");			
 		#endif	
 	}
 
@@ -268,18 +270,15 @@ void initTwoSwitchPressedPins(){
 }
 
 uint32_t IdentifyTwoSwitchPressed(){
-	// #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
-	// #else	
-		for(int i=0; i<TOTAL_BUTTONS; i++){
-			bool value = gpio_get_level(gpio_touch_btn_pins[i]);
-			if(value == 0) {
-				if(button_read_flag[i] == false){
-					button_read_flag[i] = true;
-					switch_pressed_counts_to_enter_commissioning++;
-				}
+	for(int i=0; i<TOTAL_BUTTONS; i++){
+		bool value = gpio_get_level(gpio_touch_btn_pins[i]);
+		if(value == 0) {
+			if(button_read_flag[i] == false){
+				button_read_flag[i] = true;
+				switch_pressed_counts_to_enter_commissioning++;
 			}
 		}
-	// #endif
+	}
 	return switch_pressed_counts_to_enter_commissioning;
 }
 
@@ -293,16 +292,16 @@ uint8_t get_button_pressed_mode(){
         if(button_read_flag[i]){
            if(i==0){
 			  first_button_pressed = true;
-			  printf("first_button_pressed1\n");
+			  //printf("first_button_pressed1\n");
 		   }else if(i==1){
 			  second_button_pressed = true;
-			  printf("second_button_pressed\n");
+			  //printf("second_button_pressed\n");
 		   }else if(i==2){
 			  third_button_pressed = true;
-			  printf("third_button_pressed\n");
+			  //printf("third_button_pressed\n");
 		   }else if(i==3){
 			  fourth_button_pressed = true;
-			  printf("fourth_button_pressed\n");
+			  //printf("fourth_button_pressed\n");
 		   }
         }
 	}
@@ -317,6 +316,22 @@ uint8_t get_button_pressed_mode(){
 		if(first_button_pressed){
 			return 1;
 		}
+	#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+        #ifdef USE_COLOR_CONTROL
+			if(first_button_pressed && third_button_pressed){
+				return 1;
+			}else if(second_button_pressed && fourth_button_pressed){
+				return 2;
+			}
+		#else	
+			if(first_button_pressed && second_button_pressed){
+				return 1;
+			}else if(third_button_pressed && fourth_button_pressed){
+				return 2;
+			}else if(second_button_pressed){
+				return 0;
+			}	
+		#endif
 	#else
 		if(first_button_pressed && second_button_pressed){
 			return 1;
@@ -335,7 +350,7 @@ static TimerHandle_t commissioning_timeout_timer                = NULL;
 
 void commissioning_timeout_handler(TimerHandle_t xTimer)
 {
-	printf("Commissioning Timeout Handler called!\n");
+	//printf("Commissioning Timeout Handler called!\n");
 	start_commissioning = false;
 	ready_commisioning_flag = false;
 
@@ -369,16 +384,16 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
         if(button_read_flag[i]){
            if(i==0){
 			  first_button_pressed = true;
-			  printf("first_button_pressed\n");
+			  //printf("first_button_pressed\n");
 		   }else if(i==1){
 			  second_button_pressed = true;
 			  printf("second_button_pressed\n");
 		   }else if(i==2){
 			  third_button_pressed = true;
-			  printf("third_button_pressed\n");
+			  //printf("third_button_pressed\n");
 		   }else if(i==3){
 			  fourth_button_pressed = true;
-			  printf("fourth_button_pressed\n");
+			  //printf("fourth_button_pressed\n");
 		   }
         }
 	}
@@ -469,8 +484,19 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 						esp_zb_factory_reset();					
 					}
 				#else
-					if(first_button_pressed && second_button_pressed){
+
+				#ifdef USE_COLOR_CONTROL
+					if(first_button_pressed && third_button_pressed){
 						printf("set_commissioning\n");
+						if(!ready_commisioning_flag){
+							ready_commisioning_flag = true;
+							setNVSStartCommissioningFlag(1);
+							setNVSCommissioningFlag(0);
+						}  
+					}
+				#else
+					if(first_button_pressed && second_button_pressed){
+						//printf("set_commissioning\n");
 						if(!ready_commisioning_flag){
 							ready_commisioning_flag = true;
 							setNVSStartCommissioningFlag(1);
@@ -483,6 +509,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 					}else{
 					
 					}
+				#endif
 				#endif
 				if(ready_commisioning_flag){
 					start_commissioning_timeout_timer();
@@ -552,7 +579,7 @@ void nuos_check_and_start_timer_for_touch_leds_off_after_1_minute(){
 			timer_3_counts = 0;
 			if(!flag){ 
 				flag = true;
-				printf("All LEDs OFF\n");
+				//printf("All LEDs OFF\n");
 				nuos_set_state_touch_leds(false);
 			}
 		}
