@@ -60,6 +60,7 @@
     //#define WRITE_NVS_CONFIG
     //#define ZB_FACTORY_RESET
     #define USE_TRIPLE_CLICK
+    #define USE_DOUBLE_CLICK
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
         #define COLOR_RGB_ONLY                                      1   //3 channels

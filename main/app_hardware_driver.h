@@ -285,7 +285,7 @@
         uint8_t dali_min_off_offset                                             = 0;
         uint8_t dali_range_size                                                 = 255;
 
-        bool double_press_click_enable                                          = false;
+        bool double_press_click_enable[4]                                       = {false, false, false, false};
         uint16_t disable_double_press_enable_counts                             = 0;
 
         uint16_t cb_requests_counts                                             = 0;
@@ -322,7 +322,7 @@
         dst_node_info_t dst_node_info[MAX_BINDINGS];
         int binding_count = 0;
 
-        bool change_cw_ww_color_flag                                            = false;
+        //bool change_cw_ww_color_flag                                            = false;
         // dmx_variable_t dmx_nvs_stt;
         const uint16_t fan_speed_percentage[5]                                  = { 0, 250, 500, 750, 1000};
         const uint16_t fan_speed_values[5]                                      = { 0, 64, 128, 191, 254};
@@ -1160,9 +1160,13 @@
                 #ifdef USE_TUYA_BRDIGE 
                     #ifdef USE_COLOR_CONTROL 
                         const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = {1, 2};
-                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {0x010C, 0x010C};
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_SMART_PLUG_DEVICE_ID, ESP_ZB_HA_SMART_PLUG_DEVICE_ID}; //0x010C
+                        // _TZE204_mm9kyoh3
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'm', 'm', '9', 'k', 'y', 'o', 'h', '3'};
+                        //_TZE204_zehdwhwb
+                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
                         //_TZE204_ Tuya whtkfqqt
-                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
                         const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};                        
                     #else
                         //lbdxarah
@@ -1400,7 +1404,7 @@
         extern uint8_t global_dali_id[]; 
         #endif
         extern uint8_t global_scene_id[4];  
-        extern bool change_cw_ww_color_flag;     
+        //extern bool change_cw_ww_color_flag;     
         extern stt_scene_switch_t existing_nodes_info[4];
         extern stt_scene_switch_t nodes_info;        
         extern zigbee_zcene_info_t zb_scene_info[4];
@@ -1419,7 +1423,7 @@
         extern uint8_t dali_min_off_offset;
         extern uint8_t dali_range_size;
 
-        extern bool double_press_click_enable;
+        extern bool double_press_click_enable[4];
         extern uint16_t disable_double_press_enable_counts;
 
         extern uint16_t cb_requests_counts;
@@ -1598,6 +1602,9 @@ extern "C" {
     extern void call_common_check_auto_off();
     extern void set_all_leds_to_original_state();
 
+    extern void set_parameter_ep_index_selected(uint8_t bt_index);
+    extern void set_parameter_toggle_bt_func_selected(uint8_t bt_index);
+    extern uint8_t get_parameter_ep_index_selected();
     extern void nuos_dali_rgb_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint8_t r, uint8_t g, uint8_t b);
 #ifdef __cplusplus
 }

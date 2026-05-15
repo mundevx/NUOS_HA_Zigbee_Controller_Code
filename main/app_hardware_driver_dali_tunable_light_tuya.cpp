@@ -794,6 +794,7 @@
         printf("closest index 2:%d\n", MAX_DIMMING_VALUES-1);
         return MAX_DIMMING_VALUES - 1; // If greater than all, return last index
     }
+
     void convert_colors_to_index(bool is_long_press){
         if(device_info[0].level_up){
             if(device_info[0].device_val + COLOR_STEPS <= (MAX_CCT_VALUE)){
@@ -818,8 +819,6 @@
         }
         
     }
-
-
 
    void convert_dimming_to_index(bool is_long_press){
         if(device_info[0].dim_up){

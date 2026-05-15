@@ -159,8 +159,18 @@ void set_time(int year, int mon, int day, int hour, int min, int sec){
 uint8_t bt_index=255;
 static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 {
+    if (!button_func_pair) return;
+
+    ESP_LOGI("APP",
+             "button id=%d pin=%d key=%d func=0x%02X",
+             button_func_pair->id, button_func_pair->pin, button_func_pair->keypressed, button_func_pair->func);
+
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
-        uint32_t* io_index = &button_func_pair->pin;
+        //uint32_t* io_index = &button_func_pair->pin;
+
+        gpio_num_t pin = button_func_pair->pin;
+        gpio_num_t *io_index = &button_func_pair->pin;
+
         bt_index = (uint8_t)(*io_index);
 
         uchKeypressed = button_func_pair->keypressed;
@@ -186,11 +196,58 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
     }
 }
 
+
+switch_func_pair_t g_buttons[] = {
+    {
+        .id = 0,
+        .pin = gpio_touch_btn_pins[0],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 1,
+        .pin = gpio_touch_btn_pins[1],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 2,
+        .pin = gpio_touch_btn_pins[2],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_NOTHING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 3,
+        .pin = gpio_touch_btn_pins[3] ,
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_NOTHING_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_NOTHING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_NOTHING_CONTROL
+    }
+};
+
 static esp_err_t deferred_driver_init(void)
 {
+    bool ok = switch_driver_init(g_buttons,
+                                 sizeof(g_buttons) / sizeof(g_buttons[0]),
+                                 zb_buttons_handler);
     // //Added by Nuos  commented on 04-02-2025
-    ESP_RETURN_ON_FALSE(switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), zb_buttons_handler), ESP_FAIL, TAG,
-                        "Failed to initialize switch driver");
+    // ESP_RETURN_ON_FALSE(switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), zb_buttons_handler), ESP_FAIL, TAG,
+    //                     "Failed to initialize switch driver");
     // #ifdef USE_WIFI_WEBSERVER 
     // #else
     nuos_get_data_from_nvs(); 
@@ -225,6 +282,28 @@ static esp_err_t deferred_driver_init(void)
     return ESP_OK;
 }
 
+
+void match_desc_cb_2(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx) {
+    
+    if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
+        ESP_LOGI(TAG, "Device supports Tuya cluster 0xEF00 -> it's a Tuya device");
+    } else {
+        ESP_LOGI(TAG, "No Tuya cluster -> likely standard Zigbee or other");
+    }
+}
+void check_for_tuya_cluster_2(uint16_t short_addr) {
+    esp_zb_zdo_match_desc_req_param_t find_req;
+
+    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_BASIC};
+    find_req.num_in_clusters = 1;
+    find_req.num_out_clusters = 0;
+    find_req.dst_nwk_addr = short_addr;
+    find_req.addr_of_interest = short_addr;
+    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
+    find_req.cluster_list = cluster_list;
+    esp_zb_zdo_match_cluster(&find_req, match_desc_cb_2, NULL);
+}
+
 static void simple_desc_cb(esp_zb_zdp_status_t zdo_status, esp_zb_af_simple_desc_1_1_t *simple_desc, void *user_ctx)
 {
     if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
@@ -250,6 +329,8 @@ static void ep_cb(esp_zb_zdp_status_t zdo_status, uint8_t ep_count, uint8_t *ep_
                 simple_desc_req.addr_of_interest = 0;
                 simple_desc_req.endpoint = ep_id_list[i];
                 esp_zb_zdo_simple_desc_req(&simple_desc_req, simple_desc_cb, NULL);
+
+                check_for_tuya_cluster_2(0);
             }
         }
     }
@@ -284,7 +365,6 @@ static void user_find_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t 
             // Proceed to bind
             nuos_zb_request_ieee_address(zdo_status, addr, endpoint, user_ctx, ieee_cb);
         }
-
     }
 }
 
@@ -306,6 +386,8 @@ static void zb_zdo_match_desc_handler(esp_zb_zdp_status_t zdo_status, uint16_t a
         ESP_LOGW(TAG, "No OTA Server found");
     }
 }
+
+
 
 static bool network_steering_mode_flag = false;
 bool joining_signal_received = false;
@@ -383,6 +465,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 2000);
                     }
                 }
+
+                //check_device_platform(0);
             }
         } else {
             ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
@@ -937,31 +1021,43 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                     nuos_zb_set_hardware(3, false);
                 }
                 #endif
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)    
             }else if(thermostat_data.bytes[2] == 1 && thermostat_data.bytes[3] == 1){  //set fan state
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)
+                
                 device_info[FAN_INDEX].device_state = thermostat_data.bytes[6];
                 nuos_zb_set_hardware(FAN_INDEX, false);
-                #endif
+                
                 printf("ON OFF\n");
+            #endif    
             }else if(thermostat_data.bytes[2] == 0x0f && thermostat_data.bytes[3] == 1){
                 device_info[0].device_state = thermostat_data.bytes[6];
-                printf("Fan Light\n");                
+                printf("Fan Light\n");  
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)                  
             }else if(thermostat_data.bytes[2] == 5 && thermostat_data.bytes[3] == 1){  //set light state
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN)
+                
                 device_info[LIGHT_INDEX].device_state = thermostat_data.bytes[6];
                 nuos_zb_set_hardware(LIGHT_INDEX, false);
-                #endif
+            #endif
                 
-            }else if(thermostat_data.bytes[2] == 101 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep1 state
+            // }else if(thermostat_data.bytes[2] == 101 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep1 state
+            //     device_info[0].device_state = thermostat_data.bytes[6];
+            //     nuos_zb_set_hardware(0, false);    
+            //     //set_state(0);
+            // }else if(thermostat_data.bytes[2] == 102 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep2 state
+            //     device_info[1].device_state = thermostat_data.bytes[6];
+            //     nuos_zb_set_hardware(1, false);
+            //     //set_state(1);
+            // }
+            }else if(thermostat_data.bytes[2] == 1 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep1 state
                 device_info[0].device_state = thermostat_data.bytes[6];
+                // printf("STATE:%d\n", device_info[0].device_state);
                 nuos_zb_set_hardware(0, false);    
                 //set_state(0);
-            }else if(thermostat_data.bytes[2] == 102 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep2 state
+            }else if(thermostat_data.bytes[2] == 7 && thermostat_data.bytes[3] == 1){  //set Multi CCT ep2 state
                 device_info[1].device_state = thermostat_data.bytes[6];
                 nuos_zb_set_hardware(1, false);
                 //set_state(1);
             }
-
             esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
                 .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
                 .cluster_id = message->info.cluster,
@@ -1043,27 +1139,48 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 }   
                 #endif  
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)               
-            }else if(thermostat_temp.bytes[2] == 103 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
+            // }else if(thermostat_temp.bytes[2] == 103 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
+            //     device_info[0].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+            //     if(device_info[0].device_level == 255) device_info[0].device_level = MAX_DIM_LEVEL_VALUE;
+            //     printf("LEVEL:%d\n", device_info[0].device_level);
+            //     nuos_zb_set_hardware(0, false);
+            // }else if(thermostat_temp.bytes[2] == 104 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 level
+            //     device_info[1].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
+            //     if(device_info[1].device_level == 255) device_info[1].device_level = MAX_DIM_LEVEL_VALUE;
+            //     printf("LEVEL:%d\n", device_info[1].device_level);
+            //     nuos_zb_set_hardware(1, false);
+            // }else if(thermostat_temp.bytes[2] == 105 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
+            //     device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
+            //     printf("COLOR:%d\n", device_info[0].device_val);
+            //     nuos_zb_set_hardware(0, false);
+            //     set_color_temp(0, false);
+            // }else if(thermostat_temp.bytes[2] == 106 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
+            //     device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
+            //     printf("COLOR:%d\n", device_info[1].device_val);
+            //     nuos_zb_set_hardware(1, false);
+            //     set_color_temp(1, false);
+            // #endif
+            }else if(thermostat_temp.bytes[2] == 2 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
                 device_info[0].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
                 if(device_info[0].device_level == 255) device_info[0].device_level = MAX_DIM_LEVEL_VALUE;
                 printf("LEVEL:%d\n", device_info[0].device_level);
                 nuos_zb_set_hardware(0, false);
-            }else if(thermostat_temp.bytes[2] == 104 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 level
+            }else if(thermostat_temp.bytes[2] == 8 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 level
                 device_info[1].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
                 if(device_info[1].device_level == 255) device_info[1].device_level = MAX_DIM_LEVEL_VALUE;
                 printf("LEVEL:%d\n", device_info[1].device_level);
                 nuos_zb_set_hardware(1, false);
-            }else if(thermostat_temp.bytes[2] == 105 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
-                device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
+            }else if(thermostat_temp.bytes[2] == 0x65 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
+                device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
                 printf("COLOR:%d\n", device_info[0].device_val);
                 nuos_zb_set_hardware(0, false);
                 set_color_temp(0, false);
-            }else if(thermostat_temp.bytes[2] == 106 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
-                device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
+            }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
+                device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
                 printf("COLOR:%d\n", device_info[1].device_val);
                 nuos_zb_set_hardware(1, false);
                 set_color_temp(1, false);
-            #endif
+            #endif            
             }        
         }  else if(message->data.size == 2) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)

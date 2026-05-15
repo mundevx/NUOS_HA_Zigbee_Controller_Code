@@ -251,11 +251,11 @@ void timer_callback(void* arg) {
 	#ifdef USE_DOUBLE_PRESS
 
 	#else
-		if(double_press_click_enable){
-			if(disable_double_press_enable_counts++ > 50){ //10 sec
-				double_press_click_enable = false;
-			}
-		}	
+		// if(double_press_click_enable[0]){
+		// 	if(disable_double_press_enable_counts++ > 50){ //10 sec
+		// 		double_press_click_enable[0] = false;
+		// 	}
+		// }	
 	#endif
 	
 }
@@ -292,16 +292,12 @@ uint8_t get_button_pressed_mode(){
         if(button_read_flag[i]){
            if(i==0){
 			  first_button_pressed = true;
-			  //printf("first_button_pressed1\n");
 		   }else if(i==1){
 			  second_button_pressed = true;
-			  //printf("second_button_pressed\n");
 		   }else if(i==2){
 			  third_button_pressed = true;
-			  //printf("third_button_pressed\n");
 		   }else if(i==3){
 			  fourth_button_pressed = true;
-			  //printf("fourth_button_pressed\n");
 		   }
         }
 	}
@@ -375,11 +371,12 @@ void start_commissioning_timeout_timer(){
 }
 
 void actionOnTwoSwitchPressed(int64_t timeout) {
+
 	bool first_button_pressed = false;
 	bool second_button_pressed = false;
 	bool third_button_pressed = false;
 	bool fourth_button_pressed = false;
-    //printf("timeout: %lld\n", timeout);
+
 	for(int i=0; i<TOTAL_BUTTONS; i++){
         if(button_read_flag[i]){
            if(i==0){
@@ -387,7 +384,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 			  //printf("first_button_pressed\n");
 		   }else if(i==1){
 			  second_button_pressed = true;
-			  printf("second_button_pressed\n");
+			//   printf("second_button_pressed\n");
 		   }else if(i==2){
 			  third_button_pressed = true;
 			  //printf("third_button_pressed\n");
@@ -486,6 +483,7 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 				#else
 
 				#ifdef USE_COLOR_CONTROL
+				    // printf("first_button_pressed:%d third_button_pressed:%d\n", first_button_pressed, third_button_pressed);
 					if(first_button_pressed && third_button_pressed){
 						printf("set_commissioning\n");
 						if(!ready_commisioning_flag){

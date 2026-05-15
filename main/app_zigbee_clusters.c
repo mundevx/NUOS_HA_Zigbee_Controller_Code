@@ -736,14 +736,24 @@ esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level){
 uint8_t sequence_num_1 = 1;
 
 
-uint8_t state_data[7] = {0x0, 0x54, 0x65, 0x01, 0x00, 0x01, 0x0};
-//                       0x0, 0x09, 0x66, 0x01, 0x00, 0x01, 0x0
-uint8_t level_data[10] = {0x0, 0x5e, 0x67, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
+// uint8_t state_data[7] = {0x0, 0x54, 0x65, 0x01, 0x00, 0x01, 0x0};
+// uint8_t level_data[10] = {0x0, 0x5e, 0x67, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
+// uint8_t color_data[10] = {0x0, 0x5f, 0x69, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
+
+uint8_t state_data[7] = {0x0, 0x54, 0x01, 0x01, 0x00, 0x01, 0x0};
+uint8_t level_data[10] = {0x0, 0x5e, 0x02, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
+uint8_t color_data[10] = {0x0, 0x5f, 0x65, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
+
 void nuos_set_state_command(uint8_t index, uint8_t state){
+    // if(index == 0){
+    //     state_data[2] = 0x65;
+    // }else if(index == 1){
+    //     state_data[2] = 0x66;
+    // }
     if(index == 0){
-        state_data[2] = 0x65;
+        state_data[2] = 0x1;
     }else if(index == 1){
-        state_data[2] = 0x66;
+        state_data[2] = 0x7;
     }
     device_info[index].device_state = (bool)state;
     state_data[6] = state;
@@ -751,7 +761,7 @@ void nuos_set_state_command(uint8_t index, uint8_t state){
     state_data[1] = sequence_num_1;
     sequence_num_1++;
     
-    printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
+    //printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
     
     esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
         .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
@@ -775,12 +785,16 @@ void nuos_set_state_command(uint8_t index, uint8_t state){
 }
 void nuos_set_level_command(uint8_t index, uint8_t level){
 
+    // if(index == 0){
+    //     level_data[2] = 0x67;
+    // }else if(index == 1){
+    //     level_data[2] = 0x68;
+    // }
     if(index == 0){
-        level_data[2] = 0x67;
+        level_data[2] = 0x2;
     }else if(index == 1){
-        level_data[2] = 0x68;
+        level_data[2] = 0x8;
     }
-
     uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
     if(mapValue >= 1000) mapValue = 1000; 
     level_data[8] = mapValue >> 8;
@@ -826,17 +840,21 @@ void nuos_set_level_command(uint8_t index, uint8_t level){
     esp_zb_lock_release();
 }
 void nuos_set_color_temp_command(uint8_t index, uint16_t color){
-    uint8_t color_data[10] = {0x0, 0x5f, 0x69, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
+    
 
     uint16_t mapValue = map_1000(color, 2000, 6500, 1000, 10);
     if(mapValue >= 1000) mapValue = 1000; 
     if(mapValue <= 10) mapValue = 10; 
+    // if(index == 0){
+    //     color_data[2] = 0x69;
+    // }else if(index == 1){
+    //     color_data[2] = 0x6a;
+    // }
     if(index == 0){
-        color_data[2] = 0x69;
+        color_data[2] = 0x65;
     }else if(index == 1){
-        color_data[2] = 0x6a;
+        color_data[2] = 0x66;
     }
-
     color_data[8] = (mapValue >> 8) & 0xFF;
     color_data[9] = mapValue & 0xFF;
 
@@ -2419,6 +2437,55 @@ static void bind_level_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
     }
 }
 
+void check_device_platform(uint16_t short_addr) 
+{
+    esp_zb_zcl_read_attr_cmd_t read_cmd;
+    read_cmd.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+	read_cmd.zcl_basic_cmd.src_endpoint = 1;
+	read_cmd.zcl_basic_cmd.dst_endpoint = 1;
+	read_cmd.zcl_basic_cmd.dst_addr_u.addr_short = short_addr;
+    read_cmd.clusterID = ESP_ZB_ZCL_CLUSTER_ID_BASIC;
+
+    read_cmd.manuf_specific     = 0;              /*!< Sent as manufacturer extension with code. */
+    read_cmd.direction          = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;               /*!< The command direction, refer to esp_zb_zcl_cmd_direction_t */
+    read_cmd.dis_default_resp   = 1;              /*!< Disable default response for this command. */
+    read_cmd.manuf_code         = 0;
+
+
+	uint16_t attributes[] = {
+		ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID, ESP_ZB_ZCL_ATTR_BASIC_MODEL_IDENTIFIER_ID,
+	};
+	read_cmd.attr_number = 2;//ARRAY_LENTH(attributes);
+	read_cmd.attr_field = attributes;
+    
+    esp_zb_zcl_read_attr_cmd_req(&read_cmd);
+}
+
+void match_desc_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx) {
+    
+    if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
+        ESP_LOGI(TAG, "Device supports Tuya cluster 0xEF00 -> it's a Tuya device");
+        check_device_platform(0);
+    } else {
+        ESP_LOGI(TAG, "No Tuya cluster -> likely standard Zigbee or other");
+    }
+}
+void check_for_tuya_cluster(uint16_t short_addr) {
+    esp_zb_zdo_match_desc_req_param_t find_req;
+
+    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_BASIC};
+    find_req.num_in_clusters = 1;
+    find_req.num_out_clusters = 0;
+    find_req.dst_nwk_addr = short_addr;
+    find_req.addr_of_interest = short_addr;
+    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
+    find_req.cluster_list = cluster_list;
+    esp_zb_zdo_match_cluster(&find_req, match_desc_cb, NULL);
+}
+
+
+
+
 static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
 {
     if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
@@ -2522,6 +2589,9 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
             endpoint_counts++;
             if(endpoint_counts >= TOTAL_ENDPOINTS){ 
                 endpoint_counts = 0;
+                printf("check_device_platform\n");
+                //check_device_platform(0);
+                check_for_tuya_cluster(0);
             }
 
             
@@ -3254,7 +3324,19 @@ esp_zb_attribute_list_t* nuos_zb_create_group_cluster(){
     esp_zb_groups_cluster_cfg_t group_cfg = {
         .groups_name_support_id = ESP_ZB_ZCL_GROUPS_NAME_SUPPORT_DEFAULT_VALUE
     };
-    esp_zb_attribute_list_t *esp_zb_groups_cluster =  esp_zb_groups_cluster_create(&group_cfg);
+
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+        #ifdef USE_COLOR_CONTROL 
+        esp_zb_attribute_list_t *esp_zb_groups_cluster =  esp_zb_groups_cluster_create(NULL);
+        #else
+        esp_zb_attribute_list_t *esp_zb_groups_cluster =  esp_zb_groups_cluster_create(&group_cfg);
+        #endif
+
+        #else
+        esp_zb_attribute_list_t *esp_zb_groups_cluster =  esp_zb_groups_cluster_create(&group_cfg);
+    #endif
+
+    
     return esp_zb_groups_cluster;
 }
 
@@ -3270,7 +3352,19 @@ esp_zb_attribute_list_t* nuos_zb_create_scene_cluster(){
 		.scene_valid = ESP_ZB_ZCL_SCENES_SCENE_VALID_DEFAULT_VALUE,
 		.name_support = ESP_ZB_ZCL_SCENES_NAME_SUPPORT_DEFAULT_VALUE,
 	};
-    esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(&scene_cfg);
+
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+        #ifdef USE_COLOR_CONTROL 
+        esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(NULL);
+        #else
+        esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(&scene_cfg);
+        #endif
+
+        #else
+        esp_zb_attribute_list_t *esp_zb_scene_cluster = esp_zb_scenes_cluster_create(&scene_cfg);
+        #endif
+
+    
     return esp_zb_scene_cluster;
 }
 
@@ -3974,7 +4068,7 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
             ESP_LOGI(TAG, "esp_zb_cluster_list_add_color_control_cluster ESP_ERR_INVALID_ARG");
         } 
         
-        esp_zb_attribute_list_t *esp_zb_tuya_private_cluster0 = esp_zb_zcl_attr_list_create(0xee00);
+        esp_zb_attribute_list_t *esp_zb_tuya_private_cluster0 = esp_zb_zcl_attr_list_create(0xEE00);
         esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster0, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);         
         esp_zb_attribute_list_t *esp_zb_tuya_private_cluster1 = esp_zb_zcl_attr_list_create(0xEF00);
         esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster1, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);   
@@ -4014,12 +4108,6 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
         {
             ESP_LOGI(TAG, "esp_zb_cluster_list_add_color_control_cluster ESP_ERR_INVALID_ARG");
         } 
-        // #if(TOTAL_ENDPOINTS == 2)
-        // esp_zb_attribute_list_t *esp_zb_tuya_private_cluster0 = esp_zb_zcl_attr_list_create(0xee00);
-        // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster0, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);         
-        // esp_zb_attribute_list_t *esp_zb_tuya_private_cluster1 = esp_zb_zcl_attr_list_create(0xEF00);
-        // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_tuya_private_cluster1, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);   
-        // #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM)   
 
         esp_zb_attribute_list_t *esp_zb_level_cluster = nuos_zb_create_level_cluster(1, MAX_DIM_LEVEL_VALUE);
@@ -4272,7 +4360,7 @@ esp_zb_cluster_list_t* server_cluster(uint8_t index){
 /* ********************************************************************************** */
 void nuos_init_privilege_commands(){
     #ifdef USE_TUYA_BRDIGE
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             //select mode
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0XF0); // mode
             //mode == 0

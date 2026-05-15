@@ -81,11 +81,41 @@ typedef enum {
     SWITCH_COLOR_CONTROL,
 } switch_func_t;
 
+
+#define BTN_EVT_SINGLE      (1U << 0)
+#define BTN_EVT_DOUBLE      (1U << 1)
+#define BTN_EVT_LONG        (1U << 2)
+#define BTN_EVT_MULTI       (1U << 3)
+#define BTN_EVT_COMBO_LONG  (1U << 4)
+
+
+#define SWITCH_ONOFF_TOGGLE_CONTROL    0x10
+#define SWITCH_DIMMING_CONTROL         0x11
+#define SWITCH_SCENE_CHANGE_CONTROL    0x12
+#define SWITCH_FACTORY_RESET_CONTROL   0x13
+#define SWITCH_NOTHING_CONTROL         0xFF
+
 typedef struct {
-    uint32_t pin;
+    gpio_num_t pin;
+    uint8_t id;
     switch_func_t func;
     uint8_t keypressed;
+    uint32_t enabled_events;
+
+    uint8_t single_func;
+    uint8_t double_func;
+    uint8_t long_func;
+    uint8_t multi_func;
+    uint8_t combo_long_func;
 } switch_func_pair_t;
+
+
+// typedef struct {
+//     uint32_t pin;
+//     uint8_t id;
+//     switch_func_t func;
+//     uint8_t keypressed;
+// } switch_func_pair_t;
 
 typedef void (*esp_switch_callback_t)(switch_func_pair_t *param);
 

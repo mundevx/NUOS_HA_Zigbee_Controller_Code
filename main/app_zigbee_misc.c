@@ -1117,14 +1117,35 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                 if(button_index < 2){
                     //change_cw_ww_color_flag = false;  
+                    #ifdef USE_COLOR_CONTROL
+                    set_parameter_ep_index_selected(button_index);
+                    #endif
                     nuos_zb_set_hardware(button_index, true);  
                 }
                 #ifdef USE_COLOR_CONTROL
+                // else{
+                //     //change_cw_ww_color_flag = false;  
+                //     //nuos_zb_set_hardware(button_index-2, false); 
+                //     nuos_set_hardware_brightness(gpio_touch_btn_pins[button_index]);                    
+                // } 
                 else{
-                    //change_cw_ww_color_flag = false;  
-                    //nuos_zb_set_hardware(button_index-2, false); 
-                    nuos_set_hardware_brightness(gpio_touch_btn_pins[button_index]);                    
-                }  
+                    uint8_t sindex = get_parameter_ep_index_selected();
+                    printf("sindex:%d color_or_fan_state:%d\n", sindex, device_info[sindex].color_or_fan_state);
+                    if(sindex > 1) return;
+                    
+                    if(device_info[sindex].device_state){
+                        nuos_zb_set_hardware(button_index, false);
+                        if(device_info[sindex].color_or_fan_state){
+                            set_color_temp(sindex, false);
+                        }else{
+                            set_level(sindex); 
+                        }
+                    }
+                }
+
+
+
+
                 #endif      
             #else
                 nuos_zb_set_hardware(button_index, true);
@@ -1170,14 +1191,34 @@ void nuos_switch_single_click_task(uint32_t io_num) {
 }
 
 void nuos_switch_double_click_task(uint32_t io_num){
-    //printf("DOUBLE CLICK Detected on EP:%d\n", ENDPOINTS_LIST[button_index]);
+    
     button_index = nuos_get_button_press_index(io_num);
+    printf("DOUBLE CLICK Detected!! button_index:%d\n", button_index);
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
         nuos_set_scene_button_attribute(button_index);
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH) 
 
     #else
-        double_press_click_enable = !double_press_click_enable;
+         
+        #ifdef USE_COLOR_CONTROL
+            uint8_t sindex = 0;
+            if(button_index > 1) sindex = button_index - 2;
+            else sindex = button_index;
+            set_parameter_ep_index_selected(sindex);
+            double_press_click_enable[sindex] = !double_press_click_enable[sindex];
+            set_parameter_toggle_bt_func_selected(double_press_click_enable[sindex]);
+            if(device_info[sindex].device_state){
+                nuos_zb_set_hardware(button_index, false);
+                if(device_info[sindex].color_or_fan_state){
+                    set_color_temp(sindex, false);
+                }else{
+                    set_level(sindex); 
+                }
+            }
+        #else
+            double_press_click_enable[0] = !double_press_click_enable[0];  
+        #endif
+        
     #endif
 }
 
@@ -1193,7 +1234,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
 }
 
 void nuos_switch_long_press_brightness_task(uint32_t io_num){
-    //printf("LONG PRESS BRIGHTNESS Detected!!\n");
+    printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
     //recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 
@@ -1313,7 +1354,7 @@ void mode_change_task(void* args) {
                 dst_node_info_t dst_node_info = existing_nodes_info[save_pressed_button_index].scene_switch_info.dst_node_info[node_counts_sequence];   
                 ep_cnts = dst_node_info.endpoint_counts;
                 if(node_counts_sequence < node_counts){
-                    printf("short_addr:0x%x\n", existing_nodes_info[save_pressed_button_index].short_addr);
+                    //printf("short_addr:0x%x\n", existing_nodes_info[save_pressed_button_index].short_addr);
                     
                    // if(existing_nodes_info[node_counts_sequence].short_addr == 0x5300 || existing_nodes_info[node_counts_sequence].short_addr == 0x647e){
 
@@ -1338,8 +1379,8 @@ void mode_change_task(void* args) {
                     node_ep_counts_sequence = 0;
                 }
                 identify_device_complete_flag = true; 
-                printf("node_counts_sequence:%d\n", node_counts_sequence);
-                printf("node_ep_counts_sequence:%d\n", node_ep_counts_sequence);
+                //printf("node_counts_sequence:%d\n", node_counts_sequence);
+                //printf("node_ep_counts_sequence:%d\n", node_ep_counts_sequence);
             break;
 
             case TASK_BLINK_SELECTED_LED:
