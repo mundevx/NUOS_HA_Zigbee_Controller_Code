@@ -2,6 +2,7 @@
 #include "freertos/task.h"
 #include "dali_receiver.h"
 #include "esp_log.h"
+#include "DALI.h"
 
 static const char* TAG = "DaliReceiver";
 extern bool isr_service_installed;
@@ -14,7 +15,7 @@ extern bool isr_service_installed;
 #define DALI_IS_2TE(x) ((2*(DALI_TE_MIN))<=(x) && (x)<=(2*(DALI_TE_MAX)))
 
 #define DALI_IS_BUS_LOW() (gpio_get_level(GPIO_NUM_19)==0)
-
+//using namespace dali_rx;
 namespace dali_rx {
 
 Receiver::Receiver()
@@ -77,7 +78,34 @@ esp_err_t Receiver::begin(gpio_num_t rx_pin, callback_t cb, bool inverted, bool*
     ESP_ERROR_CHECK(esp_timer_start_periodic(idle_timer_, DALI_TE));
 
     ESP_LOGI(TAG, "Receiver started on GPIO %d", pin_);
+
+
+
+
+
+    edge_queue_ = xQueueCreate(64, sizeof(RxEdgeEvent));
+
+    xTaskCreate(
+        [](void* arg) {
+            static_cast<Receiver*>(arg)->rx_task();
+        },
+        "dali_rx_task",
+        4096,
+        this,
+        20,
+        nullptr
+    );
     return ESP_OK;
+}
+
+
+void Receiver::dali_rx_intr_enabled(bool enabled)
+{
+    if (enabled) {
+        gpio_intr_enable(pin_);
+    } else {
+        gpio_intr_disable(pin_);
+    }
 }
 
 void Receiver::end() {
@@ -93,9 +121,16 @@ void Receiver::end() {
     }
 }
 
+// void IRAM_ATTR Receiver::gpio_isr_handler(void* arg) {
+//     auto* self = static_cast<Receiver*>(arg);
+//     self->handle_pin_change();
+// }
+
+
+
 void IRAM_ATTR Receiver::gpio_isr_handler(void* arg) {
     auto* self = static_cast<Receiver*>(arg);
-    self->handle_pin_change();
+    self->handle_pin_change_isr();
 }
 
 
@@ -150,65 +185,85 @@ void IRAM_ATTR Receiver::timer_callback(void* arg) {
 //     portEXIT_CRITICAL_ISR(&self->spinlock_);
 // }
 
-void IRAM_ATTR Receiver::handle_pin_change() {
-    uint32_t now = esp_timer_get_time();               // µs, ISR‑safe
-    portENTER_CRITICAL_ISR(&spinlock_);
+// void IRAM_ATTR Receiver::handle_pin_change() {
+//     uint32_t now = esp_timer_get_time();
 
-    // Read current level (0 = low, 1 = high)
-    int level = gpio_get_level(pin_);
-    bool bus_low = (inverted_ ? !level : level);       // true = bus low (active)
-    //uint8_t bus_low = DALI_IS_BUS_LOW();
+//     if (dali_) {
+//         dali_->markBusActivityFromISR();
+//     }
 
-    // Any pin change resets the idle counter
-    idle_te_cnt_ = 0;
-    // ESP_EARLY_LOGI(TAG, "Edge at %lld, level=%d, dt=%u", now, level, now - last_change_us_); 
-    // Ignore if same as previous (should not happen with edge interrupt, but safe)
-    if (bus_low == last_level_) {
-        portEXIT_CRITICAL_ISR(&spinlock_);
-        return;
+//     portENTER_CRITICAL_ISR(&spinlock_);
+
+//     int level = gpio_get_level(pin_);
+//     bool bus_low = (inverted_ ? !level : level);
+
+//     idle_te_cnt_ = 0;
+
+//     if (bus_low == last_level_) {
+//         portEXIT_CRITICAL_ISR(&spinlock_);
+//         return;
+//     }
+
+//     uint32_t dt = now - last_change_us_;
+//     last_change_us_ = now;
+//     last_level_ = bus_low;
+
+//     switch (state_) {
+//         case RxState::IDLE:
+//             if (bus_low) {
+//                 state_ = RxState::START;
+//             }
+//             break;
+
+//         case RxState::START:
+//             if (bus_low || !DALI_IS_TE(dt)) {
+//                 state_ = RxState::IDLE;
+//             } else {
+//                 halfbit_cnt_ = -1;
+//                 for (auto& b : msg_) b = 0;
+//                 state_ = RxState::BIT;
+//             }
+//             break;
+
+//         case RxState::BIT:
+//             if (DALI_IS_TE(dt)) {
+//                 push_halfbit(bus_low);
+//             } else if (DALI_IS_2TE(dt)) {
+//                 push_halfbit(bus_low);
+//                 push_halfbit(bus_low);
+//             } else {
+//                 state_ = RxState::IDLE;
+//             }
+//             break;
+
+//         default:
+//             break;
+//     }
+
+//     portEXIT_CRITICAL_ISR(&spinlock_);
+// }
+void IRAM_ATTR Receiver::handle_pin_change_isr() {
+    BaseType_t hp_task_woken = pdFALSE;
+
+    uint32_t now = (uint32_t)esp_timer_get_time();
+    if (dali_) {
+        dali_->markBusActivityFromISR();
     }
+    // int level = gpio_get_level(pin_);   // replace with gpio_ll/ROM read if still needed for IRAM-only path
+    // bool bus_low = inverted_ ? !level : level;
 
-    uint32_t dt = now - last_change_us_;
-    last_change_us_ = now;
-    last_level_ = bus_low;
+    // RxEdgeEvent ev{ now, bus_low };
 
-    switch (state_) {
-        case RxState::IDLE:
-            if (bus_low) {          // falling edge → start bit
-                state_ = RxState::START;
-            }
-            break;
+    // xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
+    RxEdgeEvent ev;
+    ev.t_us = now;
+    //ev.bus_low = false;   // fill later in task, or use a low-level read here
 
-        case RxState::START:
-            // Start bit: bus goes high after exactly one TE
-            if (bus_low || !DALI_IS_TE(dt)) {
-            //if (!bus_low && (DALI_IS_2TE(dt) || DALI_IS_TE(dt))) {  // accept 1TE as well    
-                state_ = RxState::IDLE;   // invalid start
-            } else {
-                halfbit_cnt_ = -1;          // will be incremented to 0 on first data half‑bit
-                for (auto& b : msg_) b = 0;
-                state_ = RxState::BIT;
-            }
-            break;
-
-        case RxState::BIT:
-            if (DALI_IS_TE(dt)) {
-                push_halfbit(bus_low);
-            } else if (DALI_IS_2TE(dt)) {
-                push_halfbit(bus_low);
-                push_halfbit(bus_low);
-            } else {
-                state_ = RxState::IDLE;     // invalid pulse length
-            }
-            break;
-
-        default:
-            break;
+    xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
+    if (hp_task_woken == pdTRUE) {
+        portYIELD_FROM_ISR();
     }
-
-    portEXIT_CRITICAL_ISR(&spinlock_);
 }
-
 void IRAM_ATTR Receiver::push_halfbit(uint8_t bit) {
     // Invert because bus low = logical 1 (DALI active low)
     bit = (~bit) & 1;
@@ -221,6 +276,68 @@ void IRAM_ATTR Receiver::push_halfbit(uint8_t bit) {
         }
     }
     halfbit_cnt_++;
+}
+
+
+
+void Receiver::rx_task() {
+    RxEdgeEvent ev;
+    while (true) {
+        if (xQueueReceive(edge_queue_, &ev, portMAX_DELAY) == pdTRUE) {
+            int level = gpio_get_level(pin_);
+            bool bus_low = inverted_ ? !level : level;
+            process_edge(ev.t_us, bus_low);
+        }
+    }
+}
+
+void Receiver::process_edge(uint32_t now, bool bus_low) {
+    portENTER_CRITICAL(&spinlock_);
+
+    idle_te_cnt_ = 0;
+
+    if (bus_low == last_level_) {
+        portEXIT_CRITICAL(&spinlock_);
+        return;
+    }
+
+    uint32_t dt = now - last_change_us_;
+    last_change_us_ = now;
+    last_level_ = bus_low;
+
+    switch (state_) {
+        case RxState::IDLE:
+            if (bus_low) {
+                state_ = RxState::START;
+            }
+            break;
+
+        case RxState::START:
+            if (bus_low || !DALI_IS_TE(dt)) {
+                state_ = RxState::IDLE;
+            } else {
+                halfbit_cnt_ = -1;
+                for (auto& b : msg_) b = 0;
+                state_ = RxState::BIT;
+            }
+            break;
+
+        case RxState::BIT:
+            if (DALI_IS_TE(dt)) {
+                push_halfbit(bus_low);
+            } else if (DALI_IS_2TE(dt)) {
+                push_halfbit(bus_low);
+                push_halfbit(bus_low);
+            } else {
+                state_ = RxState::IDLE;
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    portEXIT_CRITICAL(&spinlock_);
 }
 
 } // namespace dali

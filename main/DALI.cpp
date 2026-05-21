@@ -1,146 +1,244 @@
-/*
-Copyright (c) 2019 Boot&Work Corp., S.L. All rights reserved
-Converted to ESP-IDF for ESP32-H2
-
-This library is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-*/
-
 #include "DALI.h"
-// At top with other includes
-#include "esp_random.h"
+#include "esp_timer.h"
+#include "esp_rom_sys.h"
 #include "esp_log.h"
+#include "esp_random.h"
 
-const char *DALI::TAG               = "DALI";
+const char *DALI::TAG = "DALI";
+SemaphoreHandle_t dali_mutex;
 
-// ////////////////////////////////////////////////////////////////////////////////////////////////////
-DALI::DALI() : txPin(GPIO_NUM_NC),  rxPin(GPIO_NUM_NC) {}
-
-// ////////////////////////////////////////////////////////////////////////////////////////////////////
+DALI::DALI() : txPin(GPIO_NUM_NC), rxPin(GPIO_NUM_NC) {}
 DALI::DALI(gpio_num_t txPin, gpio_num_t rxPin) : txPin(txPin), rxPin(rxPin) {}
+DALI::~DALI() {}
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-DALI::~DALI() {
-   
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void DALI::task_delay(uint32_t milliseconds) {
     vTaskDelay(milliseconds / portTICK_PERIOD_MS);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void DALI::task_delayMicroseconds(uint32_t microseconds) {
     esp_rom_delay_us(microseconds);
 }
- 
 
 void DALI::begin(bool* is_isr_handler) {
-// Configure TX pin as output
     gpio_config_t io_conf_tx = {};
     io_conf_tx.intr_type = GPIO_INTR_DISABLE;
-    io_conf_tx.mode = GPIO_MODE_OUTPUT;
+    io_conf_tx.mode = GPIO_MODE_OUTPUT_OD;
     io_conf_tx.pin_bit_mask = (1ULL << txPin);
     io_conf_tx.pull_down_en = GPIO_PULLDOWN_DISABLE;
     io_conf_tx.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf_tx);
 
-    // // Configure RX pin as input
-    // gpio_config_t io_conf_rx = {};
-    // io_conf_rx.intr_type = GPIO_INTR_DISABLE;
-    // io_conf_rx.mode = GPIO_MODE_INPUT;
-    // io_conf_rx.pin_bit_mask = (1ULL << rxPin);
-    // io_conf_rx.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    // io_conf_rx.pull_up_en = GPIO_PULLUP_DISABLE;
-    // gpio_config(&io_conf_rx);
+    gpio_set_level(txPin, DALI_HIGH);
 
-    // Set initial TX state (idle: release bus)
-    gpio_set_level(txPin, DALI_HIGH);   // Idle = HIGH (depending on polarity)
+    taskENTER_CRITICAL(&bus_mux_);
+    bus_busy_ = false;
+    last_bus_activity_us_ = esp_timer_get_time();
+    taskEXIT_CRITICAL(&bus_mux_);
+    dali_mutex = xSemaphoreCreateMutex();
+}
+
+void IRAM_ATTR DALI::markBusActivityFromISR() {
+    taskENTER_CRITICAL_ISR(&bus_mux_);
+    bus_busy_ = true;
+    last_bus_activity_us_ = esp_timer_get_time();
+    taskEXIT_CRITICAL_ISR(&bus_mux_);
+}
+
+bool DALI::isBusIdle() {
+    int64_t now = esp_timer_get_time();
+    int64_t last_us;
+    bool    busy;
+
+    // Only task context calls this
+    taskENTER_CRITICAL(&bus_mux_);
+    busy    = bus_busy_;
+    last_us = last_bus_activity_us_;
+    taskEXIT_CRITICAL(&bus_mux_);
+
+    // Only use time in non‑critical section
+    if (busy && ((now - last_us) >= DALI_BUS_IDLE_MIN_US)) {
+        // Defer the actual mutation
+        taskENTER_CRITICAL(&bus_mux_);
+        // Only clear if no one else updated in the meantime
+        if (bus_busy_ && ((esp_timer_get_time() - last_bus_activity_us_) >= DALI_BUS_IDLE_MIN_US)) {
+            bus_busy_ = false;
+        }
+        taskEXIT_CRITICAL(&bus_mux_);
+    }
+
+    return !bus_busy_;
 }
 
 
-// Send a '0' bit (low-high) with collision check on the high phase
-bool DALI::sendZeroWithCheck() {
-    // First half: drive low (active) – safe, no collision possible
-    gpio_set_level(txPin, DALI_LOW);   // DALI_LOW = 1 (active)
-    esp_rom_delay_us(416);
+bool DALI::sendHalfBit(bool txLevel)
+{
+    gpio_set_level(txPin, txLevel);
 
-    // Second half: release to high (inactive) – check if bus actually goes high
-    gpio_set_level(txPin, DALI_HIGH);  // DALI_HIGH = 0 (released)
-    esp_rom_delay_us(20);              // settle time
-    int bus_level = gpio_get_level(rxPin);
-    // Because of inversion: DALI_HIGH=0 means bus released (logic 1)
-    // If another master is pulling low (DALI_LOW=1), rxPin will be 1, which is NOT DALI_HIGH.
-    if (bus_level != DALI_HIGH) {
-        ESP_LOGW(TAG, "Collision in sendZero: bus level %d, expected %d", bus_level, DALI_HIGH);
+    // wait for line settle
+    esp_rom_delay_us(150);
+
+    int rxLevel = gpio_get_level(rxPin);
+
+    // collision detect
+    if (txLevel == DALI_HIGH && rxLevel == DALI_LOW) {
+
+        ESP_EARLY_LOGW(TAG, "DALI collision");
+
+        releaseBus();
+
         return false;
     }
-    esp_rom_delay_us(396);  // complete the half-bit
+
+    esp_rom_delay_us(266);
+
+    return true;
+}
+bool DALI::sendZero()
+{
+    if (!sendHalfBit(DALI_LOW)) return false;
+    if (!sendHalfBit(DALI_HIGH)) return false;
     return true;
 }
 
-// Send a '1' bit (high-low) with collision check on the first high phase
-bool DALI::sendOneWithCheck() {
-    // First half: release bus (high) – collision possible here
-    gpio_set_level(txPin, DALI_HIGH);
-    esp_rom_delay_us(20);
-    if (gpio_get_level(rxPin) != DALI_HIGH) {
-        ESP_LOGW(TAG, "Collision in sendOne (first half)");
+bool DALI::sendOne()
+{
+    if (!sendHalfBit(DALI_HIGH)) return false;
+    if (!sendHalfBit(DALI_LOW)) return false;
+    return true;
+}
+// bool DALI::sendZero(void) {
+//     gpio_set_level(txPin, DALI_LOW);
+//     task_delayMicroseconds(416);
+//     gpio_set_level(txPin, DALI_HIGH);
+//     task_delayMicroseconds(416);
+//     return true;
+// }
+
+// bool DALI::sendOne(void) {
+//     gpio_set_level(txPin, DALI_HIGH);
+//     task_delayMicroseconds(416);
+//     gpio_set_level(txPin, DALI_LOW);
+//     task_delayMicroseconds(416);
+//     return true;
+// }
+
+bool DALI::sendCommandRaw(uint8_t command, uint8_t data) {
+    uint16_t info = (uint16_t)((command << 8) | data);
+    //xSemaphoreTake(dali_mutex, portMAX_DELAY);
+    if (!sendOne()) {
         return false;
     }
-    esp_rom_delay_us(396);
 
-    // Second half: drive low – safe
+for (uint8_t i = 0; i < 16; i++) {
+
+    bool ok;
+
+    if (info & 0x8000)
+        ok = sendOne();
+    else
+        ok = sendZero();
+
+    if (!ok) {
+        ESP_LOGW(TAG, "Collision detected");
+        releaseBus();
+        return false;
+    }
+
+    info <<= 1;
+}
+
     gpio_set_level(txPin, DALI_LOW);
-    esp_rom_delay_us(416);
+    task_delayMicroseconds(3700);
+
+    // Only update once, outside ISR
+    taskENTER_CRITICAL(&bus_mux_);
+    bus_busy_ = true;
+    last_bus_activity_us_ = esp_timer_get_time();
+    taskEXIT_CRITICAL(&bus_mux_);
+    //xSemaphoreGive(dali_mutex);
     return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-bool DALI::sendZero(void) {
-    gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(416);
-    gpio_set_level(txPin, DALI_HIGH);
-    task_delayMicroseconds(416);
-    return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-bool DALI::sendOne(void) {
-    gpio_set_level(txPin, DALI_HIGH);
-    task_delayMicroseconds(416);
-    gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(416);
-    return true;
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////
-bool DALI::isBusBusy() {
-    #ifdef IS_INVERTED
-        // Inverted: idle = HIGH, busy = LOW
-        return (gpio_get_level(rxPin) == DALI_LOW);
-    #else
-        // Non-inverted: idle = LOW, busy = HIGH
-        return (gpio_get_level(rxPin) == DALI_HIGH);
-    #endif
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// bool DALI::waitForBusFree(uint8_t maxTries, uint32_t delayUs) {
-//     for (uint8_t attempt = 0; attempt < maxTries; attempt++) {
-//         if (!isBusBusy()) {
-//             return true;
+// bool DALI::sendCommand(uint8_t command, uint8_t data) {
+//     for (int retry = 0; retry < 10; retry++) {
+//         if (isBusIdle()) {
+//             // Assume isBusIdle() is our only source of bus state
+//             return sendCommandRaw(command, data);
 //         }
-//         ESP_LOGW(TAG, "DALI bus busy, retry %d/%d", attempt + 1, maxTries);
-//         task_delayMicroseconds(delayUs);
+//         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
 //     }
-//     ESP_LOGE(TAG, "DALI bus still busy after %d tries", maxTries);
+
+//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
 //     return false;
 // }
-////////////////////////////////////////////////////////////////////////////////////////////////////
-#define MAX_RETRIES         2
 bool DALI::sendCommand(uint8_t command, uint8_t data) {
+    for (int retry = 0; retry < 30; retry++) {
+        
+        if (isBusIdle()) {
+            // task_delay(1);   // wait 1 ms
+            // if (isBusIdle()) {
+                return sendCommandRaw(command, data);
+            // }
+        }
+        
+        esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
+    }
+    ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
+    return false;
+}
+
+
+
+bool DALI::tryAcquireBus(uint32_t confirm_idle_us, uint32_t max_wait_us)
+{
+    int64_t start = esp_timer_get_time();
+
+    while ((esp_timer_get_time() - start) < max_wait_us) {
+        if (isBusIdle()) {
+            task_delayMicroseconds(confirm_idle_us);
+            if (isBusIdle()) {
+                taskENTER_CRITICAL(&bus_mux_);
+                if (bus_busy_) {
+                    taskEXIT_CRITICAL(&bus_mux_);
+                    continue;
+                }
+                bus_busy_ = true;
+                last_bus_activity_us_ = esp_timer_get_time();
+                taskEXIT_CRITICAL(&bus_mux_);
+                return true;
+            }
+        }
+
+        uint32_t backoff = 1000 + (esp_random() % 10000);// 200 to 999 us
+        task_delayMicroseconds(backoff);
+    }
+
+    return false;
+}
+
+void DALI::releaseBus()
+{
+    taskENTER_CRITICAL(&bus_mux_);
+    bus_busy_ = false;
+    last_bus_activity_us_ = esp_timer_get_time();
+    taskEXIT_CRITICAL(&bus_mux_);
+}
+
+// bool DALI::sendCommand(uint8_t command, uint8_t data)
+// {
+//     for (int retry = 0; retry < 10; retry++) {
+//         if (tryAcquireBus(1000, 2000)) {
+//             bool ok = sendCommandRaw(command, data);
+//             releaseBus();
+//             return ok;
+//         }
+//     }
+//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
+//     return false;
+// }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool DALI::sendCommandWithRetry(uint8_t command, uint8_t data) {
     uint16_t info = (uint16_t)((command << 8) | data);
     sendOne();   // Start bit
     for (uint8_t i = 0; i < 16; i++) {
@@ -173,7 +271,7 @@ void DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint
 
         if (i == 15) {
             gpio_set_level(txPin, DALI_LOW);
-            task_delayMicroseconds(1700);
+            task_delayMicroseconds(3700);
             task_delay(1);
             sendOne();
         }

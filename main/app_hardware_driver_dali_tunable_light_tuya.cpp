@@ -245,7 +245,7 @@
         
         nuos_set_state_attribute(0);
     }
-    extern "C" void set_level(uint8_t index){
+    extern "C" void set_dali_level(uint8_t index){
             //esp_zb_lock_acquire(portMAX_DELAY);
             if(scene_group_switch_info.control_type != 0) { 
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
@@ -262,7 +262,7 @@
             nuos_set_color_temp_level_attribute(0); 
     }
 
-    extern "C" void set_color_temp(uint8_t index, bool status){
+    extern "C" void set_dali_color_temp(uint8_t index, bool status){
          //esp_zb_lock_acquire(portMAX_DELAY);
         if(scene_group_switch_info.control_type != 0) { 
             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
@@ -847,7 +847,7 @@
         uint8_t index = nuos_get_button_press_index(pin);
         
         call_common_check_auto_off();
-        if(global_switch_state == SWITCH_PRESS_DETECTED){ 
+        // if(global_switch_state == SWITCH_PRESS_DETECTED){ 
             if(!device_info[0].device_state){
                 device_info[0].device_state = true;
                 device_info[0].device_level = MIN_DIM_LEVEL_VALUE;
@@ -995,14 +995,14 @@
             }
             #endif
 
-        }else{
-            printf("switch state not detected!!");
-        }
+        // }else{
+        //     printf("switch state not detected!!");
+        // }
         return false;
     }
 
     extern "C" bool nuos_set_hardware_brightness_2(uint8_t index){
-        global_switch_state = SWITCH_PRESS_DETECTED;
+        //global_switch_state = SWITCH_PRESS_DETECTED;
         call_common_check_auto_off();
         if(index == 0){
             ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level));                
@@ -1407,13 +1407,34 @@
 
     void interpret_frame(uint8_t b1, uint8_t b2)
     {
+
         static uint8_t last_dtr0 = 0;
+        static uint8_t last_dtr1 = 0;
         static uint8_t last_color_dtr0 = 0;
         static uint8_t last_color_dtr1 = 0;
+        static uint8_t last_color_dtr2 = 0;
+        static uint8_t enabled_device_type = 0xFF;   // 0x08 = DT8
+        static uint8_t last_color_mode = 0;          // 0 = Tc/CCT, 1 = RGB
 
-        uint8_t addr;
-        uint16_t scene;
+        uint8_t addr = 0xFF;
+        uint8_t group = 0xFF;
+        uint8_t scene = 0;
+        bool is_broadcast = false;
+        bool is_group = false;
+        bool is_short = false;
+        bool is_command = false;
 
+        is_command = (b1 & 0x01) ? true : false;
+
+        if (b1 == 0xFE || b1 == 0xFF) {
+            is_broadcast = true;
+        } else if (b1 & 0x80) {
+            is_group = true;
+            group = (b1 >> 1) & 0x0F;
+        } else {
+            is_short = true;
+            addr = (b1 >> 1) & 0x3F;
+        }
         // ---------------------------
         // SET_DTR0
         // ---------------------------
@@ -1423,13 +1444,33 @@
             //printf("SET_DTR1 = %d\n", ((last_color_dtr1<<8 ) | last_color_dtr0));
             return;
         }
-        // ---------------------------
-        // ENABLE DEVICE TYPE
-        // ---------------------------
-        if(b1 == 0xC1 && b2 == 0x08){
-            //printf("ENABLE DEVICE TYPE 8\n");
+
+        // -------------------------------------------------
+        // Enable device type
+        // -------------------------------------------------
+        if (b1 == 0xC1) {
+            if (b2 == 0x08) {
+                enabled_device_type = 0x08;
+            } else {
+                enabled_device_type = 0xFF;
+            }
             return;
         }
+        // -------------------------------------------------
+        // DT8 command handling
+        // -------------------------------------------------
+        if (enabled_device_type == 0x08) {
+            if (b2 == 0xE7) {
+                if (is_short) {
+                    // DT8 command for short address
+                } else if (is_group) {
+                    // DT8 command for group address
+                } else if (is_broadcast) {
+                    // DT8 command for broadcast
+                }
+                return;
+            }
+        }        
         // ---------------------------
         // SET COLOR TEMPERATURE (DT8)
         // ---------------------------
@@ -1438,7 +1479,14 @@
             //printf("SET COLOR TEMP → Device %d\n", addr);
             return;
         }
-
+        // ---------------------------
+        // COLOR ACTIVATE
+        // ---------------------------
+        if(b1 == 0xA3){
+            last_dtr0 = b2;
+            //printf("SET_DTR0 = %d\n", last_dtr0);
+            return;
+        }
         // ---------------------------
         // STORE SCENE
         // ---------------------------
@@ -1461,7 +1509,11 @@
                     if(last_dtr0 == 0) scene_group_switch_info.device_state[scene][i]  = false;
                     else scene_group_switch_info.device_state[scene][i]  = true;
                     //printf("============DATA SAVED SUCCESSFULLY============\n");
-                    nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
+                    switch_driver_gpios_intr_enabled(false);
+                    dali.dali_rx_intr_enabled(false);
+                    nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+                    dali.dali_rx_intr_enabled(true);
+                    switch_driver_gpios_intr_enabled(true);
                     break;
                 }
             }                
@@ -1572,16 +1624,20 @@
             }          
             return;
         }
-
-        // ---------------------------
-        // COLOR ACTIVATE
-        // ---------------------------
-        if(b1 == 0xA3){
-            // printf("COLOR ACTIVATE\n");
-            last_dtr0 = b2;
-            //printf("SET_DTR0 = %d\n", last_dtr0);
+        // -------------------------------------------------
+        // Standard command frame
+        // -------------------------------------------------
+        if (is_command) {
+            if (is_broadcast) {
+                // printf("BROADCAST COMMAND %02X\n", b2);
+            } else if (is_group) {
+                // printf("GROUP COMMAND G=%u CMD=%02X\n", group, b2);
+            } else if (is_short) {
+                // printf("SHORT COMMAND A=%u CMD=%02X\n", addr, b2);
+            }
             return;
         }
+        
 
         // ---------------------------
         // ARC POWER CONTROL (DAPC)
@@ -1639,7 +1695,7 @@
 
             if (rxFrameQueue != nullptr) {
                 if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {
-                    interpret_frame(msg.data[0], msg.data[1]);
+                    //interpret_frame(msg.data[0], msg.data[1]);
                 }
             }else{
                 vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -1656,12 +1712,17 @@
                 return;
             } 
             dali.begin_rx(&isr_service_installed, rxFrameQueue);
-            xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL); 
+            xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 22, NULL); 
         }else{
             
         }
             
     }
+
+    void dali_rx_intr_enabled(bool enable){
+        dali.dali_rx_intr_enabled(enable);
+    }
+
 #endif
 
 

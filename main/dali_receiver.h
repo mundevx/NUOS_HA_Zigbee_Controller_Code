@@ -5,9 +5,14 @@
 #include "esp_err.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
-
+#include "dali_receiver.h"
+class DALI;   // forward declaration
 namespace dali_rx {
 
+struct RxEdgeEvent {
+    uint32_t t_us;
+    //bool bus_low;
+};
 /**
  * @brief DALI message receiver using pin change interrupts and a periodic timer.
  *
@@ -39,7 +44,13 @@ public:
         query_mode_ = query_mode;
         portEXIT_CRITICAL(&spinlock_);
     }
+    void dali_rx_intr_enabled(bool enabled);
+    void attachBusMonitor(DALI* dali) { dali_ = dali; }
+    Receiver(DALI* dali) : dali_(dali) {}
+    
 private:
+
+    DALI* dali_ = nullptr;
     // Receiver state machine
     enum class RxState {
         IDLE,
@@ -49,6 +60,8 @@ private:
 
     static void IRAM_ATTR gpio_isr_handler(void* arg);
     static void IRAM_ATTR timer_callback(void* arg);
+    void IRAM_ATTR handle_pin_change_isr();
+    void rx_task();
 
     void handle_pin_change();
     void push_halfbit(uint8_t bit);
@@ -68,11 +81,15 @@ private:
     // Idle timer
     esp_timer_handle_t  idle_timer_;
     uint8_t             idle_te_cnt_;        // counts TE periods while bus is idle
-    portMUX_TYPE        spinlock_;           // critical section guard
+    // portMUX_TYPE        spinlock_;           // critical section guard
 
     bool query_mode_;  // true = expecting 8-bit response frame
 
-    
+    QueueHandle_t edge_queue_ = nullptr;
+    portMUX_TYPE spinlock_ = portMUX_INITIALIZER_UNLOCKED;
+    //enum class RxState : uint8_t { IDLE, START, BIT };
+    //RxState state_ = IDLE;
+    void process_edge(uint32_t now, bool bus_low);
 };
 
 } // namespace dali

@@ -9,6 +9,7 @@
 #include "esp_zigbee_core.h"
 #include "zdo/esp_zigbee_zdo_command.h"
 #include "app_zigbee_clusters.h"
+#include "esp_random.h"
 
 static const char *TAG = "ESP_ZB_SCENE_COMMANDS";
 
@@ -106,25 +107,55 @@ void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8
                                         uint8_t on_off_value, uint8_t brightness_value, uint16_t colorx, uint16_t colory) {
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH|| USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)
+        // esp_zb_zcl_scenes_extension_field_t on_off_extension_field = {
+        //     .cluster_id = 0x0006, // Cluster ID for On/Off cluster
+        //     .length = sizeof(uint8_t),
+        //     .extension_field_attribute_value_list = &on_off_value,
+        //     .next = NULL // Link to the Level Control extension field 
+        // };
+        // esp_zb_zcl_scenes_add_scene_cmd_t cmd = {
+        //     .zcl_basic_cmd.dst_addr_u.addr_short = dst_addr_short,
+        //     .zcl_basic_cmd.dst_endpoint = dst_ep,
+        //     .zcl_basic_cmd.src_endpoint = src_ep,
+        //     .group_id = group_id,
+        //     .scene_id = scene_id,
+        //     .transition_time = 0,
+        //     .extension_field = &on_off_extension_field,
+        // };        
+        // esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
+        
+        if(brightness_value > 254) brightness_value = 254;
+        if(on_off_value == 0) brightness_value = 0;
+
         esp_zb_zcl_scenes_extension_field_t on_off_extension_field = {
             .cluster_id = 0x0006, // Cluster ID for On/Off cluster
             .length = sizeof(uint8_t),
             .extension_field_attribute_value_list = &on_off_value,
-            .next = NULL // Link to the Level Control extension field 
+            // .next = &level_control_extension_field // Link to the Level Control Extension Field
         };
+
+        if(brightness_value > 0) {
+            esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
+                .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
+                .length = sizeof(uint8_t),
+                .extension_field_attribute_value_list = &brightness_value,
+                .next = NULL //Initially, No Next Extension Field
+            };
+            on_off_extension_field.next = &level_control_extension_field;  
+        }else{
+            on_off_extension_field.next = NULL;
+        }
         esp_zb_zcl_scenes_add_scene_cmd_t cmd = {
             .zcl_basic_cmd.dst_addr_u.addr_short = dst_addr_short,
             .zcl_basic_cmd.dst_endpoint = dst_ep,
-            .zcl_basic_cmd.src_endpoint = src_ep,
+            .zcl_basic_cmd.src_endpoint = 0,
             .group_id = group_id,
             .scene_id = scene_id,
             .transition_time = 0,
             .extension_field = &on_off_extension_field,
         };        
-        esp_zb_zcl_scenes_add_scene_cmd_req(&cmd);  
-        
-        // esp_zb_zcl_scenes_table_store(dst_ep, group_id, scene_id, 0x0000,
-        //                                     &on_off_extension_field);
+        esp_zb_zcl_scenes_add_scene_cmd_req(&cmd); 
+
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
 
         esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
@@ -381,16 +412,31 @@ void nuos_zb_scenes_add_scene_request_2(uint16_t group_id, uint8_t scene_id, uin
         if(on_off_value == 0) brightness_value = 0;
         if(on_off_value_2 == 0) brightness_value_2 = 0;
 
-
-
         uint8_t _value[] = {brightness_value, brightness_value_2};
         uint8_t _state[] = {on_off_value, on_off_value_2};
+
+        #ifdef USE_COLOR_CONTROL
+        uint16_t colorxy[] = {colorx, colory};
+        esp_zb_zcl_scenes_extension_field_t color_control_extension_field = {
+            .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, // Cluster ID for Level Control cluster
+            .length = sizeof(uint32_t),
+            .extension_field_attribute_value_list = (uint8_t*)&colorxy,
+            .next = NULL //Initially, no next extension field
+        }; 
+        esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
+            .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
+            .length = 2*sizeof(uint8_t),
+            .extension_field_attribute_value_list = _value,
+            .next = &color_control_extension_field
+        }; 
+        #else
         esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
             .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
             .length = 2*sizeof(uint8_t),
             .extension_field_attribute_value_list = _value,
             .next = NULL //Initially, No Next Extension Field
         };
+        #endif
         esp_zb_zcl_scenes_extension_field_t on_off_extension_field = {
             .cluster_id = 0x0006, // Cluster ID for On/Off cluster
             .length = 2*sizeof(uint8_t),
@@ -565,7 +611,7 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
     uint8_t device_state_1=255, device_state_2=255;
     scene_counts = 0;
 
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
        
         if(ep_cnts<=TOTAL_ENDPOINTS){
             total_cnts = ep_cnts;
@@ -762,7 +808,7 @@ esp_err_t zb_get_scene_store_resp_handler(const esp_zb_zcl_store_scene_message_t
 
 void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
     //recheckTimer();
-    printf("cluster_id:0x%x\n", cluster_id);
+    printf("CLUSTER_ID:0x%x\n", cluster_id);
     if (cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             index_1 = 4;   
@@ -797,7 +843,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             if(m_index != 255 )
             nuos_zb_set_hardware(m_index, false);
 
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
             if(!device_info[index_1].device_state){
                 device_info[3].device_state = false;
                 nuos_zb_set_hardware(index_1, false);
@@ -807,6 +853,10 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                     set_state(index_1);
                 #endif
            }
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)     
+            nuos_zb_set_hardware(index_1, false);
+            set_state(index_1);
+
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)  
             nuos_zb_set_hardware(index_1, false);             
         #else
@@ -984,8 +1034,8 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             
             is_long_press_brightness = false;
             nuos_set_hardware_brightness_2(1); 
-            set_color_temp(0, false);
-            set_level(0);               
+            set_dali_color_temp(0, false);
+            set_dali_level(0);               
         }
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
             colorControlExtensionField_t* colorControlExtensionField = (colorControlExtensionField_t*)value;
@@ -1013,8 +1063,8 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                         device_info[3].device_state = true;
                         nuos_zb_set_hardware(3, false);
                         //set_state(3); 
-                        set_color_temp(0, false);
-                        set_level(3);
+                        set_dali_color_temp(0, false);
+                        set_dali_level(3);
                     //}                      
                 }else if(colorControlExtensionField->raw[0] == 1){
                     if(selected_color_mode != 1){
@@ -1074,8 +1124,8 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
                         store_color_mode_value(selected_color_mode);
                         nuos_zb_set_hardware(4, false); 
                         //set_state(4);
-                        set_color_temp(0, false);
-                        set_level(4);                        
+                        set_dali_color_temp(0, false);
+                        set_dali_level(4);                        
                     //}            
                 }
             }
@@ -1130,12 +1180,19 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
     }
 }
 
+int random_20_to_100(void)
+{
+    return 20 + (esp_random() % 81);  // 20..100 inclusive
+}
+
 void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
 
     uint8_t index_1 = message->info.dst_endpoint-1;
     esp_zb_zcl_scenes_extension_field_t* ext_list = message->field_set;
     while (ext_list != NULL) {
         printf("Length: %d  %d\n", ext_list->length, index_1);
+ 
+        vTaskDelay(random_20_to_100() / portTICK_PERIOD_MS);   
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM )
              for (int i = 0; i < ext_list->length; i++) {
                 printf("index:%d,  CLUSTER_ID: 0x%x ATTR: 0x%02X\n", index_1, ext_list->cluster_id, ext_list->extension_field_attribute_value_list[i]);
@@ -1169,7 +1226,7 @@ void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
             #endif 
         #else
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
-                printf("CLUSTER_ID: 0x%x\n", ext_list->cluster_id);
+                //printf("CLUSTER_ID: 0x%x\n", ext_list->cluster_id);
                 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                 control_zb_devices(0, ext_list->cluster_id, &ext_list->extension_field_attribute_value_list[0]); 
                 #elif(USE_COLOR_DEVICE == COLOR_RGB_ONLY)

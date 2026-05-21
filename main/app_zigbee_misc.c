@@ -40,7 +40,7 @@ static const char *TAG                          = "ZB_MISC";
 
 static uint8_t identify_src_sp                  = 3;
 uint8_t button_index                            = 0; 
-
+uint64_t brightness_count                       = 0;
 // Function to print IEEE address
 void print_ieee_addr(const esp_zb_ieee_addr_t addr) {
     // Ensure it's a valid pointer
@@ -272,76 +272,10 @@ static void unbind_cb_2(esp_zb_zdp_status_t zdo_status, void *user_ctx)
             // printf("Destination address mode: %u\n", unbind_req->dst_addr_mode);
             // printf("Request destination address: %u\n", unbind_req->req_dst_addr);
             // Access other fields as needed
-
         }
-
         cb_response_counts++;
-        //if(cb_response_counts >= cb_requests_counts){
-           // xSemaphoreGive(postHandlerSemaphore);
-           //xTaskNotifyGive(query_neighbour_task_handle);
-        //}
-
     }
 }
-
-
-// void nuos_read_attr_read_request(uint8_t btn_index) {
-//     memset(bind_req, 0, sizeof(bind_req));  // Clear all elements to zero
-//     esp_zb_ieee_addr_t src_ieee_addr;
-
-//     for(int node_index=0; node_index<existing_nodes_info[btn_index].scene_switch_info.total_records; node_index++){
-//         dst_node_info_t *dst_node_info = existing_nodes_info[btn_index].scene_switch_info.dst_node_info[node_index];
-
-//         if(dst_node_info->dst_ep_info.clusters_count > 0 && dst_node_info->dst_ep_info.clusters_count < 5){
-//             for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.clusters_count; cluster_index++){
-//                 if(dst_node_info->dst_ep_info.ep_data[ep_index].is_bind) {
-//                     ESP_LOGI(TAG, "Already bind Light\n");
-//                     printf("========SEND CMD READ ATTR DATA==========\n");
-//                     printf("src_ep: %u dst_ep: %u\n", bind_req[cluster_index].src_endp, dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep);
-//                     printf("dst_short_addr: 0x%x cluster_id: %x\n", dst_node_info->short_addr, dst_node_info->dst_ep_info.cluster_id[cluster_index]);
-//                     printf("==============================\n");
-
-//                     esp_zb_zcl_read_attr_cmd_t read_req;
-//                     read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-//                     read_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[btn_index];
-//                     read_req.zcl_basic_cmd.dst_endpoint = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-//                     read_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_node_info->short_addr;
-//                     read_req.clusterID = dst_node_info->dst_ep_info.cluster_id[cluster_index];
-//                     read_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-//                     read_req.dis_default_resp = 0;
-//                     read_req.manuf_code = 0;
-//                     read_req.manuf_specific = 0;
-//                     if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
-//                         uint16_t attributes1 = ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID;
-//                         read_req.attr_number = 1;
-//                         read_req.attr_field = &attributes1;  
-//                     }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
-//                         uint16_t attributes2[] = {ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID};
-//                         read_req.attr_number = 1;
-//                         read_req.attr_field = attributes2;
-//                     }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
-//                         uint16_t attributes3[] = {0xE100};
-//                         read_req.attr_number = 1;
-//                         read_req.attr_field = attributes3; 
-//                     }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
-//                         uint16_t attributes4[] = {ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID};
-//                         read_req.attr_number = 1;
-//                         read_req.attr_field = attributes4;     
-//                     }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
-//                         uint16_t attributes5[] = {ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID, ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID};
-//                         read_req.attr_number = 2;
-//                         read_req.attr_field = attributes5;             
-//                     }
-//                     cb_requests_counts++;
-//                     esp_zb_zcl_read_attr_cmd_req(&read_req);      
-//                 }  
-//             } //for
-//         }else{
-//             printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.clusters_count);
-//         }
-//     }
-// }
-
 
 
 void nuos_simple_binding_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info){
@@ -998,6 +932,7 @@ void nuos_init_rgb_led(){
 void nuos_switch_single_click_task(uint32_t io_num) {
     
     button_index = nuos_get_button_press_index(io_num);
+    uint8_t sindex = 0;
     printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
     brightness_control_flag = false;
     //recheckTimer();
@@ -1053,9 +988,9 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     nuos_zb_set_hardware(button_index, false);
                     
                     if(device_info[0].color_or_fan_state){
-                        set_color_temp(0, false);
+                        set_dali_color_temp(0, false);
                     }else{
-                        set_level(0); 
+                        set_dali_level(0); 
                     }
                 }
                 #endif
@@ -1085,8 +1020,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     selected_color_mode = last_selected_color_mode;
                     mode_change_flag = true;
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
-                    store_color_mode_value(selected_color_mode);   
-
+                    store_color_mode_value(selected_color_mode);
                 }
 
                 
@@ -1098,10 +1032,13 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 global_index = button_index;
                 nuos_zb_set_hardware(button_index, true);
                 #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    set_color_temp(0, false);
-                    set_level(3);                
+                    set_dali_color_temp(0, false);
+                    set_dali_level(3);                
                 #else
-                set_color_temp(0, false);
+                // if(device_info[button_index].device_state){
+                //      set_dali_color_temp(0, false);
+                // }
+                set_dali_color_temp(0, false);
                 if(button_index < 3){
                     set_state(4);
                 }else{
@@ -1115,11 +1052,14 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)    
                     nuos_zb_set_hardware(button_index, true);   
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-                if(button_index < 2){
-                    //change_cw_ww_color_flag = false;  
+
+                if(button_index < 2){ 
                     #ifdef USE_COLOR_CONTROL
                     set_parameter_ep_index_selected(button_index);
+                    sindex = get_parameter_ep_index_selected();
+                    set_parameter_ep_index_selected(button_index);
                     #endif
+                    printf("button_index<2: %d\n", button_index);
                     nuos_zb_set_hardware(button_index, true);  
                 }
                 #ifdef USE_COLOR_CONTROL
@@ -1129,23 +1069,18 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 //     nuos_set_hardware_brightness(gpio_touch_btn_pins[button_index]);                    
                 // } 
                 else{
-                    uint8_t sindex = get_parameter_ep_index_selected();
-                    printf("sindex:%d color_or_fan_state:%d\n", sindex, device_info[sindex].color_or_fan_state);
+                    sindex = get_parameter_ep_index_selected();
                     if(sindex > 1) return;
-                    
+                    //printf("sindex:%d color_or_fan_state:%d device_state:%d\n", sindex, device_info[sindex].color_or_fan_state, device_info[sindex].device_state);
                     if(device_info[sindex].device_state){
                         nuos_zb_set_hardware(button_index, false);
                         if(device_info[sindex].color_or_fan_state){
-                            set_color_temp(sindex, false);
+                            set_dali_color_temp(sindex, false);
                         }else{
-                            set_level(sindex); 
+                            set_dali_level(sindex); 
                         }
                     }
                 }
-
-
-
-
                 #endif      
             #else
                 nuos_zb_set_hardware(button_index, true);
@@ -1179,7 +1114,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 nuos_set_zigbee_attribute(button_index);
                 #endif
                 #else
-                nuos_set_zigbee_attribute(button_index);
+                nuos_set_zigbee_attribute(sindex);
                 #endif
             #endif
         }
@@ -1210,12 +1145,15 @@ void nuos_switch_double_click_task(uint32_t io_num){
             if(device_info[sindex].device_state){
                 nuos_zb_set_hardware(button_index, false);
                 if(device_info[sindex].color_or_fan_state){
-                    set_color_temp(sindex, false);
+                    set_dali_color_temp(sindex, false);  //set dali color temp to default value when double press click happens, as per tuya requirement
+                    nuos_set_color_temperature_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
                 }else{
-                    set_level(sindex); 
+                    set_dali_level(sindex); //set dali level to default value when double press click happens, as per tuya requirement
+                    nuos_set_level_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
                 }
             }
         #else
+            change_cw_ww_color_flag = !change_cw_ww_color_flag;
             double_press_click_enable[0] = !double_press_click_enable[0];  
         #endif
         
@@ -1224,6 +1162,10 @@ void nuos_switch_double_click_task(uint32_t io_num){
 
 
 void nuos_switch_long_press_task(uint32_t io_num){
+    brightness_count = 0;
+    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+        nuos_init_hardware_dimming_up_down(io_num);
+    #endif
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
         #ifdef TUYA_ATTRIBUTES
         //pause_curtain_timer();
@@ -1233,7 +1175,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
     #endif
 }
 
-void nuos_switch_long_press_brightness_task(uint32_t io_num){
+void nuos_switch_long_press_brightness_task123(uint32_t io_num){
     printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
     //recheckTimer();
@@ -1265,9 +1207,10 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                     store_color_mode_value(selected_color_mode);
                 }
                 
-            #endif    
+            #endif  
+
             nuos_set_zigbee_attribute(0);
-            switch_driver_gpios_intr_enabled(true);
+            //switch_driver_gpios_intr_enabled(true);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
             
@@ -1283,6 +1226,104 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
     #endif
     #else
 
+    #endif
+    
+}
+
+
+void nuos_switch_long_press_brightness_task(uint32_t io_num){
+    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+        // Original implementation from user code
+        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+            if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                is_long_press_brightness = true;
+                nuos_set_hardware_brightness(io_num);
+            }
+        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
+                if(change_cw_ww_color_flag){
+                    if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    } 
+                }else{
+                    if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    }                                                
+                }  
+            } 
+        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            uint8_t btn_index = nuos_get_button_press_index(io_num);
+            //printf("===btn_index:%d\n", btn_index);
+            if(btn_index < 2){
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                } 
+            }else{
+                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                    
+                }                                                
+            }  
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            if(io_num == gpio_touch_btn_pins[0]){
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }                                            
+            }else{
+                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }
+            }
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
+            // (optional brightness control)
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
+            #ifdef TUYA_ATTRIBUTES
+                // curtain specific
+            #endif
+        #else
+            if(io_num == gpio_touch_btn_pins[3]){
+                if(selected_color_mode != 0){
+                    selected_color_mode = 0;
+                    nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                    store_color_mode_value(selected_color_mode);
+                }
+                printf("brightness_count:%lld\n", brightness_count);
+                if(change_cw_ww_color_flag){
+                    if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    } 
+                }else{
+                    if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    }                                                
+                }
+            }else{
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    if(selected_color_mode == 0){
+                        selected_color_mode = 1;
+                        printf("Switching to RGB mode\n");
+                        nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                        store_color_mode_value(selected_color_mode);
+                    }                                                
+                    nuos_set_hardware_brightness(io_num);
+                }
+            }                                        
+        #endif
+        brightness_count++;
     #endif
 }
 

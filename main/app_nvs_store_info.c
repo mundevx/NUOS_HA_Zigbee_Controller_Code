@@ -95,7 +95,6 @@ void get_nvs_dali_scene_switch_webpage_data();
 esp_err_t clear_all_groups_and_scenes_in_nvs(void);
 void nuos_read_dali_scene_switch_data_to_nvs(void* str_data, size_t* length);
 
-
 void nuos_init_nvs(){
     esp_err_t err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
     if (err != ESP_OK) return; 
@@ -1218,8 +1217,13 @@ void nuos_get_data_from_nvs() {
 
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)  
-        //clear_all_groups_and_scenes_in_nvs();
-        get_nvs_dali_scene_switch_webpage_data();
+                    
+            // switch_driver_gpios_intr_enabled(false);
+            // dali_rx_intr_enabled(false);
+            get_nvs_dali_scene_switch_webpage_data();
+            // dali_rx_intr_enabled(true);
+            // switch_driver_gpios_intr_enabled(true);
+        
     #endif
     // printf("------------>READ NVS DATA<---------------\n");
     memset(device_info, 0, sizeof(device_info));
@@ -1396,7 +1400,7 @@ void init_nvs_for_zb_devices(){
 #endif 
 }
 
-void nuos_store_dali_scene_switch_data_to_nvs(void* str_data){
+void nuos_store_dali_scene_switch_data_to_nvs(const void* str_data){
     esp_err_t err;
     #ifdef USE_NVS_INIT
     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
@@ -1408,6 +1412,24 @@ void nuos_store_dali_scene_switch_data_to_nvs(void* str_data){
     nvs_close(my_handle);
     #endif
 }
+// void nuos_store_dali_scene_switch_data_to_nvs(const void *str_data)
+// {
+//     esp_err_t err;
+// #ifdef USE_NVS_INIT
+//     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+//     if (err != ESP_OK) return;
+// #endif
+
+//     err = nvs_set_blob(my_handle, nvram_struct_scene_sw_key,
+//                        (scene_switch_s*)str_data, sizeof(scene_switch_s));
+//     if (err == ESP_OK) {
+//         ESP_ERROR_CHECK(nvs_commit(my_handle));
+//     }
+
+// #ifdef USE_NVS_INIT
+//     nvs_close(my_handle);
+// #endif
+// }
 
 void nuos_read_dali_scene_switch_data_to_nvs(void* str_data, size_t* length){
     // ESP_ERROR_CHECK(nvs_open_from_partition("nvs", ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle));

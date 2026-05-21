@@ -69,7 +69,7 @@ bool is_value_present(uint8_t arr[], uint8_t size, uint8_t value);
 void bind_cb1(esp_zb_zdp_status_t zdo_status, void *user_ctx);
 void bind_level_cb1(esp_zb_zdp_status_t zdo_status, void *user_ctx);
 
-
+//extern void switch_driver_gpios_intr_enabled(bool enabled);
 
 typedef struct {
     uint8_t r; // Red
@@ -2081,12 +2081,7 @@ esp_err_t nuos_driver_init(void)
         for(int i=0; i<TOTAL_ENDPOINTS; i++)
            nuos_zb_set_hardware(i, 0);
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH) 
- 
-
         #ifdef TUYA_ATTRIBUTES
-            // uint8_t state = curtain_cmd_goto_pct(device_info[0].device_level);
-            // printf("device_info[0].device_level:%d\n", device_info[0].device_level);
-            // nuos_zb_set_hardware_curtain(0, state); 
             printf("===========================\n");
             printf("dev_val: %d dev_lev: %d\n", device_info[0].device_val, device_info[0].device_level);
             set_curtain_percentage(device_info[0].device_level, true);
@@ -2138,15 +2133,11 @@ esp_err_t nuos_driver_init(void)
         nuos_zb_set_hardware(0, false); //
         set_state(0);
         // set_level();
-        set_color_temp(0, false); 
+        set_dali_color_temp(0, false); 
 
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         init_dali_hw(); 
-        //for(int i=0; i<TOTAL_ENDPOINTS; i++){
-            nuos_zb_set_hardware(0, false);  
-        //}
-
-
+        nuos_zb_set_hardware(0, false);  
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)    
         init_dali_hw();
         printf("Scene Control Type: %d Selected ID: %d\n", scene_group_switch_info.control_type, scene_group_switch_info.selected_id);
@@ -2159,19 +2150,16 @@ esp_err_t nuos_driver_init(void)
         }
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)    
         init_dali_hw();
-        //printf("Scene Control Type: %d Selected ID: %d\n", scene_group_switch_info.control_type, scene_group_switch_info.selected_id);
-
         for(int i=0; i<TOTAL_ENDPOINTS; i++){
             nuos_zb_set_hardware(i, false);  
         }
-
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX) 
         init_dali_hw(); 
         if(selected_color_mode == 0){
             nuos_zb_set_hardware(3, false);  
             #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
             set_state(3);
-            set_level(3);
+            set_dali_level(3);
             #endif
         }else if(selected_color_mode == 1){
             nuos_zb_set_hardware(4, false);  
@@ -2180,7 +2168,7 @@ esp_err_t nuos_driver_init(void)
             #endif
         }
         #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
-        set_color_temp(0, false);
+        set_dali_color_temp(0, false);
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK) 
         init_sensor_interrupt();
@@ -4484,8 +4472,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                 if(selected_color_mode == 0){
                                     device_info[3].device_state = true; 
                                     nuos_zb_set_hardware(3, false); 
-                                    set_color_temp(0, false);   
-                                    set_level(3);                                          
+                                    set_dali_color_temp(0, false);   
+                                    set_dali_level(3);                                          
 
                                 }else if(selected_color_mode == 1){
                                     device_info[4].device_state = true;
@@ -4500,8 +4488,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                     // printf("DR:%d DG:%d DB:%d\n", dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]);
                                     nuos_zb_set_hardware(4, false); 
                                     set_state(4); 
-                                    set_level(4); 
-                                    set_color_temp(0, false);               
+                                    set_dali_level(4); 
+                                    set_dali_color_temp(0, false);               
                                 }                                                      
                             #else
                                 mode_change_flag = false;    
@@ -4647,9 +4635,9 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         if(change_state_flag){
                             change_state_flag = false;
                             set_state(4);
-                            set_level(4);
+                            set_dali_level(4);
                         }
-                        set_color_temp(0, true); 
+                        set_dali_color_temp(0, true); 
                     break;
 
                     case 0xE1:
@@ -4717,7 +4705,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                change_state_flag = false;
                                 set_state(4);
                             }
-                            set_color_temp(0, false);
+                            set_dali_color_temp(0, false);
                                                  
                         #else
                             device_info[3].device_state = false;
@@ -4731,7 +4719,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                 change_state_flag = false;
                                 set_state(4);
                             } 
-                            set_color_temp(0, true);                    
+                            set_dali_color_temp(0, true);                    
                         #endif     
                     break;
 
@@ -4756,8 +4744,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             change_state_flag = false;
                             set_state(3);
                         }
-                        set_level(3);
-                        set_color_temp(0, true);  
+                        set_dali_level(3);
+                        set_dali_color_temp(0, true);  
                                                
                     break;
                     case 0xFD:
@@ -4793,10 +4781,10 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         if(change_state_flag || mode_change_flag){
                             change_state_flag = false;
                             set_state(3); 
-                            set_color_temp(0, true);
+                            set_dali_color_temp(0, true);
                             //nuos_set_state_attribute(3);
                         }
-                        set_level(3);  
+                        set_dali_level(3);  
                     break;
                     default: break;                      
                 }
@@ -4828,7 +4816,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         is_long_press_brightness = false;
                         device_info[0].color_or_fan_state = 1;
                         nuos_set_hardware_brightness_2(1);
-                        set_color_temp(0, false);
+                        set_dali_color_temp(0, false);
                     break;
                     case 0xe0:
                         // device_info[0].device_state = 1;
@@ -4853,9 +4841,9 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         if(state_change_flag){
                             state_change_flag = false;
                             set_state(0);
-                            set_level(0);
+                            set_dali_level(0);
                         }                                              
-                        set_color_temp(0, false);
+                        set_dali_color_temp(0, false);
                     break;
                     default: break;        
                 }
@@ -4884,7 +4872,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             state_change_flag = false;
                             set_state(0);
                         }
-                        set_level(0);
+                        set_dali_level(0);
                     break;
                     default: break;        
                 }
@@ -5344,7 +5332,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                                 
                                                 printf("LEVEL_CCT_1:%d\n", device_info[3].device_level);                       
                                                 nuos_zb_set_hardware(3, false);
-                                                set_level(3);
+                                                set_dali_level(3);
                                                 // global_index = 3;
                                                 // toggle_state_flag = false;
                                                 // set_hardware_flag = true;                                        
@@ -5368,12 +5356,12 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             //         device_info[3].device_level = val;
                             //         nuos_zb_set_hardware(3, false);
                             //         set_level(3);
-                            //         set_color_temp();                                 
+                            //         set_dali_color_temp();                                 
                             //     }else{
                             //         device_info[4].device_level = val;
                             //         nuos_zb_set_hardware(4, false);
                             //         set_level(4); 
-                            //         set_color_temp();                               
+                            //         set_dali_color_temp();                               
                             //     }
                             // }
                         #endif
@@ -5397,7 +5385,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                     state_change_flag = false;
                                     set_state(0);
                                 }
-                                set_level(0);
+                                set_dali_level(0);
                             }
                             
                         #else
@@ -5600,7 +5588,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                           
                             nuos_zb_set_hardware(4, false); 
                             set_state(4);
-                            set_color_temp(0, false);
+                            set_dali_color_temp(0, false);
                             // global_index = 4;
                             // toggle_state_flag = false;
                             // set_hardware_flag = true;
@@ -5649,8 +5637,8 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                         // set_color_flag = true;
                         nuos_zb_set_hardware(3, false);
                         //set_state(3);
-                        set_level(3);
-                        set_color_temp(0, true);
+                        set_dali_level(3);
+                        set_dali_color_temp(0, true);
                         
                     }else if(message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID)  { 
                         selected_color_mode = *(uint8_t *)message->attribute.data.value; 
@@ -5749,8 +5737,8 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                             // set_color_flag = true;
                             nuos_zb_set_hardware(4, false);
                             //set_state(4);
-                            set_level(4);
-                            set_color_temp(0, false);
+                            set_dali_level(4);
+                            set_dali_color_temp(0, false);
                             // #ifdef USE_TUYA_BRDIGE      
                             // nuos_set_color_xy_attribute(4, &hsvX);
                             // #endif                            
@@ -5870,7 +5858,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 nuos_zb_set_hardware(k, 1);
                                 set_state(k);
                                 if(device_info[k].device_state)
-                                set_level(k);     
+                                set_dali_level(k);     
                                 nuos_set_zigbee_attribute(k);  
                             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)          
                                 //set_curtain_percentage(device_info[0].device_level, true);  
@@ -5894,7 +5882,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                 }
             }
         }
-        switch_driver_gpios_intr_enabled(true);
+        //switch_driver_gpios_intr_enabled(true);
 }
 
 
@@ -6254,7 +6242,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                                                 
                                                 printf("LEVEL_CCT_1:%d\n", device_info[3].device_level);                       
                                                 nuos_zb_set_hardware(3, false);
-                                                set_level(3);
+                                                set_dali_level(3);
                                                 // global_index = 3;
                                                 // toggle_state_flag = false;
                                                 // set_hardware_flag = true;                                        
@@ -6277,13 +6265,13 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                             //     if(selected_color_mode == 0){
                             //         device_info[3].device_level = val;
                             //         nuos_zb_set_hardware(3, false);
-                            //         set_level(3);
-                            //         set_color_temp();                                 
+                            //         set_dali_level(3);
+                            //         set_dali_color_temp(3, false);                                 
                             //     }else{
                             //         device_info[4].device_level = val;
                             //         nuos_zb_set_hardware(4, false);
-                            //         set_level(4); 
-                            //         set_color_temp();                               
+                            //         set_dali_level(4); 
+                            //         set_dali_color_temp(4, false);                               
                             //     }
                             // }
                         #endif
@@ -6307,7 +6295,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                                     state_change_flag = false;
                                     set_state(0);
                                 }
-                                set_level(0);
+                                set_dali_level(0);
                             }
                             
                         #else
@@ -6513,7 +6501,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                           
                             nuos_zb_set_hardware(4, false); 
                             set_state(4);
-                            set_color_temp(0, false);
+                            set_dali_color_temp(0, false);
                             // global_index = 4;
                             // toggle_state_flag = false;
                             // set_hardware_flag = true;
@@ -6562,8 +6550,8 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                         // set_color_flag = true;
                         nuos_zb_set_hardware(3, false);
                         //set_state(3);
-                        set_level(3);
-                        set_color_temp(0, true);
+                        set_dali_level(3);
+                        set_dali_color_temp(0, true);
                         
                     }else if(message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID)  { 
                         selected_color_mode = *(uint8_t *)message->attribute.data.value; 
@@ -6663,8 +6651,8 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                             // set_color_flag = true;
                             nuos_zb_set_hardware(4, false);
                             //set_state(4);
-                            set_level(4);
-                            set_color_temp(0, true);
+                            set_dali_level(4);
+                            set_dali_color_temp(0, true);
                             // #ifdef USE_TUYA_BRDIGE      
                             // nuos_set_color_xy_attribute(4, &hsvX);
                             // #endif                            
@@ -6781,7 +6769,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                                 mode_change_flag = false;
                                 nuos_zb_set_hardware(3, true);
                                 set_state(3);
-                                //set_level(3);
+                                //set_dali_level(3);
                                 nuos_set_zigbee_attribute(3);
                             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                                 device_info[k].device_level = 254;
@@ -6789,7 +6777,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                                 nuos_zb_set_hardware(k, 1);
                                 set_state(k);
                                 if(device_info[k].device_state)
-                                set_level(k);     
+                                set_dali_level(k);     
                                 nuos_set_zigbee_attribute(k);  
                             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)          
                                 //set_curtain_percentage(device_info[0].device_level, true);  
@@ -6813,7 +6801,7 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
                 }
             }
         }
-        switch_driver_gpios_intr_enabled(true);
+        //switch_driver_gpios_intr_enabled(true);
 }
 
 void nuos_set_attribute_cluster(const esp_zb_zcl_set_attr_value_message_t *message){

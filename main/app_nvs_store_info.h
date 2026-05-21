@@ -54,7 +54,8 @@
         void store_color_mode_value(uint8_t mode);
         uint8_t read_color_mode_value();
         
-        extern void nuos_store_dali_scene_switch_data_to_nvs(void* str_data);
+        extern void nuos_store_dali_scene_switch_data_to_nvs(const void *str_data);
+        
         extern void nuos_read_dali_scene_switch_data_from_nvs(void* str_data, size_t* length);
 
         extern esp_err_t persist_devices_from_cjson_array(cJSON *devices, int scene_id, const char *action);

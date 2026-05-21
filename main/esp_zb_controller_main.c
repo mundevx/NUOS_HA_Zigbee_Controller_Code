@@ -33,6 +33,8 @@
 #include "esp_netif.h"
 #include "esp_event.h"
 #include "zigbee_2_uart.h"
+#include "switch_driver.h"
+
 #ifdef USE_OTA
 #include "esp_ota_ops.h"
 #if CONFIG_ZB_DELTA_OTA
@@ -110,6 +112,7 @@ int get_random_number(int min, int max) {
     // Use rand() to generate a random number
     return (rand() % (max - min + 1)) + min;
 }
+extern void switch_driver_gpios_intr_enabled(bool enabled);
 
 #ifdef USE_CCT_TIME_SYNC
 void print_current_time(){
@@ -156,6 +159,62 @@ void set_time(int year, int mon, int day, int hour, int min, int sec){
     printf("Time (%02d:%02d:%02d)\n", t->tm_hour, t->tm_min, t->tm_sec);
 }
 #endif
+
+
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+uint8_t bt_index=255;
+static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
+{
+    if (!button_func_pair) return;
+
+    ESP_LOGI("APP",
+             "button id=%d pin=%d key=%d func=0x%02X",
+             button_func_pair->id, button_func_pair->pin, button_func_pair->keypressed, button_func_pair->func);
+        
+        gpio_num_t pin = button_func_pair->pin;
+        uchKeypressed = button_func_pair->keypressed;
+
+    if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
+        switch(uchKeypressed){
+            case SINGLE_PRESS:
+                nuos_switch_single_click_task(pin);
+                break;
+            case DOUBLE_PRESS:
+                nuos_switch_double_click_task(pin);
+                break;
+            default: 
+                printf("Invalid Switch Pressed!!\n");
+                break;    
+        }
+    }else if (button_func_pair->func == SWITCH_DIMMING_CONTROL) {
+        switch(uchKeypressed){
+            case LONG_PRESS:
+                nuos_switch_long_press_task(pin); 
+                break;
+            case LONG_PRESS_INC_DEC_LEVEL:
+                nuos_switch_long_press_brightness_task(pin);
+                break;        
+            default: 
+                printf("Invalid Switch Pressed!!\n");
+                break;    
+        }
+    }else if (button_func_pair->func == SWITCH_SCENE_CHANGE_CONTROL) {
+        switch(uchKeypressed){
+            case DOUBLE_PRESS:
+                nuos_switch_double_click_task(pin);
+                break;
+            default: 
+                printf("Invalid Switch Pressed!!\n");
+                break;    
+        }
+    }else if (button_func_pair->func == SWITCH_FACTORY_RESET_CONTROL) {
+        printf("Factory Reset Triggered!!\n");
+    }else if (button_func_pair->func == SWITCH_NOTHING_CONTROL) {
+        printf("No function assigned for this button event!!\n");
+    }
+    button_func_pair->keypressed = 0xff; //no key pressed
+}
+#else
 uint8_t bt_index=255;
 static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 {
@@ -166,27 +225,21 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
              button_func_pair->id, button_func_pair->pin, button_func_pair->keypressed, button_func_pair->func);
 
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
-        //uint32_t* io_index = &button_func_pair->pin;
-
         gpio_num_t pin = button_func_pair->pin;
-        gpio_num_t *io_index = &button_func_pair->pin;
-
-        bt_index = (uint8_t)(*io_index);
-
         uchKeypressed = button_func_pair->keypressed;
         switch(uchKeypressed){
             case SINGLE_PRESS:
-                nuos_switch_single_click_task(bt_index);
+                nuos_switch_single_click_task(pin);
                 break;
             case DOUBLE_PRESS:
-                nuos_switch_double_click_task(bt_index);
+                nuos_switch_double_click_task(pin);
                 break;
             case LONG_PRESS:
                 //printf("LONGPRESSED1!!\n");
-                nuos_switch_long_press_task(bt_index); 
+                nuos_switch_long_press_task(pin); 
                 break;
             case LONG_PRESS_INC_DEC_LEVEL:
-                nuos_switch_long_press_brightness_task(bt_index);
+                nuos_switch_long_press_brightness_task(pin);
                 break;    
             default: 
                 printf("Invalid Switch Pressed!!\n");
@@ -195,8 +248,11 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
         button_func_pair->keypressed = 0xff; //no key pressed
     }
 }
+#endif
 
 
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+#ifdef USE_COLOR_CONTROL
 switch_func_pair_t g_buttons[] = {
     {
         .id = 0,
@@ -232,31 +288,150 @@ switch_func_pair_t g_buttons[] = {
         .id = 3,
         .pin = gpio_touch_btn_pins[3] ,
         .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
-        .single_func = SWITCH_NOTHING_CONTROL,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_NOTHING_CONTROL,
         .long_func = SWITCH_NOTHING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    }
+};
+#else
+
+switch_func_pair_t g_buttons[] = {
+    {
+        .id = 0,
+        .pin = gpio_touch_btn_pins[0],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 1,
+        .pin = gpio_touch_btn_pins[1],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+};
+#endif
+#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+switch_func_pair_t g_buttons[] = {
+    {
+        .id = 0,
+        .pin = gpio_touch_btn_pins[0],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 1,
+        .pin = gpio_touch_btn_pins[1],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 2,
+        .pin = gpio_touch_btn_pins[2],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_NOTHING_CONTROL
+    },
+    {
+        .id = 3,
+        .pin = gpio_touch_btn_pins[3] ,
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
         .multi_func = SWITCH_NOTHING_CONTROL,
         .combo_long_func = SWITCH_NOTHING_CONTROL
     }
 };
+#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+
+switch_func_pair_t g_buttons[] = {
+    {
+        .id = 0,
+        .pin = gpio_touch_btn_pins[0],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 1,
+        .pin = gpio_touch_btn_pins[1],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
+    },
+    {
+        .id = 2,
+        .pin = gpio_touch_btn_pins[2],
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_NOTHING_CONTROL
+    },
+    {
+        .id = 3,
+        .pin = gpio_touch_btn_pins[3] ,
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_DOUBLE,
+
+        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
+        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
+        .multi_func = SWITCH_NOTHING_CONTROL,
+        .combo_long_func = SWITCH_NOTHING_CONTROL
+    }
+};
+#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+
+
+#endif
 
 static esp_err_t deferred_driver_init(void)
 {
-    bool ok = switch_driver_init(g_buttons,
-                                 sizeof(g_buttons) / sizeof(g_buttons[0]),
-                                 zb_buttons_handler);
-    // //Added by Nuos  commented on 04-02-2025
-    // ESP_RETURN_ON_FALSE(switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), zb_buttons_handler), ESP_FAIL, TAG,
-    //                     "Failed to initialize switch driver");
-    // #ifdef USE_WIFI_WEBSERVER 
-    // #else
+
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+        ESP_RETURN_ON_FALSE(switch_driver_init(g_buttons,
+                                    sizeof(g_buttons) / sizeof(g_buttons[0]),
+                                    zb_buttons_handler), ESP_FAIL, TAG,
+                            "Failed to initialize switch driver");
+    #else        
+        //Added by Nuos  commented on 04-02-2025
+        ESP_RETURN_ON_FALSE(switch_driver_init(button_func_pair, PAIR_SIZE(button_func_pair), zb_buttons_handler), ESP_FAIL, TAG,
+                            "Failed to initialize switch driver");
+    #endif                    
+
     nuos_get_data_from_nvs(); 
-    // #endif
     //Added by Nuos                    
     nuos_driver_init(); 
     //Added by Nuos 
     nuos_zb_init_motion_sensor();                
- 
     //Added by Nuos 
     //init_timer_3(); 
     //esp_start_timer_3();
@@ -1153,12 +1328,12 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
             //     device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
             //     printf("COLOR:%d\n", device_info[0].device_val);
             //     nuos_zb_set_hardware(0, false);
-            //     set_color_temp(0, false);
+            //     set_dali_color_temp(0, false);
             // }else if(thermostat_temp.bytes[2] == 106 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
             //     device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 6500, 2000);
             //     printf("COLOR:%d\n", device_info[1].device_val);
             //     nuos_zb_set_hardware(1, false);
-            //     set_color_temp(1, false);
+            //     set_dali_color_temp(1, false);
             // #endif
             }else if(thermostat_temp.bytes[2] == 2 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 level
                 device_info[0].device_level = map_0_1000_to_0_255(thermostat_temp.bytes[8] << 8 | thermostat_temp.bytes[9]);
@@ -1174,12 +1349,12 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
                 printf("COLOR:%d\n", device_info[0].device_val);
                 nuos_zb_set_hardware(0, false);
-                set_color_temp(0, false);
+                set_dali_color_temp(0, false);
             }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
                 device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
                 printf("COLOR:%d\n", device_info[1].device_val);
                 nuos_zb_set_hardware(1, false);
-                set_color_temp(1, false);
+                set_dali_color_temp(1, false);
             #endif            
             }        
         }  else if(message->data.size == 2) {

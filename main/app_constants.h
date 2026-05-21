@@ -694,7 +694,7 @@
         #endif   
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
-        #define USE_COLOR_CONTROL
+        //#define USE_COLOR_CONTROL
 
         #define TOTAL_ENDPOINTS                                         2
         #ifdef USE_COLOR_CONTROL 
@@ -815,11 +815,11 @@
             #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 254)
             #define MAX_DIM_LEVEL_VALUE                                 254  
         #else
-            #define BRIGHTNESS_SET_CHECKER_COUNTS                       5
+            #define BRIGHTNESS_SET_CHECKER_COUNTS                       2
             #define DIMMING_STEPS                                       5
             //#define DIMMING_RGB_STEPS                                   20
 
-            #define COLOR_SET_CHECKER_COUNTS                            20
+            #define COLOR_SET_CHECKER_COUNTS                            2
             #define COLOR_STEPS                                         200
 
             #define MIN_DIM_LEVEL_VALUE                                 5  // (0 to 254)

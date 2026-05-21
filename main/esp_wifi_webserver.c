@@ -838,7 +838,11 @@ case 40:
             } else {           
                 scene_group_switch_info.scn_ctrl_type = sscnctrltype->valueint;
             }
+            // switch_driver_gpios_intr_enabled(false);
+            // dali_rx_intr_enabled(false);
             nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            // dali_rx_intr_enabled(true);
+            // switch_driver_gpios_intr_enabled(true);
             #endif
         break;
 
@@ -950,7 +954,11 @@ case 40:
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
-            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
+            // switch_driver_gpios_intr_enabled(false);
+            // dali_rx_intr_enabled(false);
+            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            // dali_rx_intr_enabled(true);
+            // switch_driver_gpios_intr_enabled(true); 
         
             #endif         
         break;
@@ -1047,7 +1055,11 @@ case 40:
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
-            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
+            // switch_driver_gpios_intr_enabled(false);
+            // dali_rx_intr_enabled(false);
+            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            // dali_rx_intr_enabled(true);
+            // switch_driver_gpios_intr_enabled(true);
         
             #endif         
         break;
@@ -1150,10 +1162,11 @@ case 40:
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
                     #else
+                    printf("Added to group: %d the id: %d ctrl_type: %d\n", scene_group_switch_info.group_id[index22], scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.control_type);
                     if(scene_group_switch_info.control_type == 1 ){
                     #endif
                         nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
-                        vTaskDelay(50 / portTICK_PERIOD_MS);
+                        vTaskDelay(80 / portTICK_PERIOD_MS);
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
                     #else  
                     }
@@ -1165,7 +1178,14 @@ case 40:
                 scene_group_switch_info.device_ids[index22][p] = DALI_INVALID_ADDRESS;
             }
 
-            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
+            //nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            
+            // switch_driver_gpios_intr_enabled(false);
+            // dali_rx_intr_enabled(false);
+            nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
+            // dali_rx_intr_enabled(true);
+            // switch_driver_gpios_intr_enabled(true);
+
         
             #endif         
         break;

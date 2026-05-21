@@ -322,7 +322,7 @@
         dst_node_info_t dst_node_info[MAX_BINDINGS];
         int binding_count = 0;
 
-        //bool change_cw_ww_color_flag                                            = false;
+        bool change_cw_ww_color_flag                                            = false;
         // dmx_variable_t dmx_nvs_stt;
         const uint16_t fan_speed_percentage[5]                                  = { 0, 250, 500, 750, 1000};
         const uint16_t fan_speed_values[5]                                      = { 0, 64, 128, 191, 254};
@@ -1404,7 +1404,7 @@
         extern uint8_t global_dali_id[]; 
         #endif
         extern uint8_t global_scene_id[4];  
-        //extern bool change_cw_ww_color_flag;     
+        extern bool change_cw_ww_color_flag;     
         extern stt_scene_switch_t existing_nodes_info[4];
         extern stt_scene_switch_t nodes_info;        
         extern zigbee_zcene_info_t zb_scene_info[4];
@@ -1539,8 +1539,8 @@ extern "C" {
     void dali_query_send(uint8_t id, uint8_t command);
     void switch_driver_gpios_intr_enabled(bool enabled);
     void set_state(uint8_t index);
-    void set_level(uint8_t index);
-    void set_color_temp(uint8_t index, bool is_color_change);
+    void set_dali_level(uint8_t index);
+    void set_dali_color_temp(uint8_t index, bool is_color_change);
     void set_color_temp_args(uint16_t color);
     esp_err_t nuos_set_state_attribute(uint8_t index);
     void nuos_set_state_command(uint8_t dpid, uint8_t state);
@@ -1556,7 +1556,7 @@ extern "C" {
     extern bool nuos_set_hardware_brightness(uint32_t pin);
     extern void nuos_init_hardware_dimming_up_down(uint32_t pin);
     extern void init_dali_hw();
-    extern void set_color_temp(uint8_t index, bool is_color_change);
+    extern void set_dali_color_temp(uint8_t index, bool is_color_change);
     extern void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_remove_light_from_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_toggle_group(uint8_t group_id, uint8_t index, bool toggle_state, uint8_t brightness);
@@ -1606,6 +1606,7 @@ extern "C" {
     extern void set_parameter_toggle_bt_func_selected(uint8_t bt_index);
     extern uint8_t get_parameter_ep_index_selected();
     extern void nuos_dali_rgb_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint8_t r, uint8_t g, uint8_t b);
+    extern void dali_rx_intr_enabled(bool enable);
 #ifdef __cplusplus
 }
 #endif 

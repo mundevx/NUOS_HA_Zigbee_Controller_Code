@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "DALI.h"
 #include "driver/gpio.h"
+#include "dali_receiver.h"
 
 class DaliCommands {
 public:
@@ -92,7 +93,7 @@ public:
     void factory_reset(uint8_t nodeNumber);
     void set_dim_value(uint8_t nodeAddress, uint8_t value);
     
-
+    void dali_rx_intr_enabled(bool enabled);
     // Color control functions
     void set_color_temp(uint8_t addr, uint16_t kelvin);
     void set_color_temperature(uint8_t addr, uint16_t temp);
@@ -172,8 +173,9 @@ public:
 private:
     gpio_num_t txPin;
     gpio_num_t rxPin;
+
     DALI daliCore;
-    
+    dali_rx::Receiver receiver;
 };
 
 #endif // __DALICOMP_H__

@@ -131,28 +131,19 @@ public:
     void disableRxInterrupt();
     void enableRxInterrupt();
 
-    // Bus-busy / collision statistics (readable by application)
-    struct BusStats {
-        uint32_t collisions;        // frames aborted mid-tx due to collision
-        uint32_t busyWaits;         // times we had to wait for bus idle before tx
-        uint32_t retryExhausted;    // frames dropped after all retries failed
-    };
-    // const BusStats& getBusStats() const { return busStats_; }
-    // void clearBusStats()               { busStats_ = {}; }
-
-    // Tuning knobs (set before begin() or at runtime)
-    uint8_t  txMaxRetries   = 5;      // max send attempts per frame
-    uint32_t txBackoffMinTE = 2;      // minimum back-off in TE units (~416 µs each)
-    uint32_t txBackoffMaxTE = 8;      // maximum back-off in TE units
-
+    void IRAM_ATTR markBusActivityFromISR();
+    bool isBusIdle();
+    bool sendCommandWithRetry(uint8_t command, uint8_t data);
 private:
     bool sendZero(void);
     bool sendOne(void);
-    bool sendZeroWithCheck();
-    bool sendOneWithCheck();
+    void releaseBus();
+    bool tryAcquireBus(uint32_t confirm_idle_us, uint32_t max_wait_us);
+    // bool sendZeroWithCheck();
+    // bool sendOneWithCheck();
   
     // Returns false if a collision was detected; aborts TX immediately.
-    bool sendCommandWithRetry(uint8_t command, uint8_t data);
+
     bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
                                 uint8_t command2, uint8_t data2);
 
@@ -162,14 +153,27 @@ private:
     bool sendProgramShortAddr(uint8_t nodeNumber);
     void withdrawNode(uint32_t addr);
 
-    // Bus-busy helpers
-    bool isBusBusy();
-    bool waitForBusFree(uint8_t maxRetries, uint32_t retryDelayMs);
+
+    volatile bool bus_busy_ = false;
+    volatile int64_t last_bus_activity_us_ = 0;
+    portMUX_TYPE bus_mux_ = portMUX_INITIALIZER_UNLOCKED;
+
+    static constexpr uint32_t DALI_HALF_BIT_US = 416;
+    static constexpr uint32_t DALI_BIT_US = 2 * DALI_HALF_BIT_US;      // ~832 us
+    static constexpr uint32_t DALI_FRAME_BITS = 17;                    // 1 start + 16 data
+    static constexpr uint32_t DALI_FORWARD_FRAME_US = DALI_FRAME_BITS * DALI_BIT_US; // ~14144 us
+    static constexpr uint32_t DALI_POST_TX_IDLE_US = 3700;             // your existing stop/settle
+    static constexpr uint32_t DALI_COMPLETE_FRAME_US = DALI_FORWARD_FRAME_US + DALI_POST_TX_IDLE_US;
+    static constexpr uint32_t DALI_BUS_IDLE_MIN_US = 5000;             // choose 9TE or your required value
+    
+    bool sendCommandRaw(uint8_t command, uint8_t data);       // add this
 
     gpio_num_t txPin;
     gpio_num_t rxPin;
     // BusStats   busStats_ = {};
     static const char *TAG;
+    //bool sendHalfBit(bool tx_level);
+    bool sendHalfBit(bool txLevel);
 
 };
 

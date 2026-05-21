@@ -12,15 +12,19 @@ struct DaliMessage {
     uint8_t data[3];
     size_t len;
 };
-static dali_rx::Receiver            receiver;
+
+//static dali_rx::Receiver            receiver;
 // Queue handle for passing messages from callback to task
 static QueueHandle_t dali_msg_queue = nullptr;
 // static QueueHandle_t rxFrameQueue = nullptr;           // Queue for received frames (each is uint32_t)
 extern bool isr_service_installed;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 DaliCommands::DaliCommands(gpio_num_t txPin, gpio_num_t rxPin)
-    : txPin(txPin), rxPin(rxPin), daliCore(txPin, rxPin) {
-   
+    : txPin(txPin),
+      rxPin(rxPin),
+      daliCore(txPin, rxPin),
+      receiver(&daliCore)
+{
     // Configure GPIO pins
     gpio_config_t io_conf_tx = {};
     io_conf_tx.intr_type = GPIO_INTR_DISABLE;
@@ -105,6 +109,12 @@ void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
     xTaskCreate(dali_task, "dali_task", 4096, (void*)rxFrameQueue, 24, nullptr); 
 }
 
+
+void DaliCommands::dali_rx_intr_enabled(bool enabled)
+{
+    receiver.dali_rx_intr_enabled(enabled);
+
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Basic Control Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
