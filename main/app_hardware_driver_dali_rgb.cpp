@@ -906,8 +906,8 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     if (b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F) {
         scene = b2 - 0x10;
 
-        printf("BROADCAST RECALL SCENE %u TOTAL IDS:%d\n",
-               scene, scene_group_switch_info.total_ids[0]);
+        // printf("BROADCAST RECALL SCENE %u TOTAL IDS:%d\n",
+        //        scene, scene_group_switch_info.total_ids[0]);
 
         bool all_off = true;
         uint8_t max_level = 0;
@@ -1067,7 +1067,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
 
             if (rxFrameQueue != nullptr) {
                 if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {
-                    //interpret_frame(msg.data[0], msg.data[1]);
+                    interpret_frame(msg.data[0], msg.data[1]);
                 }
             }else{
                 vTaskDelay(10 / portTICK_PERIOD_MS);

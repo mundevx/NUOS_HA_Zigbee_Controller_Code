@@ -208,16 +208,16 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
     if (match_6(0,1,0,1,0,1) || match_6(1,0,1,0,1,0)) {
         ESP_LOGI(TAG, "PATTERN DETECTED: 1,2,1,2,1,2");
         reset_click_pattern();
-        stop_ready_commissioning_window();
+        
 
         #ifndef USE_COLOR_CONTROL
             #ifdef USE_WIFI_WEBSERVER
             if (ready_commisioning_flag) {
-                if(wifi_webserver_active_flag){
-                    wifi_webserver_active_flag = false;
-                }else{
+                // if(wifi_webserver_active_flag){
+                //     wifi_webserver_active_flag = false;
+                // }else{
                     wifi_webserver_active_flag = true;  
-                }
+                // }
                 setNVSCommissioningFlag(0);
                 setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
                 esp_restart();
@@ -225,7 +225,7 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
             #endif
 
         #endif
-
+        stop_ready_commissioning_window();
     }
     else if (match_6(0,1,1,0,0,1) || match_6(1,0,0,1,1,0)) {
         ESP_LOGI(TAG, "PATTERN DETECTED: 1,2,2,1,1,2");
@@ -254,11 +254,11 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         #if(defined(USE_COLOR_CONTROL) || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            if(wifi_webserver_active_flag){
-                wifi_webserver_active_flag = false;
-            }else{
+            // if(wifi_webserver_active_flag){
+            //     wifi_webserver_active_flag = false;
+            // }else{
                 wifi_webserver_active_flag = true;  
-            }
+            // }
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();

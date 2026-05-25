@@ -1695,7 +1695,7 @@
 
             if (rxFrameQueue != nullptr) {
                 if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {
-                    //interpret_frame(msg.data[0], msg.data[1]);
+                    interpret_frame(msg.data[0], msg.data[1]);
                 }
             }else{
                 vTaskDelay(10 / portTICK_PERIOD_MS);

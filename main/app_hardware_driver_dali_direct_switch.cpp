@@ -424,7 +424,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     // -------------------------------------------------
     if (b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F) {
         scene = b2 - 0x10;
-        printf("RECALL SCENE BROADCAST %u\n", scene);
+        //printf("RECALL SCENE BROADCAST %u\n", scene);
 
         bool all_off[2] = {true, true};
         uint8_t max_level[2] = {MIN_DIM_LEVEL_VALUE, MIN_DIM_LEVEL_VALUE};
@@ -475,7 +475,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
         scene = b2 - 0x40;
         scene_table[addr][scene] = dtr0;
 
-        printf("STORE SCENE %u -> Device %u Level=%u\n", scene, addr, dtr0);
+        ////printf("STORE SCENE %u -> Device %u Level=%u\n", scene, addr, dtr0);
 
         for (int b = 0; b < 2; b++) {
             for (int i = 0; i < scene_group_switch_info.total_ids[b]; i++) {
@@ -495,7 +495,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
 
                     scene_group_switch_info.device_state[b][scene][i] = (dtr0 != 0);
 
-                    printf("=======DATA EP:%d SAVED SUCCESSFULLY=======\n", b + 1);
+                    ////printf("=======DATA EP:%d SAVED SUCCESSFULLY=======\n", b + 1);
 
                     switch_driver_gpios_intr_enabled(false);
                     dali.dali_rx_intr_enabled(false);
@@ -582,7 +582,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
         while (1) {
             if (rxFrameQueue != nullptr) {
                 if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {  
-                    //interpret_frame(msg.data[0], msg.data[1]);
+                    interpret_frame(msg.data[0], msg.data[1]);
                 }
             }else{
                 vTaskDelay(10 / portTICK_PERIOD_MS);

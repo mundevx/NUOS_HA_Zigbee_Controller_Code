@@ -102,6 +102,18 @@ typedef union colorControlExtensionField_u
 
 colorControlExtensionField_t colorControlExtensionField = {0};
 
+typedef union colorCCTExtensionField_u
+{
+   struct colorCCTExtensionField_s
+   {
+        uint16_t colorTemp1;
+        uint16_t colorTemp2;
+   }fields;
+
+   uint8_t raw[4];
+}colorCCTExtensionField_t;
+
+colorCCTExtensionField_t colorCCTExtensionField = {0};
 
 void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short, 
                                         uint8_t on_off_value, uint8_t brightness_value, uint16_t colorx, uint16_t colory) {
@@ -484,6 +496,79 @@ void nuos_zb_scenes_add_scene_request_2(uint16_t group_id, uint8_t scene_id, uin
  
 }
 
+void nuos_zb_scenes_add_scene_request_3(uint16_t group_id, uint8_t scene_id, 
+                                        uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short, 
+                                        uint8_t on_off_value, uint8_t brightness_value, uint16_t cct_val,  
+                                        uint8_t on_off_value_2, uint8_t brightness_value_2, uint16_t cct_val_2) {
+         
+        if(brightness_value > 254) brightness_value = 254;
+        if(brightness_value_2 > 254) brightness_value_2 = 254;        
+    
+        if(on_off_value == 0) brightness_value = 0;
+        if(on_off_value_2 == 0) brightness_value_2 = 0;
+
+        uint8_t _value[] = {brightness_value, brightness_value_2};
+        uint8_t _state[] = {on_off_value, on_off_value_2};
+
+        #ifdef USE_COLOR_CONTROL
+        uint16_t cct_array[] = {cct_val, cct_val_2};
+
+
+    
+        colorCCTExtensionField.fields.colorTemp1 = cct_val; 
+        colorCCTExtensionField.fields.colorTemp2 = cct_val_2;
+
+        esp_zb_zcl_scenes_extension_field_t color_control_extension_field = {
+            .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, // Cluster ID for Level Control cluster
+            .length = sizeof(colorCCTExtensionField_t),
+            .extension_field_attribute_value_list = (uint8_t*)&colorCCTExtensionField,
+            .next = NULL //Initially, no next extension field
+        };
+
+        // esp_zb_zcl_scenes_extension_field_t color_control_extension_field = {
+        //     .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, // Cluster ID for Level Control cluster
+        //     .length = 2*sizeof(uint16_t),
+        //     .extension_field_attribute_value_list = (uint8_t*)&cct_array,
+        //     .next = NULL //Initially, no next extension field
+        // }; 
+        esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
+            .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
+            .length = 2*sizeof(uint8_t),
+            .extension_field_attribute_value_list = _value,
+            .next = &color_control_extension_field
+        }; 
+        if(cct_val == 0 && cct_val_2 == 0){
+            level_control_extension_field.next = NULL;
+        }else{
+            level_control_extension_field.next = &color_control_extension_field;
+        }
+
+        #else
+        esp_zb_zcl_scenes_extension_field_t level_control_extension_field = {
+            .cluster_id = 0x0008, // Cluster ID for Level Control Cluster
+            .length = 2*sizeof(uint8_t),
+            .extension_field_attribute_value_list = _value,
+            .next = NULL //Initially, No Next Extension Field
+        };
+        #endif
+        esp_zb_zcl_scenes_extension_field_t on_off_extension_field = {
+            .cluster_id = 0x0006, // Cluster ID for On/Off cluster
+            .length = 2*sizeof(uint8_t),
+            .extension_field_attribute_value_list = _state,
+            .next = &level_control_extension_field // Link to the Level Control Extension Field
+        };  
+        if(brightness_value == 0 && brightness_value_2 == 0){
+            on_off_extension_field.next = NULL;
+        }else{
+            on_off_extension_field.next = &level_control_extension_field;
+        }
+        esp_zb_zcl_scenes_table_store(1, 
+                                group_id, scene_id, 
+                                0x0000,
+                                &on_off_extension_field);
+
+}
+
 void nuos_zb_scene_recall_scene_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, 
                                         uint8_t dst_ep, uint16_t dst_addr_short, esp_zb_zcl_address_mode_t address_mode)
 {
@@ -623,6 +708,20 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                 uint8_t index = ep_id[scene_counts];
                 if(index == 255) index = scene_counts;
                 printf("---->ep_index: %d %d  dst:%d \n", index, ENDPOINTS_LIST[index], message->info.dst_endpoint);
+
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+                    if(index > 0){
+                        device_state_1 = device_info[index-1].device_state;
+                        device_state_2 = device_info[index].device_state;
+                        nuos_zb_scenes_add_scene_request_3(message->group_id, message->scene_id, 0, ENDPOINTS_LIST[index-1], esp_zb_get_short_address(), 
+                                                                device_info[index-1].device_state, device_info[index-1].device_level, device_info[index-1].device_val, 
+                                                                device_info[index].device_state, device_info[index].device_level, device_info[index].device_val);
+                    }else{
+                        nuos_zb_scenes_add_scene_request_3(message->group_id, message->scene_id, 0, ENDPOINTS_LIST[index], esp_zb_get_short_address(), 
+                                                                device_info[0].device_state, device_info[0].device_level, device_info[0].device_val,
+                                                                device_info[1].device_state, device_info[1].device_level, device_info[1].device_val);
+                    } 
+                #else
                 if(index > 0){
                     device_state_1 = device_info[index-1].device_state;
                     device_state_2 = device_info[index].device_state;
@@ -635,7 +734,8 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
                                                             device_info[0].device_state, device_info[0].device_level, 
                                                             device_info[0].light_color_x, device_info[0].light_color_y,
                                                             device_info[1].device_state, device_info[1].device_level);
-                }                                  
+                } 
+                #endif                                 
                 scene_counts++;
             }     
         }
@@ -1037,6 +1137,27 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
             set_dali_color_temp(0, false);
             set_dali_level(0);               
         }
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+
+        colorCCTExtensionField_t* colorCCTExtensionField = (colorCCTExtensionField_t*)value;
+
+        uint16_t cct_val = colorCCTExtensionField->fields.colorTemp1;
+        uint16_t cct_val_2 = colorCCTExtensionField->fields.colorTemp2;
+
+        if(index_1 == 0){
+            if(device_info[0].device_state){
+                device_info[0].device_val = cct_val;
+                nuos_zb_set_hardware(0, false);
+                set_dali_color_temp(0, false);
+            }
+            if(device_info[1].device_state){
+                device_info[1].device_val = cct_val_2;
+                nuos_zb_set_hardware(1, false);
+                set_dali_color_temp(1, false);
+            }
+        }
+        printf("====SCENE DALI[%d] CCT value :%d %d\n", index_1, cct_val, cct_val_2);
+
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
             colorControlExtensionField_t* colorControlExtensionField = (colorControlExtensionField_t*)value;
             printf("index_1:%d selected_color_mode:%d state:%d\n", index_1, selected_color_mode, device_info[index_1].device_state);            
@@ -1182,7 +1303,7 @@ void control_zb_devices(uint8_t index_1, uint16_t cluster_id, void* value){
 
 int random_20_to_100(void)
 {
-    return 20 + (esp_random() % 81);  // 20..100 inclusive
+    return 50 + (esp_random() % 81);  // 20..100 inclusive
 }
 
 void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
@@ -1190,7 +1311,7 @@ void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
     uint8_t index_1 = message->info.dst_endpoint-1;
     esp_zb_zcl_scenes_extension_field_t* ext_list = message->field_set;
     while (ext_list != NULL) {
-        printf("Length: %d  %d\n", ext_list->length, index_1);
+        ////printf("Length: %d  %d\n", ext_list->length, index_1);
  
         vTaskDelay(random_20_to_100() / portTICK_PERIOD_MS);   
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM )
@@ -1235,18 +1356,7 @@ void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
                 control_zb_devices(4, ext_list->cluster_id, &ext_list->extension_field_attribute_value_list[0]); 
                 #endif
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                // #ifdef DALI_DIRECT_ADDRESSING
-                //     for (int i = 0; i < ext_list->length; i++) {
-                //         printf("index:%d,  CLUSTER_ID: 0x%x ATTR: 0x%02X\n", index_1, ext_list->cluster_id, ext_list->extension_field_attribute_value_list[i]);
-                //         if(i==index_1){
-                //             control_zb_devices(index_1, ext_list->cluster_id, &ext_list->extension_field_attribute_value_list[i]);                  
-                //         }
-                //         index_1++;              
-                //     }
-                //     index_1 = 0;//message->info.dst_endpoint-1;  
-                // #else
-                    control_zb_devices(index_1, ext_list->cluster_id, &ext_list->extension_field_attribute_value_list[0]);
-                // #endif
+                control_zb_devices(index_1, ext_list->cluster_id, &ext_list->extension_field_attribute_value_list[0]);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                 for (int i = 0; i < ext_list->length; i++) {
                     printf("index:%d,  CLUSTER_ID: 0x%x ATTR: 0x%02X\n", index_1, ext_list->cluster_id, ext_list->extension_field_attribute_value_list[i]);

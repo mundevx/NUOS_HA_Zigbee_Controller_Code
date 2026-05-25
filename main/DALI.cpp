@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 
+#define DALI_RETRY_COUNTS   50
 const char *DALI::TAG = "DALI";
 SemaphoreHandle_t dali_mutex;
 
@@ -172,7 +173,7 @@ for (uint8_t i = 0; i < 16; i++) {
 //     return false;
 // }
 bool DALI::sendCommand(uint8_t command, uint8_t data) {
-    for (int retry = 0; retry < 30; retry++) {
+    for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
         
         if (isBusIdle()) {
             // task_delay(1);   // wait 1 ms

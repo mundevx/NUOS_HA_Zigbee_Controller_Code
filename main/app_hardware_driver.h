@@ -729,9 +729,7 @@
                        
                         char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'n', '4', 'q', 'c', '9', 'f', 'g', '7'}; //dev_id=thermopstat
                       
-                        const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};    
-                        //TS0308
-                        //const char modelid[]                                    = {6, 'T', 'S', '0', '3', '0', '8'};
+                        const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};
                     #endif
                     //NUOSIRAC
                 #endif
@@ -1160,18 +1158,28 @@
                 #ifdef USE_TUYA_BRDIGE 
                     #ifdef USE_COLOR_CONTROL 
                         const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = {1, 2};
-                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_SMART_PLUG_DEVICE_ID, ESP_ZB_HA_SMART_PLUG_DEVICE_ID}; //0x010C
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID}; //0x010C
                         // _TZE204_mm9kyoh3
                         //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'm', 'm', '9', 'k', 'y', 'o', 'h', '3'};
                         //_TZE204_zehdwhwb
-                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
+                        // ookkkk char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
                         //_TZE204_ Tuya whtkfqqt
                         //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'w', 'h', 't', 'k', 'f', 'q', 'q', 't'};              
-                        const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};                        
+                        
+                        // _TZE200_fjjbhx9d  market
+                        // char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'e', '3', 'o', 'i', 't', 'd', 'y', 'u'};
+                        //const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};
+                        
+                        //wc1lppx1
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'w', 'c', '1', 'l', 'p', 'p', 'x', '1'};
+
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
+                        //const char modelid[]                                    = {6, 'T', 'S', '0', '0', '5', '2'}; 
+                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', 'E'};            
                     #else
                         //lbdxarah
-                        char manufname[]                                        = {16, '_', 'T', 'Y', 'Z', 'B', '0', '1', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
-                        char modelid[]                                          = {6, 'T', 'S', '1', '1', '0', 'F'};
+                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
+                        char modelid[]                                          = {6, 'T', 'S', '0', '6', '0', '1'};
                         const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = { 1, 2 };                                                                       
                         const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};                                               
                     #endif

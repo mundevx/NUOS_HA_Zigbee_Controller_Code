@@ -1366,7 +1366,80 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
             #endif
         }
     } else {
-        printf("cmd_id: %d\n", message->info.command.id);
+        printf("cmd_id: %d, size: %d\n", message->info.command.id, message->data.size);
+        if(message->info.command.id == 0x04) {
+            if(message->data.size == 10){ // uint8_t arrays[10] = {0x0 0x2c 0x66 0x2 0x0 0x4 0x0 0x0 0x0 0x1};
+                memcpy(thermostat_temp.bytes, message->data.value, sizeof(thermostat_temp.bytes));
+                for(int i=0; i<message->data.size; i++){
+                    printf("0x%x ", thermostat_temp.bytes[i]);
+                }
+                printf("\n");  
+
+                uint8_t payload[9];
+                payload[0] = thermostat_temp.bytes[1];         // 1 byte sequence number
+                payload[1] = thermostat_temp.bytes[2];            // DP ID (temperature setpoint)
+                payload[2] = thermostat_temp.bytes[3];            // DP type (value)
+                payload[3] = thermostat_temp.bytes[4];            // Function (set/report), often 0x00
+                payload[4] = thermostat_temp.bytes[5];            // Data length (4 bytes)
+                payload[5] = thermostat_temp.bytes[6];            // Value MSB (= 0)
+                payload[6] = thermostat_temp.bytes[7];
+                payload[7] = thermostat_temp.bytes[8];
+                payload[8] = thermostat_temp.bytes[9];            // Value LSB (= 24)
+
+                // Create octet string: first byte is length, then payload
+                uint8_t octet_string[10];
+                octet_string[0] = 9; // length byte
+                memcpy(&octet_string[1], payload, 9);
+
+                esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+                    .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+                    .cluster_id = message->info.cluster,
+                    .custom_cmd_id = 1,
+                    .data.value = octet_string,
+                    .data.size = 10,
+                    .data.type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING,
+                    .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+                    .profile_id = 0x0104,
+                    .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+                    .zcl_basic_cmd.dst_endpoint = 1,
+                    .zcl_basic_cmd.src_endpoint = 1,
+                    .dis_default_resp = 1,
+                    .manuf_code = 0,
+                    .manuf_specific = 0, 
+                };
+                sequence_num = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req);
+                scene_counts = 0; 
+                if(ep_cnts > TOTAL_ENDPOINTS) ep_cnts = 0;
+                
+
+
+                ////////////////////////
+                if(thermostat_temp.bytes[2] == 0x65 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
+                    device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                    printf("COLOR:%d\n", device_info[0].device_val);
+                    nuos_zb_set_hardware(0, false);
+                    set_dali_color_temp(0, false);
+
+                    if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 0)) {
+                        ep_id[0] = 0;
+                        ep_cnts++;
+                    }
+
+                }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
+                    device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
+                    printf("COLOR:%d\n", device_info[1].device_val);
+                    nuos_zb_set_hardware(1, false);
+                    set_dali_color_temp(1, false);
+                    if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 1)) {
+                        ep_id[1] = 0;
+                        ep_cnts++;
+                    }
+                   
+                }  
+
+                /////////////////////
+            }
+        }
     }
     #else
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION)
@@ -1855,13 +1928,13 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
             break;
         #endif 
         default:
-            printf("Unhandled callback ID: %d\n", callback_id);
+            //printf("Unhandled callback ID: %d\n", callback_id);
             //Added by Nuos 
             nuos_zigbee_action_handler(callback_id, message);
-            if (response_pending) {
-                esp_zb_zcl_custom_cluster_cmd_req(&g_cmd_req);
-                response_pending = false;
-            }
+            // if (response_pending) {
+            //     esp_zb_zcl_custom_cluster_cmd_req(&g_cmd_req);
+            //     response_pending = false;
+            // }
             break;
     }
     return ret;
