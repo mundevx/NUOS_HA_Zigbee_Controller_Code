@@ -1175,7 +1175,7 @@
 
                         //char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
                         //const char modelid[]                                    = {6, 'T', 'S', '0', '0', '5', '2'}; 
-                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', 'E'};            
+                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'};            
                     #else
                         //lbdxarah
                         char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};

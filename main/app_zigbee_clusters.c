@@ -4846,19 +4846,19 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                     uint16_t level_value = *(uint16_t*)message->data;
                     uint8_t dst_ep = message->info.dst_endpoint;
                     uint8_t ep_index = dst_ep-1;
-                esp_zb_zcl_status_t status = ESP_OK;
+                    esp_zb_zcl_status_t status = ESP_OK;
 
                     if (is_my_device_commissionned && !wifi_webserver_active_flag){
                         status = esp_zb_zcl_set_attribute_val(
-                            ENDPOINTS_LIST[index],
+                            ENDPOINTS_LIST[ep_index],
                             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
                             ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
                             0xF000,
-                            (uint8_t*)&val_mode,
+                            (uint8_t*)&level_value,
                             false
                         );
 
-                        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF000);
+                        send_report(ep_index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF000);
                     }   
 
 

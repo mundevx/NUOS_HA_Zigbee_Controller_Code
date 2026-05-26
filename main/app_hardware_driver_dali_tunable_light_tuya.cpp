@@ -619,7 +619,6 @@
                 // printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
                 #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                     #ifndef USE_TWO_SWITCH_MODE
-                    //printf("lllleeevvveeelll:%d\n", device_info[index].device_level);
                     ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[index]);
                     #else

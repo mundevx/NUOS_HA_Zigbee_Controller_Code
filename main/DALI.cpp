@@ -150,13 +150,13 @@ for (uint8_t i = 0; i < 16; i++) {
 
     gpio_set_level(txPin, DALI_LOW);
     task_delayMicroseconds(3700);
-
-    // Only update once, outside ISR
-    taskENTER_CRITICAL(&bus_mux_);
-    bus_busy_ = true;
-    last_bus_activity_us_ = esp_timer_get_time();
-    taskEXIT_CRITICAL(&bus_mux_);
-    //xSemaphoreGive(dali_mutex);
+    releaseBus();  // Add this line!
+    // // Only update once, outside ISR
+    // taskENTER_CRITICAL(&bus_mux_);
+    // bus_busy_ = true;
+    // last_bus_activity_us_ = esp_timer_get_time();
+    // taskEXIT_CRITICAL(&bus_mux_);
+    // //xSemaphoreGive(dali_mutex);
     return true;
 }
 
@@ -172,22 +172,36 @@ for (uint8_t i = 0; i < 16; i++) {
 //     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
 //     return false;
 // }
+// bool DALI::sendCommand(uint8_t command, uint8_t data) {
+//     for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
+        
+//         if (isBusIdle()) {
+//             // task_delay(1);   // wait 1 ms
+//             // if (isBusIdle()) {
+//                 return sendCommandRaw(command, data);
+//             // }
+//         }
+        
+//         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
+//     }
+//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
+//     return false;
+// }
 bool DALI::sendCommand(uint8_t command, uint8_t data) {
     for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
-        
         if (isBusIdle()) {
-            // task_delay(1);   // wait 1 ms
-            // if (isBusIdle()) {
-                return sendCommandRaw(command, data);
-            // }
+            task_delay(2);  // Wait 2ms to ensure bus idle
+            if (isBusIdle()) {
+                bool result = sendCommandRaw(command, data);
+                task_delay(10);  // FIX: Add 10ms inter-frame delay after send
+                return result;
+            }
         }
-        
         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
     }
     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
     return false;
 }
-
 
 
 bool DALI::tryAcquireBus(uint32_t confirm_idle_us, uint32_t max_wait_us)

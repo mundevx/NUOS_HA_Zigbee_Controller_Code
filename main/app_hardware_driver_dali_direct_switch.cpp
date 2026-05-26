@@ -775,7 +775,6 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                     #else
                         gpio_set_level(gpio_touch_led_pins[index], 1);
                     #endif
-                    //printf("group_id:%d set to ON\n", scene_group_switch_info.group_id[index]);
                     nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                 }                    
 

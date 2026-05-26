@@ -695,7 +695,7 @@
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
         #define USE_COLOR_CONTROL
-        
+
         #define TOTAL_ENDPOINTS                                         2
         #ifdef USE_COLOR_CONTROL 
         #define TOTAL_BUTTONS                                           4
