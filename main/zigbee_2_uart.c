@@ -306,7 +306,7 @@
 
         //uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-        xTaskCreate(uart_receiver_task, "uart_receiver_task", 4096, NULL, 21, NULL);
+        xTaskCreate(uart_receiver_task, "uart_receiver_task", 4096, NULL, TASK_PRIORITY_UART_RECEIVER, NULL);
         printf("========>UART initialized\n");
     }
 

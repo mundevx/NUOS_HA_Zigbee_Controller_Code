@@ -265,18 +265,11 @@
     extern "C" void set_dali_color_temp(uint8_t index, bool status){
          //esp_zb_lock_acquire(portMAX_DELAY);
         if(scene_group_switch_info.control_type != 0) { 
-            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-            dali.set_color_temperature(global_dali_id[0], device_info[0].device_val); 
-            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-            dali.set_group_color_cct(global_group_id[0], device_info[0].device_val);
-            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
-            //dali.set_broadcast_color_rgb(0, 0, 0, device_info[0].device_level);
             dali.set_color_temperature(dali.BROADCAST_C, device_info[index].device_val); 
-            #endif 
         }else{
             dali.set_group_color_cct(scene_group_switch_info.group_id[index], device_info[index].device_val);  
         }
-        nuos_set_color_temperature_attribute(index);     
+        //nuos_set_color_temperature_attribute(index);     
     }
 
 
@@ -1363,7 +1356,7 @@
             return;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 9, NULL);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
         start_dali_led_commissioning_task_flag = true;
         //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
         if (recordsSemaphore != NULL) {
@@ -1710,8 +1703,8 @@
             if (rxFrameQueue == nullptr) {
                 return;
             } 
-            dali.begin_rx(&isr_service_installed, rxFrameQueue);
-            xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 22, NULL); 
+            dali.begin_rx(&isr_service_installed, rxFrameQueue); 
+            xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL);
         }else{
             
         }

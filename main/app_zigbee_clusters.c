@@ -647,6 +647,7 @@ void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
     esp_zb_lock_acquire(portMAX_DELAY);
     esp_err_t err = esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
     if(err != ESP_OK){
+        printf("Report send failed, error code: %d. Retrying...\n", err);
         esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
     }
     esp_zb_lock_release();
@@ -6779,7 +6780,9 @@ void nuos_set_scene_group_cluster(const esp_zb_zcl_recall_scene_message_t *messa
             ESP_LOGW(TAG, "Scene event queue full, message dropped");
         }
     #else
-    nuos_set_scene((esp_zb_zcl_recall_scene_message_t*)message);
+        switch_driver_gpios_intr_enabled(false);
+        nuos_set_scene((esp_zb_zcl_recall_scene_message_t*)message);
+        switch_driver_gpios_intr_enabled(true);
     #endif 
 }
 
@@ -6998,6 +7001,7 @@ bool nuos_init_sequence(){
             
         #endif 
     #endif
+    scene_queue_init();
     #ifdef USE_WIFI_WEBSERVER
         if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
             nuos_get_data_from_nvs();

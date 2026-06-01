@@ -1087,8 +1087,8 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                     return;
                 }        
                 #ifdef ENABLE_DALI_RECEIVER
-                    dali.begin_rx(&isr_service_installed, rxFrameQueue);
-                    xTaskCreate(receiveDaliFrame, "dali_task_2", 4096, NULL, 23, NULL);   
+                    dali.begin_rx(&isr_service_installed, rxFrameQueue);  
+                    xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL);
                 #endif
                 vTaskDelay(10 / portTICK_PERIOD_MS); 
             } 
@@ -1705,10 +1705,8 @@ extern "C" void nuos_dali_set_state(uint8_t dali_id, uint8_t state) {
     }
 
      extern "C" void nuos_dali_set_state_group(uint8_t group_id, bool _state) { 
-        //#ifdef IS_USE_DALI_HARDWARE
         if(!_state) dali.set_group_off(group_id);
         else dali.set_group_on(group_id);
-        //#endif
     }
    
     extern "C" void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp) {
@@ -1729,7 +1727,7 @@ extern "C" void nuos_dali_set_state(uint8_t dali_id, uint8_t state) {
             return;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 9, NULL);
+        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
         start_dali_led_commissioning_task_flag = true;
         if (recordsSemaphore != NULL) {
             // Wait for the semaphore to be given by thaddre records task

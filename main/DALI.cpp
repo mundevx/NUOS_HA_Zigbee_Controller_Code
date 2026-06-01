@@ -38,13 +38,20 @@ void DALI::begin(bool* is_isr_handler) {
     dali_mutex = xSemaphoreCreateMutex();
 }
 
+// void IRAM_ATTR DALI::markBusActivityFromISR() {
+//     taskENTER_CRITICAL_ISR(&bus_mux_);
+//     bus_busy_ = true;
+//     last_bus_activity_us_ = esp_timer_get_time();
+//     taskEXIT_CRITICAL_ISR(&bus_mux_);
+// }
 void IRAM_ATTR DALI::markBusActivityFromISR() {
     taskENTER_CRITICAL_ISR(&bus_mux_);
-    bus_busy_ = true;
-    last_bus_activity_us_ = esp_timer_get_time();
+    if (!tx_in_progress_) {          // ← ignore our own loopback
+        bus_busy_ = true;
+        last_bus_activity_us_ = esp_timer_get_time();
+    }
     taskEXIT_CRITICAL_ISR(&bus_mux_);
 }
-
 bool DALI::isBusIdle() {
     int64_t now = esp_timer_get_time();
     int64_t last_us;
@@ -82,11 +89,9 @@ bool DALI::sendHalfBit(bool txLevel)
 
     // collision detect
     if (txLevel == DALI_HIGH && rxLevel == DALI_LOW) {
-
-        ESP_EARLY_LOGW(TAG, "DALI collision");
-
-        releaseBus();
-
+        //ESP_EARLY_LOGW(TAG, "DALI collision");
+        gpio_set_level(txPin, DALI_LOW);
+        // releaseBus();
         return false;
     }
 
@@ -123,111 +128,107 @@ bool DALI::sendOne()
 //     return true;
 // }
 
+// bool DALI::sendCommandRaw(uint8_t command, uint8_t data) {
+//     uint16_t info = (uint16_t)((command << 8) | data);
+
+//     if (!sendOne()) {
+//         return false;
+//     }
+
+//     for (uint8_t i = 0; i < 16; i++) {
+
+//         bool ok;
+
+//         if (info & 0x8000)
+//             ok = sendOne();
+//         else
+//             ok = sendZero();
+
+//         if (!ok) {
+//             printf("Collision detected\\n");
+//             gpio_set_level(txPin, DALI_LOW); 
+//             releaseBus();
+//             task_delayMicroseconds(3700);
+//             // But SIMULTANEOUSLY, the loopback edge arrives at RX ISR:
+//             markBusActivityFromISR(); // bus_busy_ = true  ← sets true again!
+//             return false;
+//         }
+
+//         info <<= 1;
+//     }
+//     gpio_set_level(txPin, DALI_LOW); 
+//     releaseBus();  // Add this line!
+//     task_delayMicroseconds(3700);
+//     // But SIMULTANEOUSLY, the loopback edge arrives at RX ISR:
+//     //markBusActivityFromISR(); // bus_busy_ = true  ← sets true again!
+
+//     return true;
+// }
 bool DALI::sendCommandRaw(uint8_t command, uint8_t data) {
     uint16_t info = (uint16_t)((command << 8) | data);
-    //xSemaphoreTake(dali_mutex, portMAX_DELAY);
+
+    // Block loopback ISR for entire TX + settle window
+    if (rxPin != GPIO_NUM_NC) gpio_intr_disable(rxPin);
+
     if (!sendOne()) {
-        return false;
-    }
-
-for (uint8_t i = 0; i < 16; i++) {
-
-    bool ok;
-
-    if (info & 0x8000)
-        ok = sendOne();
-    else
-        ok = sendZero();
-
-    if (!ok) {
-        ESP_LOGW(TAG, "Collision detected");
         releaseBus();
+        task_delayMicroseconds(3700);
+        if (rxPin != GPIO_NUM_NC) gpio_intr_enable(rxPin);
         return false;
     }
 
-    info <<= 1;
-}
+    for (uint8_t i = 0; i < 16; i++) {
+        bool ok = (info & 0x8000) ? sendOne() : sendZero();
+        if (!ok) {
+            releaseBus();
+            task_delayMicroseconds(3700);
+            if (rxPin != GPIO_NUM_NC) gpio_intr_enable(rxPin);
+            return false;
+        }
+        info <<= 1;
+    }
 
     gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(3700);
-    releaseBus();  // Add this line!
-    // // Only update once, outside ISR
-    // taskENTER_CRITICAL(&bus_mux_);
-    // bus_busy_ = true;
-    // last_bus_activity_us_ = esp_timer_get_time();
-    // taskEXIT_CRITICAL(&bus_mux_);
-    // //xSemaphoreGive(dali_mutex);
+    releaseBus();
+    task_delayMicroseconds(3700);     // loopback arrives here — ISR disabled ✅
+
+    if (rxPin != GPIO_NUM_NC) gpio_intr_enable(rxPin);
+
     return true;
 }
 
 // bool DALI::sendCommand(uint8_t command, uint8_t data) {
-//     for (int retry = 0; retry < 10; retry++) {
-//         if (isBusIdle()) {
-//             // Assume isBusIdle() is our only source of bus state
-//             return sendCommandRaw(command, data);
-//         }
-//         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
+//     uint16_t info = (uint16_t)((command << 8) | data);
+//     sendOne();   // Start bit
+
+//     for (uint8_t i = 0; i < 16; i++) {
+//         if (info & 0x8000)
+//             sendOne();
+//         else
+//             sendZero();
+//         info <<= 1;
 //     }
 
-//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
-//     return false;
-// }
-// bool DALI::sendCommand(uint8_t command, uint8_t data) {
-//     for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
-        
-//         if (isBusIdle()) {
-//             // task_delay(1);   // wait 1 ms
-//             // if (isBusIdle()) {
-//                 return sendCommandRaw(command, data);
-//             // }
-//         }
-        
-//         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
-//     }
-//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
-//     return false;
+//     gpio_set_level(txPin, DALI_LOW);
+//     task_delayMicroseconds(2700);
+//     return true;
 // }
 bool DALI::sendCommand(uint8_t command, uint8_t data) {
     for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
-        if (isBusIdle()) {
-            task_delay(2);  // Wait 2ms to ensure bus idle
+        // if (isBusIdle()) {
+        //     task_delay(2);  // Wait 2ms to ensure bus idle
             if (isBusIdle()) {
                 bool result = sendCommandRaw(command, data);
-                task_delay(10);  // FIX: Add 10ms inter-frame delay after send
+                vTaskDelay(3 / portTICK_PERIOD_MS);
                 return result;
             }
-        }
+    //    }
+       else{
+            printf("DALI bus busy, retrying... (%d/%d)\\n", retry + 1, DALI_RETRY_COUNTS);
+       }
         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
     }
-    ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
-    return false;
-}
-
-
-bool DALI::tryAcquireBus(uint32_t confirm_idle_us, uint32_t max_wait_us)
-{
-    int64_t start = esp_timer_get_time();
-
-    while ((esp_timer_get_time() - start) < max_wait_us) {
-        if (isBusIdle()) {
-            task_delayMicroseconds(confirm_idle_us);
-            if (isBusIdle()) {
-                taskENTER_CRITICAL(&bus_mux_);
-                if (bus_busy_) {
-                    taskEXIT_CRITICAL(&bus_mux_);
-                    continue;
-                }
-                bus_busy_ = true;
-                last_bus_activity_us_ = esp_timer_get_time();
-                taskEXIT_CRITICAL(&bus_mux_);
-                return true;
-            }
-        }
-
-        uint32_t backoff = 1000 + (esp_random() % 10000);// 200 to 999 us
-        task_delayMicroseconds(backoff);
-    }
-
+    printf("DALI bus busy, retry limit reached\\n");
     return false;
 }
 
@@ -238,19 +239,6 @@ void DALI::releaseBus()
     last_bus_activity_us_ = esp_timer_get_time();
     taskEXIT_CRITICAL(&bus_mux_);
 }
-
-// bool DALI::sendCommand(uint8_t command, uint8_t data)
-// {
-//     for (int retry = 0; retry < 10; retry++) {
-//         if (tryAcquireBus(1000, 2000)) {
-//             bool ok = sendCommandRaw(command, data);
-//             releaseBus();
-//             return ok;
-//         }
-//     }
-//     ESP_LOGW(TAG, "DALI bus busy, retry limit reached");
-//     return false;
-// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool DALI::sendCommandWithRetry(uint8_t command, uint8_t data) {
@@ -268,32 +256,93 @@ bool DALI::sendCommandWithRetry(uint8_t command, uint8_t data) {
     return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2) {
 
+bool DALI::sendCommand32Raw(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2) {
     uint16_t cd1 = (uint16_t)((command1 << 8) | data1);
     uint16_t cd2 = (uint16_t)((command2 << 8) | data2);
     uint32_t info = (uint32_t)((cd1 << 16) | cd2);
 
-    sendOne();   // Start bit
+    if (!sendOne()) {
+        return false;
+    }
 
     for (uint8_t i = 0; i < 32; i++) {
+
+        bool ok;
+
         if (info & 0x80000000)
-            sendOne();
+            ok = sendOne();
         else
-            sendZero();
+            ok = sendZero();
+
+        if (!ok) {
+            printf("Collision detected\\n");
+            releaseBus();
+            task_delayMicroseconds(3700);
+            return false;
+        }
+
         info <<= 1;
 
         if (i == 15) {
             gpio_set_level(txPin, DALI_LOW);
-            task_delayMicroseconds(3700);
-            task_delay(1);
-            sendOne();
+            task_delayMicroseconds(6700);
+            if (!sendOne()) {
+                return false;
+            }
         }
     }
+    gpio_set_level(txPin, DALI_LOW); 
+    releaseBus();  // Add this line!
+    task_delayMicroseconds(3700);
 
-    gpio_set_level(txPin, DALI_LOW);
-    task_delayMicroseconds(2700);
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+bool DALI::sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2) {
+
+    // uint16_t cd1 = (uint16_t)((command1 << 8) | data1);
+    // uint16_t cd2 = (uint16_t)((command2 << 8) | data2);
+    // uint32_t info = (uint32_t)((cd1 << 16) | cd2);
+
+    // sendOne();   // Start bit
+
+    // for (uint8_t i = 0; i < 32; i++) {
+    //     if (info & 0x80000000)
+    //         sendOne();
+    //     else
+    //         sendZero();
+    //     info <<= 1;
+
+    //     if (i == 15) {
+    //         gpio_set_level(txPin, DALI_LOW);
+    //         task_delayMicroseconds(3700);
+    //         task_delay(1);
+    //         sendOne();
+    //     }
+    // }
+
+    // gpio_set_level(txPin, DALI_LOW);
+    // task_delayMicroseconds(3700);
+
+
+    for (int retry = 0; retry < DALI_RETRY_COUNTS; retry++) {
+        if (isBusIdle()) {
+            task_delay(2);  // Wait 2ms to ensure bus idle
+            if (isBusIdle()) {
+                bool result = sendCommand32Raw(command1, data1, command2, data2);
+                //task_delay(20);  // FIX: Add 10ms inter-frame delay after send
+                return result;
+            }
+       }
+    //    else{
+    //         printf("DALI bus busy, retrying... (%d/%d)\\n", retry + 1, DALI_RETRY_COUNTS);
+    //    }
+        esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
+    }
+    //printf("DALI bus busy, retry limit reached\\n");
+    return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -11,7 +11,7 @@ namespace dali_rx {
 
 struct RxEdgeEvent {
     uint32_t t_us;
-    //bool bus_low;
+    bool bus_low;
 };
 /**
  * @brief DALI message receiver using pin change interrupts and a periodic timer.

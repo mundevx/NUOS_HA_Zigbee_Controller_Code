@@ -62,14 +62,21 @@
     #define CLOSE_COVER_LEVEL                                       0
 
     #define TASK_PRIORITY_ZIGBEE                                    5
-    #define TASK_PRIORITY_DALI_TASK                                 8
-    #define TASK_PRIORITY_SWITCH                                    10
-    #define TASK_PRIORITY_SCENE_RECALL                              15
-    #define TASK_PRIORITY_ATTR                                      18
-    #define TASK_PRIORITY_RGB                                       20
-    #define TASK_PRIORITY_PRIVILEGE                                 21
+    #define TASK_PRIORITY_DALI_TASK                                 5   //9   //used when in WiFi mode and zigbee off 
+    #define TASK_PRIORITY_SWITCH                                    10  //dont change it ever
+    #define TASK_PRIORITY_SCENE_RECALL                              15  //Not in use
+    #define TASK_PRIORITY_ATTR                                      9   //dont change it ever
+    #define TASK_PRIORITY_RGB                                       18  //dont change it ever
+    #define TASK_PRIORITY_PRIVILEGE                                 21  //used in case of RGB
     #define TASK_PRIORITY_IR_BLASTER_SEND                           21
-    #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           20
+    #define TASK_PRIORITY_DALI_RX_FRAME                             14   
+    #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           22
+    #define TASK_PRIORITY_SCENE_QUEUE_TASK                          15 //not used
+    #define TASK_PRIORITY_WEBSERVER                                 16  
+    #define TASK_PRIORITY_UART_RECEIVER                             17  //used only for IR Blaster
+    //#define TASK_PRIORITY_DALI_RX_INTR_TASK                         11
+    //#define TASK_PRIORITY_DALI_RX_FRAME_QUEUE                       13
+
 
     #define TASK_PRIORITY_IDENTIFY                                  22
     #define TASK_PRIORITY_ZB_FIND_NODES                             32
@@ -85,6 +92,7 @@
     #define TASK_STACK_SIZE_COLOR                                   6800 
     #define TASK_STACK_SIZE_PRIVILEGE                               4096 
     #define TASK_STACK_SIZE_IR_BLASTER_SEND                         4096
+    #define TASK_STACK_SIZE_DALI_RX_FRAME                           4096
 
     #define TASK_STACK_SIZE_SCENE_RECALL                            8192
     #define TASK_STACK_SIZE_IDENTIFY                                2048

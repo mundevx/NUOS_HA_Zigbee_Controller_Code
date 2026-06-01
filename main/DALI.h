@@ -76,6 +76,8 @@
 #include "esp_timer.h"
 #include "esp_log.h"
 
+#define TASK_PRIORITY_DALI_RX_INTR_TASK   11
+#define TASK_PRIORITY_DALI_RX_FRAME_QUEUE 13
 class DALI {
 private:
     enum {
@@ -135,20 +137,16 @@ public:
     bool isBusIdle();
     bool sendCommandWithRetry(uint8_t command, uint8_t data);
 private:
+    volatile bool tx_in_progress_ = false;
     bool sendZero(void);
     bool sendOne(void);
     void releaseBus();
-    bool tryAcquireBus(uint32_t confirm_idle_us, uint32_t max_wait_us);
-    // bool sendZeroWithCheck();
-    // bool sendOneWithCheck();
-  
-    // Returns false if a collision was detected; aborts TX immediately.
-
-    bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
-                                uint8_t command2, uint8_t data2);
+    // bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
+    //                             uint8_t command2, uint8_t data2);
+    bool sendCommand32Raw(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);                            
 
     bool sendCommand(uint8_t command, uint8_t data);
-    void sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
+    bool sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     bool sendSearchAddr(uint32_t addr);
     bool sendProgramShortAddr(uint8_t nodeNumber);
     void withdrawNode(uint32_t addr);

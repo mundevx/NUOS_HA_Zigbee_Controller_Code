@@ -1347,13 +1347,15 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 nuos_zb_set_hardware(1, false);
             }else if(thermostat_temp.bytes[2] == 0x65 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
                 device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                printf("COLOR:%d\n", device_info[0].device_val);
+                printf("COLORX:%d\n", device_info[0].device_val);
                 nuos_zb_set_hardware(0, false);
+                set_color_to_updown_leds(0);
                 set_dali_color_temp(0, false);
             }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
                 device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                printf("COLOR:%d\n", device_info[1].device_val);
+                printf("COLORY:%d\n", device_info[1].device_val);
                 nuos_zb_set_hardware(1, false);
+                set_color_to_updown_leds(1);
                 set_dali_color_temp(1, false);
             #endif            
             }        
@@ -1416,7 +1418,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 ////////////////////////
                 if(thermostat_temp.bytes[2] == 0x65 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
                     device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                    printf("COLOR:%d\n", device_info[0].device_val);
+                    printf("COLORX1:%d\n", device_info[0].device_val);
                     nuos_zb_set_hardware(0, false);
                     set_dali_color_temp(0, false);
 
@@ -1427,7 +1429,7 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
                 }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
                     device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                    printf("COLOR:%d\n", device_info[1].device_val);
+                    printf("COLORY1:%d\n", device_info[1].device_val);
                     nuos_zb_set_hardware(1, false);
                     set_dali_color_temp(1, false);
                     if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 1)) {
@@ -2204,12 +2206,12 @@ void app_main(void) {
     }else{
         ESP_LOGI(TAG, "Deferred driver initialization %s", deferred_driver_init() ? "Failed" : "Successful");
     }
-    #ifdef USE_WIFI_WEBSERVER
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-    while(1){
-        vTaskDelay(pdMS_TO_TICKS(100));
-        start_dali_led_blink_task();
-    }
-    #endif
-    #endif
+    // #ifdef USE_WIFI_WEBSERVER
+    // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+    // while(1){
+    //     vTaskDelay(pdMS_TO_TICKS(100));
+    //     start_dali_led_blink_task();
+    // }
+    // #endif
+    // #endif
 }

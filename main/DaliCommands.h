@@ -124,8 +124,11 @@ public:
     void send_command_standard(uint8_t opcode, uint8_t address);
     void send_command_special32(uint8_t opcode1, uint8_t address1,
                                uint8_t opcode2, uint8_t address2);
-    void send_command_standard32(uint8_t opcode1, uint8_t address1,
-                                uint8_t opcode2, uint8_t address2);
+    // void send_command_standard32(uint8_t opcode1, uint8_t address1,
+    //                             uint8_t opcode2, uint8_t address2);
+
+    // bool send_command_special_standard32(uint8_t opcode1, uint8_t address1,
+    //                                        uint8_t opcode2, uint8_t address2);                            
 
     // Broadcast functions
     void set_broadcast_fade_rate(uint8_t rate);
@@ -135,7 +138,7 @@ public:
     void set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_broadcast_color_rgb_2(uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_broadcast_color_cct(uint16_t color_temp_kelvin);
-    void set_cct_dimming(uint8_t dim);
+    void set_cct_dimming(uint8_t addr, uint8_t dim);
 
     // Group functions
     bool add_to_group(uint8_t addr, uint8_t group);

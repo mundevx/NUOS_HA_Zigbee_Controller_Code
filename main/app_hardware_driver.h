@@ -234,7 +234,7 @@
 ////////////////////////////////////////////////////////////////////////
     #define MAX_BINDINGS                                                        40  // adjust this based on how many you expect
     #ifdef DECLARE_MAIN
-
+        uint8_t ep_selected_index                                                  = 0;
         bool isr_service_installed                                              = false;
 
         bool rgb_led_blink_flag                                                 = false;
@@ -1352,7 +1352,7 @@
         extern bool is_bt_start_pressed;
         extern bool is_bt_end_pressed;
         #endif
-
+        extern uint8_t ep_selected_index;
         extern bool isr_service_installed;
      
         extern bool rgb_led_blink_flag;
@@ -1586,7 +1586,12 @@ extern "C" {
     extern void init_sensor_commissioning_task();
     extern bool nuos_set_hardware_brightness_2(uint8_t index);
     extern void dali_set_mode(uint8_t mode);
-    extern void nuos_dali_set_state_group(uint8_t group_id, bool _state);
+    
+    #if(USE_NUOS_ZB_DEVICE_TYPE ==  DEVICE_DALI_DIRECT_SWITCH)
+    extern void nuos_dali_set_state_group(uint8_t index, uint8_t brightness);
+    #else
+    extern void nuos_dali_set_state_group(uint8_t index, bool brightness);
+    #endif
     extern void nuos_dali_set_state(uint8_t dali_id, uint8_t state);
     extern void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level);
     extern void nuos_dali_set_cct_color(uint8_t did, uint16_t value);
@@ -1615,6 +1620,8 @@ extern "C" {
     extern uint8_t get_parameter_ep_index_selected();
     extern void nuos_dali_rgb_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint8_t r, uint8_t g, uint8_t b);
     extern void dali_rx_intr_enabled(bool enable);
+    extern void convert_colors_to_index(uint8_t index, bool is_long_press);
+    extern void set_color_to_updown_leds(uint8_t index);
 #ifdef __cplusplus
 }
 #endif 

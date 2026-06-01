@@ -1055,12 +1055,15 @@ void nuos_switch_single_click_task(uint32_t io_num) {
 
                 if(button_index < 2){ 
                     #ifdef USE_COLOR_CONTROL
-                    set_parameter_ep_index_selected(button_index);
-                    sindex = get_parameter_ep_index_selected();
-                    set_parameter_ep_index_selected(button_index);
+                        set_parameter_ep_index_selected(button_index);
+                        sindex = get_parameter_ep_index_selected();
+                        set_parameter_ep_index_selected(button_index);
                     #endif
                     printf("button_index<2: %d\n", button_index);
-                    nuos_zb_set_hardware(button_index, true);  
+                    nuos_zb_set_hardware(button_index, true);
+                    if(device_info[button_index].device_state){
+                        set_dali_level(button_index);  
+                    }
                 }
                 #ifdef USE_COLOR_CONTROL
                 // else{
@@ -1070,10 +1073,13 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 // } 
                 else{
                     sindex = get_parameter_ep_index_selected();
+                    printf("sindex: %d\n", sindex);
                     if(sindex > 1) return;
-                    //printf("sindex:%d color_or_fan_state:%d device_state:%d\n", sindex, device_info[sindex].color_or_fan_state, device_info[sindex].device_state);
                     if(device_info[sindex].device_state){
                         nuos_zb_set_hardware(button_index, false);
+                        if(device_info[sindex].device_state){
+                            set_dali_level(sindex);  
+                        }
                         if(device_info[sindex].color_or_fan_state){
                             set_dali_color_temp(sindex, false);
                         }else{

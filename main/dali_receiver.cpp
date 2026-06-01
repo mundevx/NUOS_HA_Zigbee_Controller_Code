@@ -79,10 +79,6 @@ esp_err_t Receiver::begin(gpio_num_t rx_pin, callback_t cb, bool inverted, bool*
 
     ESP_LOGI(TAG, "Receiver started on GPIO %d", pin_);
 
-
-
-
-
     edge_queue_ = xQueueCreate(64, sizeof(RxEdgeEvent));
 
     xTaskCreate(
@@ -92,7 +88,7 @@ esp_err_t Receiver::begin(gpio_num_t rx_pin, callback_t cb, bool inverted, bool*
         "dali_rx_task",
         4096,
         this,
-        20,
+        TASK_PRIORITY_DALI_RX_INTR_TASK,
         nullptr
     );
     return ESP_OK;
@@ -245,18 +241,21 @@ void IRAM_ATTR Receiver::timer_callback(void* arg) {
 void IRAM_ATTR Receiver::handle_pin_change_isr() {
     BaseType_t hp_task_woken = pdFALSE;
 
-    uint32_t now = (uint32_t)esp_timer_get_time();
+    RxEdgeEvent ev;
+    ev.t_us = (uint32_t)esp_timer_get_time();
+    // int level = gpio_get_level(pin_);
+    // ev.bus_low = inverted_ ? !level : level;
+
     if (dali_) {
         dali_->markBusActivityFromISR();
     }
-    // int level = gpio_get_level(pin_);   // replace with gpio_ll/ROM read if still needed for IRAM-only path
-    // bool bus_low = inverted_ ? !level : level;
+
 
     // RxEdgeEvent ev{ now, bus_low };
 
     // xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
-    RxEdgeEvent ev;
-    ev.t_us = now;
+    // RxEdgeEvent ev;
+    // ev.t_us = now;
     //ev.bus_low = false;   // fill later in task, or use a low-level read here
 
     xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
@@ -285,8 +284,14 @@ void Receiver::rx_task() {
     while (true) {
         if (xQueueReceive(edge_queue_, &ev, portMAX_DELAY) == pdTRUE) {
             int level = gpio_get_level(pin_);
-            bool bus_low = inverted_ ? !level : level;
-            process_edge(ev.t_us, bus_low);
+            // if(inverted_){
+            //    ev.bus_low = !level;
+            // }else{
+            //    ev.bus_low = level; 
+            // }
+            //ev.bus_low = inverted_ ? level : !level;
+            ev.bus_low = inverted_ ? !level : level;
+            process_edge(ev.t_us, ev.bus_low);
         }
     }
 }

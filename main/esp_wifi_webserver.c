@@ -2514,7 +2514,7 @@ void remove_duplicates(int* array, int size, int* result, int* result_size) {
 bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
         json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
-        xTaskCreate(json_worker_task, "json_worker_task", 16384, NULL, 21, NULL);
+        xTaskCreate(json_worker_task, "json_worker_task", 16384, NULL, TASK_PRIORITY_WEBSERVER, NULL);
         #ifdef USE_C3_ADAPTER_UART_HW
         //uart_init();
         #else
