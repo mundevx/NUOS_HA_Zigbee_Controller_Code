@@ -246,20 +246,22 @@
         nuos_set_state_attribute(0);
     }
     extern "C" void set_dali_level(uint8_t index){
-            //esp_zb_lock_acquire(portMAX_DELAY);
-            if(scene_group_switch_info.control_type != 0) { 
-                #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
-                #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
-                dali.set_group_level(global_group_id[0], device_info[index].device_level);
-                #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)  
-                dali.set_broadcast_level(map_1_255_to_100_255(device_info[index].device_level));
-                #endif 
-            }else{  
+        if(scene_group_switch_info.control_type != 0) { 
+            #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+            dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
+            #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+            dali.set_group_level(global_group_id[0], device_info[index].device_level);
+            #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)  
+            dali.set_broadcast_level(map_1_255_to_100_255(device_info[index].device_level));
+            #endif 
+        }else{  
+            if(device_info[index].device_state){
                 nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
+            }else{
+                nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, 0);
             }
-            //esp_zb_lock_release();
-            nuos_set_color_temp_level_attribute(0); 
+        }
+        nuos_set_color_temp_level_attribute(0); 
     }
 
     extern "C" void set_dali_color_temp(uint8_t index, bool status){
@@ -279,7 +281,7 @@
         vTaskDelete(NULL);
     } 
 
-    void set_color_temp_only_leds_2(){
+    void set_color_temp_only_leds_2() {
 
         #ifndef USE_TWO_SWITCH_MODE
         #ifdef USE_CCT_TIME_SYNC
@@ -581,7 +583,7 @@
         #endif
     }
 
-    void set_hardware(uint8_t index, uint8_t is_toggle){
+    void process_dali_task(uint8_t index, uint8_t is_toggle){
         if(index == 0){
             if(is_toggle>0) device_info[index].device_state = !device_info[index].device_state;
             if(!device_info[index].device_state) {
@@ -606,7 +608,8 @@
                     gpio_set_level(gpio_touch_led_pins[1], 0);
                     stop_color_temp_timer();
                 }    
-                #endif            
+                #endif  
+                // dali.set_power_on_level(0x0A, 0x0);          
                 //xTaskCreate(esp_dali_off_task, "dali_off_task", 4096, &index, TASK_PRIORITY_RGB, NULL);
             } else {
                 // printf("DALI ID:%d ON\n", scene_group_switch_info.scene_ids[index]);
@@ -707,7 +710,7 @@
     void nuos_zb_set_hardware(uint8_t index, uint8_t is_toggle){
         //Set Touch LED pins
         call_common_check_auto_off();
-        set_hardware(index, is_toggle);
+        process_dali_task(index, is_toggle);
         nuos_store_data_to_nvs(0);
     }
 
@@ -718,6 +721,15 @@
             }
         }
         return 0;
+    }
+    extern "C" void dali_query_send(uint8_t id, uint8_t command){
+        printf("===Sending DALi Query...\n");
+        dali.query(id, command); // Send your query command
+    }
+
+    extern "C" void dali_disable_query_mode(){
+        printf("===Disable Query Mode...\n");
+        dali.disable_query_mode(); // Send your query command
     }
 
     void nuos_init_hardware_dimming_up_down(uint32_t pin){
@@ -1168,12 +1180,7 @@
         }
     } 
     extern "C" void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value){
-        //#ifdef IS_USE_DALI_HARDWARE
-        //dali.set_group_level(group_id, value);
-        
-
         dali.set_group_level(group_id, map_1_255_to_100_255(value));
-        //#endif
     } 
     bool _toggle_ = false;
     void start_dali_led_blink_task(){
@@ -1542,7 +1549,7 @@
                 if(all_off){
                     device_info[0].device_state = false;
                     //device_info[0].device_level = 0;
-                    set_hardware(0, false);
+                    process_dali_task(0, false);
                     nuos_set_state_attribute(0);
                 }else{
                     device_info[0].device_state = true;
@@ -1641,12 +1648,12 @@
                 if(b2 == 0){
                     //printf("BROADCAST → OFF\n");
                     device_info[0].device_state = false;
-                    //set_hardware(0, false);
+                    //process_dali_task(0, false);
                 }else{
                     //printf("BROADCAST → LEVEL %d\n", b2);
                     device_info[0].device_state = true;
                     device_info[0].device_level = b2;
-                    //set_hardware(0, false);        
+                    //process_dali_task(0, false);        
                                  
                 }
                 return;

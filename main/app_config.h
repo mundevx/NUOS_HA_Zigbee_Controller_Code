@@ -35,11 +35,11 @@
     #define DEVICE_DALI_DIRECT_SWITCH                               26 // SW1=ON/OFF, SW2=ON/OFF for 2 endpoints 2 buttons, 2 leds
 
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_DALI_DIRECT_SWITCH
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_CCT_DALI_CUSTOM
 
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
     //#define USE_NVS_INIT
-    //#define DONT_USE_ZIGBEE                                          // For Expo or Demo Only   
+    //#define DONT_USE_ZIGBEE                                       // For Expo or Demo Only   
     #define NEW_SDK_6
     //#define USE_OTA
 

@@ -61,8 +61,11 @@ typedef struct {
 
 QueueHandle_t json_queue;
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle);
+#elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+    extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);     
 #endif
 uint8_t node_index, ep_index;
 void query_all_groups_task(void* args);
@@ -858,9 +861,9 @@ case 40:
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH )
             int index33 = sindex6->valueint;
             if(scene_group_switch_info.control_type == 2){
-                process_dali_tasks(index33, false);
+                process_dali_tasks(index33, false, false);
             }else{
-                process_dali_tasks(index33, true);
+                process_dali_tasks(index33, true, false);
             }
             #endif
         break;

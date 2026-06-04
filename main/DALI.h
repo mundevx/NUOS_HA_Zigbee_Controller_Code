@@ -120,7 +120,7 @@ public:
     void turnOff(uint8_t nodeAddress);
     void setMax(uint8_t nodeAddress);
     void setValue(uint8_t nodeAddress, uint8_t value);
-    void sendCommandPublic(uint8_t command, uint8_t data);
+    bool sendCommandPublic(uint8_t command, uint8_t data);
     void sendCommandPublic32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     void task_delayMicroseconds(uint32_t microseconds);
     void task_delay(uint32_t milliseconds);

@@ -842,15 +842,9 @@ void nuos_set_level_command(uint8_t index, uint8_t level){
 }
 void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     
-
-    uint16_t mapValue = map_1000(color, 2000, 6500, 1000, 10);
+    uint16_t mapValue = map_1000(color, 2000, 6500, 10, 1000);
     if(mapValue >= 1000) mapValue = 1000; 
-    if(mapValue <= 10) mapValue = 10; 
-    // if(index == 0){
-    //     color_data[2] = 0x69;
-    // }else if(index == 1){
-    //     color_data[2] = 0x6a;
-    // }
+    if(mapValue <= 10) mapValue = 0; 
     if(index == 0){
         color_data[2] = 0x65;
     }else if(index == 1){
@@ -964,7 +958,6 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                 // nuos_set_state_command(index, device_info[index].device_state);
                 // return status;
                 // #endif
-            
                 status = esp_zb_zcl_set_attribute_val(
                     ENDPOINTS_LIST[index_1],
                     ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -1237,6 +1230,10 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
         /* set attribute value */
         uint16_t mapValue = map_1000(device_info[index].device_val, 2000, 6500, 10, 1000);
         if(mapValue >= 1000) mapValue = 1000;
+
+        if(mapValue >= 1000) mapValue = 1000; 
+        if(mapValue <= 10) mapValue = 0; 
+
         printf("mapValue:%d\n", mapValue);
         
         esp_zb_zcl_status_t status = ESP_OK;
@@ -6862,6 +6859,15 @@ static void scene_store_task(void *pvParameters){
 #endif
 int cccnntt = 0;
 int disable_cnts = 0;
+// void dali_disable_query_mode(){
+//     // #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+//     //     uint8_t disable_cmd[] = {0x00, 0x00, 0x00, 0x00};
+//     //     dali_send_command(0x0A, 0x91, disable_cmd, 4);
+//     // #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+//     //     uint8_t disable_cmd[] = {0x00, 0x00, 0x00, 0x00};
+//     //     dali_send_command(0x0A, 0x91, disable_cmd, 4);
+//     // #endif
+// }
 static void send_active_request_task(void* args){
     static bool pin_state = false;
     #ifdef USE_IR_UART_WS4_HW
@@ -6869,15 +6875,18 @@ static void send_active_request_task(void* args){
     #endif
     while(1){
         vTaskDelay(10 / portTICK_PERIOD_MS);
-
         // if(cccnntt++ >= 500){
         //     cccnntt = 0;
         //     disable_cnts = 0;
-        //     dali_query_send(0x01, 0xA0);
+        //     dali_query_send(0x0A,250); //Query Color Temperature
+        //     //dali_query_send(0x0A, 0xA0); 
+        //     //dali_query_send(0x0A, 0x90);  //QUERY STATUS
+        //     //QUERY_LAMP_POWER_ON	0x93
+        //     //dali_query_send(0x0A, 0xA3);
         // }
         // if(disable_cnts++ >= 10){
         //     disable_cnts = 0;
-        //     dali_disable_query_mode();
+        //     //dali_disable_query_mode();
         // }
 
         #if(CHIP_INFO == USE_ESP32H2_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1_V5)

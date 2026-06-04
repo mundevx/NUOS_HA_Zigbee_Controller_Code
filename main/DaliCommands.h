@@ -95,7 +95,7 @@ public:
     
     void dali_rx_intr_enabled(bool enabled);
     // Color control functions
-    void set_color_temp(uint8_t addr, uint16_t kelvin);
+    bool set_color_temp(uint8_t addr, uint16_t kelvin);
     void set_color_temperature(uint8_t addr, uint16_t temp);
     void set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
@@ -120,8 +120,8 @@ public:
     void set_primary_dim_level(uint8_t addr, uint16_t white_dim);
 
     // Command sending functions
-    void send_command_special(uint8_t opcode, uint8_t address);
-    void send_command_standard(uint8_t opcode, uint8_t address);
+    bool send_command_special(uint8_t opcode, uint8_t address);
+    bool send_command_standard(uint8_t opcode, uint8_t address);
     void send_command_special32(uint8_t opcode1, uint8_t address1,
                                uint8_t opcode2, uint8_t address2);
     // void send_command_standard32(uint8_t opcode1, uint8_t address1,
@@ -172,7 +172,7 @@ public:
     void query(uint8_t shortAddress, uint8_t queryCommand);
     void enable_query_mode();
     void disable_query_mode();
-    
+    void set_group_cc_primary_level(uint8_t group_id, uint16_t cct_color);
 private:
     gpio_num_t txPin;
     gpio_num_t rxPin;

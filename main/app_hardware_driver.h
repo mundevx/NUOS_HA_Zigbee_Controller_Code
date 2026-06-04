@@ -1589,6 +1589,7 @@ extern "C" {
     
     #if(USE_NUOS_ZB_DEVICE_TYPE ==  DEVICE_DALI_DIRECT_SWITCH)
     extern void nuos_dali_set_state_group(uint8_t index, uint8_t brightness);
+    extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);
     #else
     extern void nuos_dali_set_state_group(uint8_t index, bool brightness);
     #endif

@@ -29,7 +29,7 @@ void DALI::begin(bool* is_isr_handler) {
     io_conf_tx.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config(&io_conf_tx);
 
-    gpio_set_level(txPin, DALI_HIGH);
+    gpio_set_level(txPin, DALI_LOW);
 
     taskENTER_CRITICAL(&bus_mux_);
     bus_busy_ = false;
@@ -44,6 +44,7 @@ void DALI::begin(bool* is_isr_handler) {
 //     last_bus_activity_us_ = esp_timer_get_time();
 //     taskEXIT_CRITICAL_ISR(&bus_mux_);
 // }
+
 void IRAM_ATTR DALI::markBusActivityFromISR() {
     taskENTER_CRITICAL_ISR(&bus_mux_);
     if (!tx_in_progress_) {          // ← ignore our own loopback
@@ -486,8 +487,8 @@ bool DALI::sendProgramShortAddr(uint8_t nodeNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void DALI::sendCommandPublic(uint8_t command, uint8_t data) {
-    sendCommand(command, data);
+bool DALI::sendCommandPublic(uint8_t command, uint8_t data) {
+    return sendCommand(command, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -510,7 +511,7 @@ void DALI::enableRxInterrupt() {
 
 
 void DALI::query(uint8_t address, uint8_t queryCommand) {
-    
+    //(addr << 1) | 0x01
     // Get the upper bit
     uint8_t mask = address & 0x80;
     // Change address to have 1 in LSb to signify 'standard command'

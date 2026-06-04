@@ -1469,6 +1469,14 @@ typedef struct
 } decoded_scene_t;
 
 
+uint8_t get_endpoint_index(uint8_t endpoint){
+    for(int i=0; i<TOTAL_ENDPOINTS; i++){
+        if(ENDPOINTS_LIST[i] == endpoint){
+            return i;
+        }
+    }
+    return 255;
+}
 
 bool decode_scene_extension_fields(
         esp_zb_zcl_scenes_extension_field_t *ext_list,
@@ -1504,14 +1512,21 @@ bool decode_scene_extension_fields(
             case 0x0006:
             case 0x0008:
             {
-                if (tmp->length > 1)
+                if (tmp->length > 2)
                 {
                     scene->mode = SCENE_MODE_MULTI_ENDPOINT;
+                    uint8_t eps = tmp->length / 2;
 
-                    if (tmp->length > scene->total_eps)
+                    if (eps > scene->total_eps)
                     {
-                        scene->total_eps = tmp->length;
+                        scene->total_eps = eps;
                     }
+
+
+                    // if (tmp->length > scene->total_eps)
+                    // {
+                    //     scene->total_eps = tmp->length;
+                    // }
                 }
             }
             break;
@@ -1612,9 +1627,57 @@ bool decode_scene_extension_fields(
         switch (cluster_id)
         {
 
-            //--------------------------------------------------
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            case 0x0006:   // On/Off
+            {
+                if (scene->mode == SCENE_MODE_MULTI_ENDPOINT)
+                {
+                    uint8_t pair_count = len / 2;
+
+                    for (uint8_t ep = 0; ep < (scene->total_eps) && ep < pair_count; ep++)
+                    {
+                        uint8_t base = ep * 2;
+
+                        scene->ep[ep].cluster_id = cluster_id;
+                        scene->ep[ep].endpoint   = ENDPOINTS_LIST[get_endpoint_index(data[base])];
+                        scene->ep[ep].onoff      = data[base + 1];
+                    }
+                }
+                else
+                {
+                    scene->ep[0].cluster_id = cluster_id;
+                    scene->ep[0].endpoint   = ENDPOINTS_LIST[get_endpoint_index(data[0])];
+                    scene->ep[0].onoff      = data[1];
+                }
+            }
+            break;
+
+            case 0x0008:   // Level
+            {
+                if (scene->mode == SCENE_MODE_MULTI_ENDPOINT)
+                {
+                    uint8_t pair_count = len / 2;
+
+                    for (uint8_t ep = 0; ep < scene->total_eps && ep < pair_count; ep++)
+                    {
+                        uint8_t base = ep * 2;
+
+                        scene->ep[ep].cluster_id = cluster_id;
+                        scene->ep[ep].endpoint   = ENDPOINTS_LIST[get_endpoint_index(data[base])];
+                        scene->ep[ep].level      = data[base + 1];
+                    }
+                } else {
+                    scene->ep[0].cluster_id = cluster_id;
+                    scene->ep[0].endpoint   = ENDPOINTS_LIST[get_endpoint_index(data[0])];
+                    scene->ep[0].level      = data[1];
+                }
+            }
+            break;   
+            #else
+            
+            // --------------------------------------------------
             // ONOFF
-            //--------------------------------------------------
+            // --------------------------------------------------
             case 0x0006:
             {
                 if (scene->mode == SCENE_MODE_MULTI_ENDPOINT)
@@ -1660,7 +1723,9 @@ bool decode_scene_extension_fields(
                     scene->ep[0].level = data[0];
                 }
             }
-            break;
+            break;            
+
+            #endif
 
             //--------------------------------------------------
             // COLOR
@@ -1849,49 +1914,55 @@ void print_decoded_scene(decoded_scene_t *scene)
             }  
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         if(index_1 < 255){
+            static bool prev_onoff = false;
+
             device_info[0].device_state = scene->ep[i].onoff;
             if(device_info[0].device_state){ 
-                device_info[0].device_val = scene->ep[i].color_temp;
-                //device_info[0].device_level = scene->ep[i].level;
 
+                device_info[0].device_val = scene->ep[i].color_temp;
+                device_info[0].device_level = scene->ep[i].level;
 
                 printf("My device_level:%d device_val:%d\n", device_info[0].device_level, device_info[0].device_val);
-                // nuos_zb_set_hardware(0, false);
-                // is_long_press_brightness = false;
-                // nuos_set_hardware_brightness_2(1);
-                // if(scene->ep[i].level == 0) scene->ep[i].level = MIN_DIM_LEVEL_VALUE;
-                // device_info[index_1].device_level = scene->ep[i].level;
-                
-                // nuos_dali_set_state_group(index_1, device_info[index_1].device_level);
-                // set_dali_level(0); 
-                zb_cmd_t cmd;
-                cmd.type = CMD_SET_DALI_SET_STATE;
-                cmd.index = index_1;
-                cmd.state = device_info[index_1].device_state;
-                cmd.level = device_info[index_1].device_level;  
-                cmd.color_temp = scene->ep[i].color;
+                nuos_zb_set_hardware(0, false);
+                is_long_press_brightness = false;
+                nuos_set_hardware_brightness_2(1);
+                nuos_set_state_attribute(0);
 
-                /* Send decoded scene to queue */
-                if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Scene queue full");
+                 if(prev_onoff != scene->ep[i].onoff){
+                    prev_onoff = scene->ep[i].onoff;
+                    device_info[0].device_state = scene->ep[i].onoff;
+
+                    set_dali_color_temp(0, false);
+
+                    if(dali_fade_time == 0){
+                        vTaskDelay(50 / portTICK_PERIOD_MS);
+                    }else if(dali_fade_time == 1){
+                        vTaskDelay(700 / portTICK_PERIOD_MS);
+                    }else if(dali_fade_time == 2){
+                        vTaskDelay(1000 / portTICK_PERIOD_MS);
+                    }else if(dali_fade_time == 3){
+                        vTaskDelay(1400 / portTICK_PERIOD_MS);
+                    }else if(dali_fade_time == 4){
+                        vTaskDelay(2000 / portTICK_PERIOD_MS);
+                    }else{
+                        vTaskDelay(3000 / portTICK_PERIOD_MS);
+                    }
+                    set_dali_level(0);
+                }else{
+                    device_info[0].device_val = scene->ep[i].color_temp;
+                    device_info[0].device_level = scene->ep[i].level;
+                    set_dali_level(0); 
+                    nuos_zb_set_hardware(0, false);
+                    is_long_press_brightness = false;
+                    nuos_set_hardware_brightness_2(1);
+                    set_dali_color_temp(0, false);
+                    
                 }
 
-
-                //vTaskDelay(20 / portTICK_PERIOD_MS);
-                cmd.type = CMD_SET_DALI_COLOR_TEMP;
-                /* Send decoded scene to queue */
-                if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Scene queue full");
-                }                
-                // set_dali_color_temp(0, false);
-                // // vTaskDelay(20 / portTICK_PERIOD_MS);
-                // // 
-                // nuos_set_color_temp_level_attribute(0);
-                // nuos_set_color_temperature_attribute(0);  
+                nuos_set_color_temperature_attribute(0);  
                 
-                // nuos_set_state_attribute(0);   
-                           
             }else{
+                prev_onoff = false;
                 nuos_zb_set_hardware(0, false);
                 set_state(0);
                 nuos_set_state_attribute(0);
@@ -1899,53 +1970,54 @@ void print_decoded_scene(decoded_scene_t *scene)
         }
 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            if(index_1 != 255){
+                device_info[index_1].device_state = scene->ep[i].onoff;
+                if(device_info[index_1].device_state){
+                    #ifdef USE_COLOR_CONTROL
+                    device_info[index_1].device_val = scene->ep[i].color;
+                    printf("DALI DIRECT SWITCH - COLOR TEMP VALUE:%d index_1:%d\n", device_info[index_1].device_val,index_1);
+                    #endif
+                
+                    if(scene->ep[i].level == 0) scene->ep[i].level = MIN_DIM_LEVEL_VALUE;
 
-            device_info[index_1].device_state = scene->ep[i].onoff;
-            if(device_info[index_1].device_state){
-                #ifdef USE_COLOR_CONTROL
-                device_info[index_1].device_val = scene->ep[i].color;
-                printf("DALI DIRECT SWITCH - COLOR TEMP VALUE:%d index_1:%d\n", device_info[index_1].device_val,index_1);
-                #endif
-              
-                if(scene->ep[i].level == 0) scene->ep[i].level = MIN_DIM_LEVEL_VALUE;
+                    device_info[index_1].device_level = scene->ep[i].level;
+                    // nuos_zb_set_hardware(index_1, false);
+                    process_dali_tasks(index_1, false, true);
+                    set_color_to_updown_leds(index_1);
+                    nuos_set_state_attribute(index_1);
 
-                device_info[index_1].device_level = scene->ep[i].level;
-                // nuos_zb_set_hardware(index_1, false);
-                // set_color_to_updown_leds(index_1);
-                // nuos_set_state_attribute(index_1);
+                    // zb_cmd_t cmd;
+                    // cmd.type = CMD_SET_DALI_SET_STATE;
+                    // cmd.index = index_1;
+                    // cmd.state = device_info[index_1].device_state;
+                    // cmd.level = device_info[index_1].device_level;  
+                    // cmd.color_temp = scene->ep[i].color;
 
-                zb_cmd_t cmd;
-                cmd.type = CMD_SET_DALI_SET_STATE;
-                cmd.index = index_1;
-                cmd.state = device_info[index_1].device_state;
-                cmd.level = device_info[index_1].device_level;  
-                cmd.color_temp = scene->ep[i].color;
+                    // /* Send decoded scene to queue */
+                    // if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
+                    //     ESP_LOGW(TAG, "Scene queue full");
+                    // }
 
-                /* Send decoded scene to queue */
-                if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Scene queue full");
-                }
-
-                // /* Send decoded scene to queue */
-                // if (xQueueSend(scene_queue, &cmd, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
-                //     ESP_LOGW(TAG, "Scene queue full");
-                // }
-                //nuos_set_level_attribute(index_1);
-                //nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index_1], index_1, device_info[index_1].device_level);
-                #ifdef USE_COLOR_CONTROL
-                cmd.type = CMD_SET_DALI_COLOR_TEMP;
-                /* Send decoded scene to queue */
-                if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    ESP_LOGW(TAG, "Scene queue full");
-                }
-                // set_dali_color_temp(index_1, false);
-                // nuos_set_color_temperature_attribute(index_1);
-                #endif
-
-            } else{
-                nuos_zb_set_hardware(index_1, false);
-                nuos_set_state_attribute(index_1);
-            } 
+                    // /* Send decoded scene to queue */
+                    // if (xQueueSend(scene_queue, &cmd, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
+                    //     ESP_LOGW(TAG, "Scene queue full");
+                    // }
+                    nuos_set_level_attribute(index_1);
+                    //nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index_1], index_1, device_info[index_1].device_level);
+                    #ifdef USE_COLOR_CONTROL
+                    // cmd.type = CMD_SET_DALI_COLOR_TEMP;
+                    // /* Send decoded scene to queue */
+                    // if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
+                    //     ESP_LOGW(TAG, "Scene queue full");
+                    // }
+                    // set_dali_color_temp(index_1, false);
+                    nuos_set_color_temperature_attribute(index_1);
+                    #endif
+                } else{
+                    nuos_zb_set_hardware(index_1, false);
+                    nuos_set_state_attribute(index_1);
+                } 
+            }
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
             if(index_1 == 0){
                 device_info[index_1].device_state = scene->ep[i].onoff;
@@ -1975,7 +2047,6 @@ void print_decoded_scene(decoded_scene_t *scene)
                     #endif
                 #endif
             }
-
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
             printf("color_mode:%d\n", scene->ep[i].color_mode);
             if(scene->ep[i].color_mode == 0){
@@ -2181,32 +2252,25 @@ static void scene_print_task(void *pvParameters)
     }
 }
 
-// void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
-//         decoded_scene_t local_scene;
-//         if(decode_scene_extension_fields(
-//             message->field_set,
-//             message->info.dst_endpoint,
-//             &local_scene)) {
-//                 //vTaskDelay(random_50_to_200 () / portTICK_PERIOD_MS);
-//                 print_decoded_scene(&local_scene);
-//                 // /* Send decoded scene to queue */
-//                 // if (xQueueSend(scene_queue, &local_scene, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
-//                 //     ESP_LOGW(TAG, "Scene queue full");
-//                 // }
+void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
+        decoded_scene_t local_scene;
+        if(decode_scene_extension_fields(
+            message->field_set,
+            message->info.dst_endpoint,
+            &local_scene)) {
+                //vTaskDelay(random_50_to_200 () / portTICK_PERIOD_MS);
+                print_decoded_scene(&local_scene);
+                // /* Send decoded scene to queue */
+                // if (xQueueSend(scene_queue, &local_scene, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
+                //     ESP_LOGW(TAG, "Scene queue full");
+                // }
 
-//             }
-// }
-
-uint8_t get_endpoint_index(uint8_t endpoint){
-    for(int i=0; i<TOTAL_ENDPOINTS; i++){
-        if(ENDPOINTS_LIST[i] == endpoint){
-            return i;
-        }
-    }
-    return 255;
+            }
 }
 
-void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
+
+
+void nuos_set_scene_OK(esp_zb_zcl_recall_scene_message_t *message){
 
     uint8_t index_1 = message->info.dst_endpoint-1;
     esp_zb_zcl_scenes_extension_field_t* ext_list = message->field_set;

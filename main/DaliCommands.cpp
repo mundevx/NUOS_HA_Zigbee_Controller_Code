@@ -13,6 +13,16 @@ struct DaliMessage {
     size_t len;
 };
 
+
+#include "freertos/semphr.h"
+
+static SemaphoreHandle_t s_dali_dt8_mutex;
+
+void dali_dt8_init()
+{
+    s_dali_dt8_mutex = xSemaphoreCreateMutex();
+}
+
 //static dali_rx::Receiver            receiver;
 // Queue handle for passing messages from callback to task
 static QueueHandle_t dali_msg_queue = nullptr;
@@ -92,7 +102,7 @@ void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
         ESP_LOGE(TAG, "Failed to create queue");
         return;
     }
-
+    //dali_dt8_init();
  // Start the DALI receiver on GPIO 19 in C6 (active low, standard DALI)
     #ifdef IS_INVERTED
     esp_err_t err = receiver.begin(rxPin, on_dali_message, true, is_isr);
@@ -103,6 +113,7 @@ void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
         ESP_LOGE(TAG, "Failed to start DALI receiver");
         return;
     }
+
     // Create the DALI processing task (priority 12, stack 4096)
     xTaskCreate(dali_task, "dali_task", 8192, (void*)rxFrameQueue, TASK_PRIORITY_DALI_RX_FRAME_QUEUE, nullptr); 
 }
@@ -159,26 +170,25 @@ void DaliCommands::set_dim_value(uint8_t nodeNumber, uint8_t value) {
 // Command Sending Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DaliCommands::send_command_special(uint8_t opcode, uint8_t address) {
+bool DaliCommands::send_command_special(uint8_t opcode, uint8_t address) {
     
-    daliCore.sendCommandPublic(opcode, address);
+    return daliCore.sendCommandPublic(opcode, address);
     
 }
 
-void DaliCommands::send_command_standard(uint8_t opcode, uint8_t address) {
+bool DaliCommands::send_command_standard(uint8_t opcode, uint8_t address) {
     // Get the upper bit
     uint8_t mask = address & 0x80;
     // Change address to have 1 in LSb to signify 'standard command'
     uint8_t new_address = mask | ((address << 1) + 1);
     
-    daliCore.sendCommandPublic(new_address, opcode);
+    return daliCore.sendCommandPublic(new_address, opcode);
 }
 
 void DaliCommands::send_command_special32(uint8_t opcode1, uint8_t address1,
                                           uint8_t opcode2, uint8_t address2) {
     
-    daliCore.sendCommandPublic32(opcode1, address1, opcode2, address2);
-    
+    daliCore.sendCommandPublic32(opcode1, address1, opcode2, address2);   
 }
 
 // void DaliCommands::send_command_standard32(uint8_t opcode1, uint8_t address1,
@@ -209,31 +219,66 @@ void DaliCommands::send_command_special32(uint8_t opcode1, uint8_t address1,
 // Color Temperature Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
+bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
     // Calculate Mirek from Kelvin
-    if(kelvin == 0) return;
-    
+    if(kelvin == 0) return false;
+
     uint16_t mirek = 1000000 / kelvin;
     uint8_t dtr0 = (uint8_t)(mirek & 0x00FF);
     uint8_t dtr1 = (uint8_t)((mirek >> 8) & 0x00FF);
 
     // Set temperature
-    send_command_special(SET_DTR0, dtr0);
-    send_command_special(SET_DTR1, dtr1);
+    bool result1 = send_command_special(SET_DTR0, dtr0);
+    if(result1) {
+        printf("DTR0 set to %d\n", dtr0);
+    } else {
+        printf("Failed to set DTR0\n");
+    }
+    bool result2 = send_command_special(SET_DTR1, dtr1);
+    if(result2) {
+        printf("DTR1 set to %d\n", dtr1);
+    } else {
+        printf("Failed to set DTR1\n");
+    }
+     // Lock DT8 sequence for the whole bus
+    //xSemaphoreTake(s_dali_dt8_mutex, portMAX_DELAY);
     // Enable device type 8
-    send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+    bool result3 = send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+    if(result3) {
+        printf("Device type 8 enabled\n");
+    } else {
+        printf("Failed to enable device type 8\n");
+    }
     // Set the temporary color to the temperature
-    send_command_standard(SET_COLOR_TEMP, addr);  
+    bool result4 = send_command_standard(SET_COLOR_TEMP, addr);
+    if(result4) {
+        printf("Color temperature set\n");
+    } else {
+        printf("Failed to set color temperature\n");
+    }
+
+    //send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+    bool result5 = send_command_standard(COLOR_ACTIVATE, addr);
+    if(result5) {
+        printf("Color activated\n");
+    } else {
+        printf("Failed to activate color\n");
+    }
+    // Release DT8 bus lock
+    //xSemaphoreGive(s_dali_dt8_mutex);
+    if(!result1 || !result2 || !result3 || !result4 || !result5) {
+        return false;
+    }
+    return true;
 }
 
-void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {
-    
-    set_color_temp(addr, temp);
-    // Enable device type 8
-    send_command_special(ENABLE_DEVICE_TYPE, 0x08);
-    send_command_standard(COLOR_ACTIVATE, addr);
-    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
-    
+void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {    
+  
+    for(int i=0; i<5; i++){
+        if(set_color_temp(addr, temp)) {
+            break;
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,9 +296,7 @@ void DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(SET_TEMP_RGB_DIM, addr);
 
-    //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, SET_TEMP_RGB_DIM, addr);
-    
-    
+    //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, SET_TEMP_RGB_DIM, addr);  
 }
 
 void DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
@@ -268,7 +311,6 @@ void DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
     send_command_standard(SET_TEMP_RGB_DIM, addr);
 
     //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, SET_TEMP_RGB_DIM, addr);
-
    
     send_command_special(SET_DTR0, 0);
     send_command_special(SET_DTR1, 0);
@@ -333,7 +375,6 @@ void DaliCommands::set_rgb_WAF(uint8_t addr, uint8_t white_dim) {
 }
 
 void DaliCommands::set_primary_dim_level(uint8_t addr, uint16_t white_dim) {
-    
     uint8_t dtr0 = (uint8_t)(white_dim & 0x00FF);
     uint8_t dtr1 = (uint8_t)((white_dim >> 8) & 0x00FF);
    
@@ -346,7 +387,6 @@ void DaliCommands::set_primary_dim_level(uint8_t addr, uint16_t white_dim) {
     send_command_standard(SET_TEMP_PRIMARY_DIM, addr);
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
-    
 }
 
 void DaliCommands::set_cct_channel_4_5_dim(uint8_t addr, uint8_t cool_dim, uint8_t warm_dim) {
@@ -374,11 +414,13 @@ void DaliCommands::set_rgbwaf_ctrl() {
 }
 
 void DaliCommands::set_cct_dimming(uint8_t addr, uint8_t dim) {
-    
+    uint8_t group_addr = addr | (1<<7);
     send_command_special(SET_DTR0, dim);
-    send_command_standard(SET_TEMP_PRIMARY_DIM, addr);
-    //send_command_standard(SET_TEMP_PRIMARY_DIM, addr);
-    
+    send_command_special(SET_DTR1, 0);
+
+    send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+    send_command_standard(SET_TEMP_PRIMARY_DIM, group_addr);
+    send_command_standard(COLOR_ACTIVATE, group_addr);
 }
 
 void DaliCommands::set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
@@ -574,13 +616,14 @@ void DaliCommands::set_group_off(uint8_t group_id)
 {
     //daliCore.sendCommandPublic(0x80 | (group_id << 1), 0x00);
     send_command_standard(OFF, group_id | (1<<7));
+    send_command_standard(OFF, group_id | (1<<7));
     group_state = 0;
 }
 
 void DaliCommands::set_group_on(uint8_t group_id)
 {
-    //send_command_standard(GO_TO_LAST_ACTIVE_LEVEL, group_id | (1<<7));
-    send_command_standard(ON_AND_STEP_UP, group_id | (1<<7)); 
+    send_command_standard(GO_TO_LAST_ACTIVE_LEVEL, group_id | (1<<7));
+    //send_command_standard(ON_AND_STEP_UP, group_id | (1<<7)); 
     group_state = 1;
 }
 
@@ -602,6 +645,11 @@ void DaliCommands::set_group_color_cct(uint8_t group_id, uint16_t color_temp_kel
     set_color_temperature(group_addr, color_temp_kelvin);  
 }
 
+void DaliCommands::set_group_cc_primary_level(uint8_t group_id, uint16_t cct_color){
+    uint8_t group_addr = group_id | (1<<7);
+    set_primary_dim_level(group_addr, cct_color);
+}
+
 void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim){
     
     uint8_t group_addr = group_id | (1<<7);
@@ -618,7 +666,7 @@ void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, u
 
 void DaliCommands::set_broadcast_level(uint8_t value){
     
-    daliCore.sendCommandPublic(0x80 | (0xff << 1), value);
+    daliCore.sendCommandPublic(0x1FE, value);
     
 }
 
@@ -773,6 +821,7 @@ void DaliCommands::query(uint8_t shortAddress, uint8_t queryCommand) {
     // disableRxInterrupt();
     // esp_rom_delay_us(2400); 
     //   // Set to 8-bit mode
+    // receiver.set_query_mode(true);  
     // enableRxInterrupt(); 
     // vTaskDelay(50 / portTICK_PERIOD_MS);
     // receiver.set_query_mode(false);  // Set to 16-bit mode
