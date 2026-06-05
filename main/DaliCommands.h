@@ -97,15 +97,15 @@ public:
     // Color control functions
     bool set_color_temp(uint8_t addr, uint16_t kelvin);
     void set_color_temperature(uint8_t addr, uint16_t temp);
-    void set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
-    void set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
-    void set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
-    void set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
+    void set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
+    void set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
+    bool set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
+    bool set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     void set_rgb_32(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_color_cct_waf_dim(uint8_t addr, uint8_t dim);
     void set_cct_channel_4_5_dim(uint8_t addr, uint8_t warm_dim, uint8_t cool_dim);
-    void set_off_waf_channels(uint8_t addr);
-    void set_rgb_WAF(uint8_t addr, uint8_t dim);
+    bool set_off_waf_channels(uint8_t addr);
+    bool set_rgb_WAF(uint8_t addr, uint8_t dim);
     void set_color_rgb_WAF(uint8_t addr, uint8_t dim);
 
     // Device parameter functions
@@ -151,7 +151,7 @@ public:
     uint8_t get_group_addr(uint8_t group_number);
     void set_group_level(uint8_t group_addr, uint8_t value);
     void set_group_color_cct(uint8_t group_addr, uint16_t color_temp_kelvin);
-    void set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
+    void set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
 
     // Scene functions
     void set_scene(uint8_t addr, uint8_t scene, uint8_t level);

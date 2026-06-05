@@ -78,6 +78,9 @@
 
 #define TASK_PRIORITY_DALI_RX_INTR_TASK   11
 #define TASK_PRIORITY_DALI_RX_FRAME_QUEUE 13
+
+
+
 class DALI {
 private:
     enum {
@@ -134,8 +137,10 @@ public:
     void enableRxInterrupt();
 
     void IRAM_ATTR markBusActivityFromISR();
+    uint32_t getBusActivityCounter();
     bool isBusIdle();
     bool sendCommandWithRetry(uint8_t command, uint8_t data);
+    void daliSetFrameDelay(uint16_t delay_us);
 private:
     volatile bool tx_in_progress_ = false;
     bool sendZero(void);
@@ -151,7 +156,8 @@ private:
     bool sendProgramShortAddr(uint8_t nodeNumber);
     void withdrawNode(uint32_t addr);
 
-
+    
+    bool waitBusIdleStable(uint32_t stable_us, uint32_t timeout_us);
     volatile bool bus_busy_ = false;
     volatile int64_t last_bus_activity_us_ = 0;
     portMUX_TYPE bus_mux_ = portMUX_INITIALIZER_UNLOCKED;
@@ -165,6 +171,7 @@ private:
     static constexpr uint32_t DALI_BUS_IDLE_MIN_US = 5000;             // choose 9TE or your required value
     
     bool sendCommandRaw(uint8_t command, uint8_t data);       // add this
+    void setTxInProgress(bool state);
 
     gpio_num_t txPin;
     gpio_num_t rxPin;

@@ -15,6 +15,7 @@
     #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
     #include "esp_wifi_station.h"
 
+    
     DaliCommands 										        dali(gpio_load_pins[1], gpio_load_pins[0]);
 
     #define LEDC_TIMER              		                    LEDC_TIMER_0
@@ -41,7 +42,8 @@
     #else
         ledc_channel_t pwm_channels[1]    = { LEDC_CHANNEL_0};
     #endif
-    bool is_init_done = false;
+    bool is_init_done                       = false;
+    bool _toggle_                           = false;
     // #define IS_USE_DALI_HARDWARE
 
     extern "C" void nuos_set_state_touch_leds(bool state);
@@ -1182,7 +1184,7 @@
     extern "C" void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value){
         dali.set_group_level(group_id, map_1_255_to_100_255(value));
     } 
-    bool _toggle_ = false;
+    
     void start_dali_led_blink_task(){
     
         if(start_dali_led_commissioning_task_flag){

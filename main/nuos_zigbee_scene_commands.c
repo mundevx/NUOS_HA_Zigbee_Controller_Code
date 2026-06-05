@@ -12,6 +12,10 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 
+
+
+extern uint8_t total_rx_group_rcvd;
+
 static const char *TAG = "ESP_ZB_SCENE_COMMANDS";
 
 extern void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *message);
@@ -1930,14 +1934,15 @@ void print_decoded_scene(decoded_scene_t *scene)
 
                  if(prev_onoff != scene->ep[i].onoff){
                     prev_onoff = scene->ep[i].onoff;
+                    printf("DALI FADE TIME:%d\n", dali_fade_time);
                     device_info[0].device_state = scene->ep[i].onoff;
-
-                    set_dali_color_temp(0, false);
-
+                    device_info[0].device_level = scene->ep[i].level;
+                    
+                    set_dali_level(0);
                     if(dali_fade_time == 0){
-                        vTaskDelay(50 / portTICK_PERIOD_MS);
+                        vTaskDelay(500 / portTICK_PERIOD_MS);
                     }else if(dali_fade_time == 1){
-                        vTaskDelay(700 / portTICK_PERIOD_MS);
+                        vTaskDelay(800 / portTICK_PERIOD_MS);
                     }else if(dali_fade_time == 2){
                         vTaskDelay(1000 / portTICK_PERIOD_MS);
                     }else if(dali_fade_time == 3){
@@ -1947,16 +1952,18 @@ void print_decoded_scene(decoded_scene_t *scene)
                     }else{
                         vTaskDelay(3000 / portTICK_PERIOD_MS);
                     }
-                    set_dali_level(0);
+                    set_dali_color_temp(0, false);
+                    
                 }else{
                     device_info[0].device_val = scene->ep[i].color_temp;
                     device_info[0].device_level = scene->ep[i].level;
-                    set_dali_level(0); 
+
+                    
                     nuos_zb_set_hardware(0, false);
                     is_long_press_brightness = false;
                     nuos_set_hardware_brightness_2(1);
                     set_dali_color_temp(0, false);
-                    
+                    set_dali_level(0); 
                 }
 
                 nuos_set_color_temperature_attribute(0);  
@@ -2057,8 +2064,7 @@ void print_decoded_scene(decoded_scene_t *scene)
                     last_selected_color_mode = selected_color_mode;
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
-                }                   
-                
+                }
             }else if(scene->ep[i].color_mode == 1){
                 index_1 = 4;
                 if(selected_color_mode != 1){
@@ -2069,27 +2075,22 @@ void print_decoded_scene(decoded_scene_t *scene)
                     store_color_mode_value(selected_color_mode);
                 }
             }
-            
+            vTaskDelay((total_rx_group_rcvd*500)  / portTICK_PERIOD_MS);
             device_info[index_1].device_state = scene->ep[i].onoff;
             printf("index_1:%d state:%d\n", index_1, device_info[index_1].device_state);
             if(device_info[index_1].device_state){
                 //set color
                 if(scene->ep[i].color_mode == 0){
-                    device_info[3].device_state = true;                   
-                    uint16_t val = scene->ep[i].color_temp;
-                    device_info[3].device_val = val;//map_1000(val, 0, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
+                    device_info[3].device_state = true;
+                    device_info[3].device_val = scene->ep[i].color_temp;//map_1000(val, 0, 1000, MIN_CCT_VALUE, MAX_CCT_VALUE);
                     device_info[3].device_level = scene->ep[i].level;
     
                     device_info[3].device_state = true;
                     nuos_zb_set_hardware(3, false);
                     set_dali_color_temp(0, false);
-                    set_dali_level(3);
+                    //set_dali_level(3);
                           
-                }else if(scene->ep[i].color_mode == 1){
-
-                    //selected_color_mode = scene->ep[i].color_mode;
-                    // nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
-                    // store_color_mode_value(selected_color_mode);             
+                }else if(scene->ep[i].color_mode == 1){          
 
                     device_info[0].device_level = scene->ep[i].r;
                     device_info[1].device_level = scene->ep[i].g;
@@ -2114,7 +2115,6 @@ void print_decoded_scene(decoded_scene_t *scene)
                     if(device_info[2].device_level == 0) device_info[2].device_state = false;
                     else device_info[2].device_state = true;
 
-
                     for(int rgb=0; rgb<3; rgb++){
                         if(device_info[rgb].device_level <= MIN_DIM_LEVEL_VALUE) {
                             device_info[rgb].device_level = MIN_DIM_LEVEL_VALUE;
@@ -2125,11 +2125,10 @@ void print_decoded_scene(decoded_scene_t *scene)
                     } 
                     
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
-                    uint8_t index = 4;
-                    device_info[3].device_state = true;
-                    #else
+                        uint8_t index = 4;
+                        device_info[3].device_state = true;
                     #endif
-                    //store_color_mode_value(selected_color_mode);
+
                     nuos_zb_set_hardware(4, false); 
                     set_dali_color_temp(0, false);
                     set_dali_level(4);                                  
