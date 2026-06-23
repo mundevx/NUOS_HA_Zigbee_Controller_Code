@@ -24,6 +24,6 @@
 
     esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message);
     void set_curtain_percentage(uint8_t value, bool set_hw_flag);
-    void scene_queue_init(void);
+    // void scene_queue_init(void);
 #endif
     

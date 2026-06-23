@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 #include "esp_timer.h"
 #include "app_config.h"
 #include "esp_system.h"
@@ -746,100 +747,140 @@ uint8_t level_data[10] = {0x0, 0x5e, 0x02, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
 uint8_t color_data[10] = {0x0, 0x5f, 0x65, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
 
 void nuos_set_state_command(uint8_t index, uint8_t state){
+    // // if(index == 0){
+    // //     state_data[2] = 0x65;
+    // // }else if(index == 1){
+    // //     state_data[2] = 0x66;
+    // // }
     // if(index == 0){
-    //     state_data[2] = 0x65;
+    //     state_data[2] = 0x1;
     // }else if(index == 1){
-    //     state_data[2] = 0x66;
+    //     state_data[2] = 0x7;
     // }
-    if(index == 0){
-        state_data[2] = 0x1;
-    }else if(index == 1){
-        state_data[2] = 0x7;
-    }
-    device_info[index].device_state = (bool)state;
-    state_data[6] = state;
+    // device_info[index].device_state = (bool)state;
+    // state_data[6] = state;
 
-    state_data[1] = sequence_num_1;
-    sequence_num_1++;
+    // state_data[1] = sequence_num_1;
+    // sequence_num_1++;
     
-    //printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
+    // //printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
     
-    esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-        .cluster_id = 0xef00,
-        .custom_cmd_id = 1,
-        .data.value = state_data,
-        .data.size = 7,
-        .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
-        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-        .profile_id = 0x0104,
-        .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-        .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
-        .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
-        .dis_default_resp = 1,
-        .manuf_code = 0,
-        .manuf_specific = 0, 
-    };
-    esp_zb_lock_acquire(portMAX_DELAY);
-    sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-    esp_zb_lock_release();
+    // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+    //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+    //     .cluster_id = 0xef00,
+    //     .custom_cmd_id = 1,
+    //     .data.value = state_data,
+    //     .data.size = 7,
+    //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
+    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+    //     .profile_id = 0x0104,
+    //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+    //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+    //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
+    //     .dis_default_resp = 1,
+    //     .manuf_code = 0,
+    //     .manuf_specific = 0, 
+    // };
+    // esp_zb_lock_acquire(portMAX_DELAY);
+    // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
+    // esp_zb_lock_release();
+
+
+    esp_zb_zcl_set_attribute_val(
+        ENDPOINTS_LIST[index],
+        ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+        (uint8_t*)&device_info[index].device_state,
+        false
+    );
+    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
 }
 void nuos_set_level_command(uint8_t index, uint8_t level){
 
+    // // if(index == 0){
+    // //     level_data[2] = 0x67;
+    // // }else if(index == 1){
+    // //     level_data[2] = 0x68;
+    // // }
     // if(index == 0){
-    //     level_data[2] = 0x67;
+    //     level_data[2] = 0x2;
     // }else if(index == 1){
-    //     level_data[2] = 0x68;
+    //     level_data[2] = 0x8;
     // }
-    if(index == 0){
-        level_data[2] = 0x2;
-    }else if(index == 1){
-        level_data[2] = 0x8;
-    }
-    uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
-    if(mapValue >= 1000) mapValue = 1000; 
-    level_data[8] = mapValue >> 8;
-    level_data[9] = mapValue & 0xFF;
+    // uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
+    // if(mapValue >= 1000) mapValue = 1000; 
+    // level_data[8] = mapValue >> 8;
+    // level_data[9] = mapValue & 0xFF;
 
-    level_data[1] = sequence_num_1;
-    sequence_num_1++;
+    // level_data[1] = sequence_num_1;
+    // sequence_num_1++;
 
-    uint8_t payload[9];
-    payload[0] = level_data[1];         // 1 byte sequence number
-    payload[1] = level_data[2];            // DP ID (temperature setpoint)
-    payload[2] = level_data[3];            // DP type (value)
-    payload[3] = level_data[4];            // Function (set/report), often 0x00
-    payload[4] = level_data[5];            // Data length (4 bytes)
-    payload[5] = level_data[6];            // Value MSB (= 0)
-    payload[6] = level_data[7];
-    payload[7] = level_data[8];
-    payload[8] = level_data[9];            // Value LSB (= 24)
+    // uint8_t payload[9];
+    // payload[0] = level_data[1];         // 1 byte sequence number
+    // payload[1] = level_data[2];            // DP ID (temperature setpoint)
+    // payload[2] = level_data[3];            // DP type (value)
+    // payload[3] = level_data[4];            // Function (set/report), often 0x00
+    // payload[4] = level_data[5];            // Data length (4 bytes)
+    // payload[5] = level_data[6];            // Value MSB (= 0)
+    // payload[6] = level_data[7];
+    // payload[7] = level_data[8];
+    // payload[8] = level_data[9];            // Value LSB (= 24)
 
-    // Create octet string: first byte is length, then payload
-    uint8_t octet_string[10];
-    octet_string[0] = 9; // length byte
-    memcpy(&octet_string[1], payload, 9);
+    // // Create octet string: first byte is length, then payload
+    // uint8_t octet_string[10];
+    // octet_string[0] = 9; // length byte
+    // memcpy(&octet_string[1], payload, 9);
 
-    esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-        .cluster_id = 0xef00,
-        .custom_cmd_id = 1,
-        .data.value = octet_string,
-        .data.size = 10,
-        .data.type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING,
-        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-        .profile_id = 0x0104,
-        .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-        .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
-        .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
-        .dis_default_resp = 1,
-        .manuf_code = 0,
-        .manuf_specific = 0, 
-    };
-    esp_zb_lock_acquire(portMAX_DELAY);
-    sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-    esp_zb_lock_release();
+    // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+    //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+    //     .cluster_id = 0xef00,
+    //     .custom_cmd_id = 1,
+    //     .data.value = octet_string,
+    //     .data.size = 10,
+    //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING,
+    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+    //     .profile_id = 0x0104,
+    //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+    //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+    //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
+    //     .dis_default_resp = 1,
+    //     .manuf_code = 0,
+    //     .manuf_specific = 0, 
+    // };
+    // esp_zb_lock_acquire(portMAX_DELAY);
+    // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
+    // esp_zb_lock_release();
+
+    esp_zb_zcl_set_attribute_val(
+        ENDPOINTS_LIST[index],
+        ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+        (uint8_t*)&device_info[index].device_level,
+        false
+    );
+    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);    
 }
+
+
+
+void mireds_to_current_xy(uint16_t mireds, uint16_t *current_x, uint16_t *current_y) {
+    // 1. 将 mireds 转换为开尔文
+    float T = 1000000.0f / mireds;
+    float t = T / 1000.0f;
+
+    // 2. McCamy 公式计算 xy
+    float t2 = t * t;
+    float t3 = t2 * t;
+    float x = -0.14282f * t3 + 0.04908f * t2 + 0.10041f * t + 0.81733f;
+    float y = 1.0f - 0.24293f * t3 + 0.07522f * t2 - 0.53062f * t + 1.47021f;
+
+    // 3. 缩放到 Zigbee 的 uint16_t 范围
+    *current_x = (uint16_t)roundf(x * 65535.0f);
+    *current_y = (uint16_t)roundf(y * 65535.0f);
+}
+
 void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     
     uint16_t mapValue = map_1000(color, 2000, 6500, 10, 1000);
@@ -891,6 +932,18 @@ void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     esp_zb_lock_acquire(portMAX_DELAY);
     sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
     esp_zb_lock_release();
+
+    uint16_t temp_color = map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 500, 158);
+    esp_zb_zcl_set_attribute_val(
+        ENDPOINTS_LIST[index],
+        ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+        (uint16_t*)&temp_color,
+        false
+    );
+    
+    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID);
 }
 
 
@@ -966,7 +1019,6 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                     (uint8_t*)&device_info[index].device_state,
                     false
                 );
-                printf("SEND_ZB_RESPONSE EP:%d STATE:%d\n", ENDPOINTS_LIST[index_1], device_info[index].device_state);
                 send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
             #endif
         }    
@@ -1233,15 +1285,13 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
 
         if(mapValue >= 1000) mapValue = 1000; 
         if(mapValue <= 10) mapValue = 0; 
-
-        printf("mapValue:%d\n", mapValue);
         
         esp_zb_zcl_status_t status = ESP_OK;
         if (is_my_device_commissionned && !wifi_webserver_active_flag){
-            #ifdef USE_COLOR_CONTROL 
-            nuos_set_color_temp_command(index, device_info[index].device_val);
-            return status;
-            #endif 
+            // #ifdef USE_COLOR_CONTROL 
+            // nuos_set_color_temp_command(index, device_info[index].device_val);
+            // return status;
+            // #endif 
             status = esp_zb_zcl_set_attribute_val(
                 ENDPOINTS_LIST[0],
                 ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1251,7 +1301,18 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
                 false
             );
             send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000);
-
+        //map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 158, 500);
+            printf("==============>device_val: %d\n", device_info[index].device_val); 
+            status = esp_zb_zcl_set_attribute_val(
+                ENDPOINTS_LIST[index],
+                ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+                ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+                (uint16_t*)&device_info[index].device_val,
+                false
+            );
+            printf("ZB_STATUS:%d\n", status);
+            send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID);
         } 
     #else
         uint8_t index_1;
@@ -1291,36 +1352,15 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
         );
         send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
 
-
-            // uint8_t level_data[10] = {0x0, 0x5e, 0x67, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
-
-            //  if(level_data[2] == 0x65){
-            //     index_1  = 1;
-            // }else if(level_data[2] == 0x66){
-            //     index_1  = 2;
-            // }
-            // level_data[1] = sequence_num_1;
-            // sequence_num_1++;
-            // level_data[6] = device_info[index_1].device_level;
-            // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-            //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-            //     .cluster_id = 0xef00,
-            //     .custom_cmd_id = 1,
-            //     .data.value = level_data,
-            //     .data.size = 7,
-            //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
-            //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-            //     .profile_id = 0x0104,
-            //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-            //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index_1],
-            //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index_1],
-            //     .dis_default_resp = 1,
-            //     .manuf_code = 0,
-            //     .manuf_specific = 0, 
-            // };
-            // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-
-
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[index],
+            ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+            (uint16_t*)&device_info[index].device_level,
+            false
+        );
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
     }
     #endif
     return status;
@@ -1480,27 +1520,38 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
     #ifdef USE_TUYA_BRDIGE
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
         status = esp_zb_zcl_set_attribute_val(
-            ENDPOINTS_LIST[0],
+            ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
             ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
             0xF000,
             (uint16_t*)&m_level,
             false
         );
-        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
     
         uint16_t color_temp = map_1000(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 10, 1000);
         if(color_temp >= 1000) color_temp = 1000;
         status = esp_zb_zcl_set_attribute_val(
-            ENDPOINTS_LIST[0],
+            ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
             ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
             0xE000,
             (uint16_t*)&color_temp,
             false
         );
-        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000); 
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000); 
     }
+
+    status = esp_zb_zcl_set_attribute_val(
+        ENDPOINTS_LIST[index],
+        ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+        (uint16_t*)&device_info[index].device_val,
+        false
+    );
+    
+    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID);     
     #else
 
     uint16_t mapValue = map_1000(device_info[3].device_val, 2000, 6500, 158, 500);
@@ -1817,7 +1868,7 @@ void nuos_set_zigbee_attribute(uint8_t index){
                     #else
                         nuos_set_level_attribute(0);
                     #endif
-                    nuos_set_color_temperature_attribute(0);
+                    nuos_set_color_temperature_attribute(index);
                 }  
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
@@ -1889,10 +1940,6 @@ void nuos_set_zigbee_attribute(uint8_t index){
             }
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
                 #ifdef USE_COLOR_CONTROL
-                    // nuos_set_state_command(index);
-                    // if(device_info[index].device_state){
-                    //     nuos_set_level_command(index);
-                    // } 
                     nuos_set_state_command(index, device_info[index].device_state);
                     if(device_info[index].device_state){
                         nuos_set_level_command(index, device_info[index].device_level);
@@ -2447,30 +2494,85 @@ void check_device_platform(uint16_t short_addr)
     esp_zb_zcl_read_attr_cmd_req(&read_cmd);
 }
 
-void match_desc_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx) {
+// void match_desc_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx) {
     
-    if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
-        ESP_LOGI(TAG, "Device supports Tuya cluster 0xEF00 -> it's a Tuya device");
-        check_device_platform(0);
-    } else {
-        ESP_LOGI(TAG, "No Tuya cluster -> likely standard Zigbee or other");
+//     if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
+//         ESP_LOGI(TAG, "Device supports Tuya cluster 0xEF00 -> it's a Tuya device");
+//         check_device_platform(0);
+//     } else {
+//         ESP_LOGI(TAG, "No Tuya cluster -> likely standard Zigbee or other");
+//     }
+// }
+// void check_for_tuya_cluster(uint16_t short_addr) {
+//     esp_zb_zdo_match_desc_req_param_t find_req;
+
+//     uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_BASIC};
+//     find_req.num_in_clusters = 1;
+//     find_req.num_out_clusters = 0;
+//     find_req.dst_nwk_addr = short_addr;
+//     find_req.addr_of_interest = short_addr;
+//     find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
+//     find_req.cluster_list = cluster_list;
+//     esp_zb_zdo_match_cluster(&find_req, match_desc_cb, NULL);
+// }
+
+
+static void node_desc_cb(
+    esp_zb_zdp_status_t status,
+    uint16_t addr,
+    esp_zb_af_node_desc_t *node_desc,
+    void *user_ctx)
+{
+    if (status != ESP_ZB_ZDP_STATUS_SUCCESS || node_desc == NULL) {
+        ESP_LOGI("ZB", "Node Desc Request Failed");
+        return;
+    }
+
+    ESP_LOGI("ZB", "Node Address: 0x%04X", addr);
+    ESP_LOGI("ZB", "Manufacturer Code: 0x%04X",
+             node_desc->manufacturer_code);
+    ESP_LOGI("ZB", "MAC Capability: 0x%02X",
+             node_desc->mac_capability_flags);
+    ESP_LOGI("ZB", "Server Mask: 0x%04X",
+             node_desc->server_mask);
+
+    switch(node_desc->manufacturer_code)
+    {
+        case 0x1002:
+            ESP_LOGI("ZB", "Likely Tuya Coordinator!!");
+            if(getNVSCoordinatorType() != 0) setNVSCoordinatorType(0);
+            break;
+
+        case 0x1217:
+            ESP_LOGI("ZB", "Likely Sonoff / ITEAD!!");
+            setNVSCoordinatorType(1);
+            break;
+
+        case 0x131B:
+            ESP_LOGI("ZB", "Likely NUOS Gateway!!");
+            setNVSCoordinatorType(2);
+            break;
+
+        default:
+            ESP_LOGI("ZB", "Standard Clusters Coordinator!!");
+            if(getNVSCoordinatorType() != 3){
+                 
+                setNVSCoordinatorType(3);
+
+                esp_zb_factory_reset();
+            }
+            break;
     }
 }
-void check_for_tuya_cluster(uint16_t short_addr) {
-    esp_zb_zdo_match_desc_req_param_t find_req;
 
-    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_BASIC};
-    find_req.num_in_clusters = 1;
-    find_req.num_out_clusters = 0;
-    find_req.dst_nwk_addr = short_addr;
-    find_req.addr_of_interest = short_addr;
-    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
-    find_req.cluster_list = cluster_list;
-    esp_zb_zdo_match_cluster(&find_req, match_desc_cb, NULL);
+void query_coordinator(void)
+{
+    esp_zb_zdo_node_desc_req_param_t req = {
+        .dst_nwk_addr = 0x0000
+    };
+
+    esp_zb_zdo_node_desc_req(&req, node_desc_cb, NULL);
 }
-
-
-
 
 static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
 {
@@ -2553,6 +2655,8 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                     if(device_info[endpoint_counts].device_state){
                         nuos_set_level_attribute(endpoint_counts);
                     }
+
+                    
                 #else 
                     #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
                         if(scene_group_switch_info.control_type == 2) {
@@ -2577,7 +2681,8 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                 endpoint_counts = 0;
                 printf("check_device_platform\n");
                 //check_device_platform(0);
-                check_for_tuya_cluster(0);
+                //check_for_tuya_cluster(0);
+                query_coordinator();
             }
 
             
@@ -2828,9 +2933,9 @@ void nuos_zb_bind_cb(esp_zb_zdp_status_t zdo_status, esp_zb_ieee_addr_t ieee_add
             ESP_LOGI(TAG, "Try to bind Light %d On/Off", light_zb_info[index].endpoint);
             esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *)&light_zb_info[index]);
 
-            // bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL;
-            // ESP_LOGI(TAG, "Try to bind Light %d Color", light_zb_info[index].endpoint);
-            // esp_zb_zdo_device_bind_req(&bind_req, bind_color_cb, (void *)&light_zb_info[index]);
+            bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL;
+            ESP_LOGI(TAG, "Try to bind Light %d Color", light_zb_info[index].endpoint);
+            esp_zb_zdo_device_bind_req(&bind_req, bind_color_cb, (void *)&light_zb_info[index]);
             #endif  
             bind_req.cluster_id = ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL;
             ESP_LOGI(TAG, "Try to bind Light %d Dimmmer", light_zb_info[index].endpoint);
@@ -2991,7 +3096,7 @@ void nuos_zb_find_clusters(esp_zb_zdo_match_desc_callback_t user_cb){
         uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
         find_req.num_in_clusters = 3;
         find_req.num_out_clusters = 1;
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)  
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)  
         uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_TIME, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE};
         find_req.num_in_clusters = 4;
         find_req.num_out_clusters = 1;    
@@ -3495,12 +3600,16 @@ esp_zb_attribute_list_t* nuos_zb_create_color_temperature_control_cluster(){
         uint16_t min_temp = MIN_CCT_VALUE;
         uint16_t max_temp = MAX_CCT_VALUE;        
     #else 
-        const uint16_t MID_TEMP = MIN_CCT_VALUE + (MAX_CCT_VALUE - MIN_CCT_VALUE)/2;  
-        uint16_t min_temp = 500;//MIN_CCT_VALUE;
-        uint16_t max_temp = 158;//MAX_CCT_VALUE; 
+        
+        uint16_t min_temp = 158;//500;
+        uint16_t max_temp = 500;//158;
+        const uint16_t MID_TEMP = min_temp + (max_temp - min_temp)/2;  
+        // uint16_t min_temp = MIN_CCT_VALUE;
+        // uint16_t max_temp = MAX_CCT_VALUE; 
+        //const uint16_t MID_TEMP = MIN_CCT_VALUE + (MAX_CCT_VALUE - MIN_CCT_VALUE)/2;  
     #endif
     uint8_t loop_active = 0;
-    uint16_t color_attr = 250;//MID_TEMP; //
+    uint16_t color_attr = MID_TEMP;
     // It works with HA!!!
     // Use esp_zb_color_control_cluster_add_attr for this
     //esp_zb_color_control_cluster_create
@@ -3509,11 +3618,11 @@ esp_zb_attribute_list_t* nuos_zb_create_color_temperature_control_cluster(){
         .current_y = ESP_ZB_ZCL_COLOR_CONTROL_CURRENT_Y_DEF_VALUE,                          /*!<  The current value of the normalized chromaticity value y */ 
         .color_mode = 0x02,                                                                 /*!<  The mode which attribute determines the color of the device */ 
         .options = ESP_ZB_ZCL_COLOR_CONTROL_OPTIONS_DEFAULT_VALUE,                          /*!<  The bitmap determines behavior of some cluster commands */ 
-        .enhanced_color_mode = ESP_ZB_ZCL_COLOR_CONTROL_ENHANCED_COLOR_MODE_DEFAULT_VALUE,                                                        /*!<  The enhanced-mode which attribute determines the color of the device */ 
-        .color_capabilities = 0x0010,                                                       /*!<  Specifying the color capabilities of the device support the color control cluster */ 
+        .enhanced_color_mode = 0x02, //ESP_ZB_ZCL_COLOR_CONTROL_ENHANCED_COLOR_MODE_DEFAULT_VALUE,                                                        /*!<  The enhanced-mode which attribute determines the color of the device */ 
+        .color_capabilities = 0x0010,                                                     /*!<  Specifying the color capabilities of the device support the color control cluster */ 
     };
-    esp_zb_attribute_list_t *esp_zb_color_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL);
 
+    esp_zb_attribute_list_t *esp_zb_color_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL);
 
     esp_zb_cluster_add_attr(esp_zb_color_cluster, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_CAPABILITIES_ID,
                             ESP_ZB_ZCL_ATTR_TYPE_16BITMAP, ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE | ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &esp_zb_color_cluster_cfg.color_capabilities);
@@ -4406,7 +4515,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                     // printf("DR:%d DG:%d DB:%d\n", dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]);
                                     nuos_zb_set_hardware(4, false); 
                                     set_state(4); 
-                                    set_dali_level(4); 
+                                    //set_dali_level(4); 
                                     set_dali_color_temp(0, false);               
                                 }                                                      
                             #else
@@ -4762,6 +4871,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             set_dali_level(0);
                         }                                              
                         set_dali_color_temp(0, false);
+                        nuos_set_color_temperature_attribute(0);
                     break;
                     default: break;        
                 }
@@ -5332,7 +5442,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                     device_info[0].device_state = true;
                                     state_change_flag = true;
                                 }
-
+                                device_info[0].color_or_fan_state = false;
                                 is_long_press_brightness = false;
                                 nuos_set_hardware_brightness_2(0);
                                
@@ -5425,50 +5535,46 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
             }else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL) {
 
                 ESP_LOGI(TAG, "---------------->ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL: 0x%x<----------------\n", message->attribute.id);
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)   
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)   
                     
                     if (message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16)
                     {
                         #ifdef USE_TUYA_BRDIGE
-                            uint16_t temp_color = *(uint16_t *)message->attribute.data.value;
-                            device_info[index].device_val = temp_color;//map_cct1(temp_color, 158, 500, MIN_CCT_VALUE, MAX_CCT_VALUE);
 
-                                    esp_zb_zcl_status_t status = esp_zb_zcl_set_attribute_val(
-                                        1,
+                                    uint16_t temp_color = *(uint16_t *)message->attribute.data.value;
+                                    printf("temp_color1 : %d\n", temp_color);
+                                    device_info[index].device_val = map_cct1(temp_color, 500, 158, MIN_CCT_VALUE, MAX_CCT_VALUE);
+                                    printf("COLOR_TEMP : %d\n", device_info[index].device_val);
+                                    esp_zb_zcl_set_attribute_val(
+                                        ENDPOINTS_LIST[index],
                                         ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
                                         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
                                         ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
                                         (uint16_t*)&temp_color,
                                         false
                                     );
-                                    send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
+                                    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
 
-                            printf("temp_color:%d   device_val:%d\n", temp_color, device_info[index].device_val);
                         #else
                             device_info[index].device_val = *(uint16_t *)message->attribute.data.value;
                         #endif
                         
-                        if(device_cct_color[index] != device_info[index].device_val){
-                            device_cct_color[index] = device_info[index].device_val;
-                            //printf("index:%d   CCT_VALUE:%d\n", index, device_info[index].device_val);
+                        // if(device_cct_color[index] != device_info[index].device_val){
+                        //     device_cct_color[index] = device_info[index].device_val;
+                            printf("index:%d   CCT_VALUE:%d\n", index, device_info[index].device_val);
                             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                                 is_long_press_brightness = false;
-                                nuos_set_hardware_brightness_2(1);
-                                
-
-                                // #ifdef USE_CCT_TIME_SYNC
-                               
-                                // if(device_info[0].color_or_fan_state){
-                                //     device_info[0].color_or_fan_state = false;
-                                //     gpio_set_level(gpio_touch_led_pins[1], 0);
-                                //     stop_color_temp_timer();
-                                // }         
-                                
-                                // #endif
+                                device_info[0].color_or_fan_state = true;
+                                nuos_set_hardware_brightness_2(index);
+                                set_dali_color_temp(0, false);
+                            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)    
+                                nuos_zb_set_hardware(index, false);
+                                set_color_to_updown_leds(index);
+                                set_dali_color_temp(index, false);
                             #else
                                 selected_color_mode = 0;    
                             #endif
-                        }
+                        // }
                     }else {
                         ESP_LOGW(TAG, "COLOR_TEMP cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
                     }
@@ -6338,50 +6444,45 @@ void nuos_set_attribute_cluster_3(const esp_zb_zcl_report_attr_message_t *messag
             }else if (message->cluster == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL) {
 
                 ESP_LOGI(TAG, "---------------->ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL: 0x%x<----------------\n", message->attribute.id);
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)   
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)   
                     
                     if (message->attribute.id == ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U16)
                     {
                         #ifdef USE_TUYA_BRDIGE
-                            uint16_t temp_color = *(uint16_t *)message->attribute.data.value;
-                            device_info[index].device_val = temp_color;//map_cct1(temp_color, 158, 500, MIN_CCT_VALUE, MAX_CCT_VALUE);
+                                    uint16_t temp_color = *(uint16_t *)message->attribute.data.value;
+                                    printf("temp_color2 : %d\n", temp_color);
+                                    device_info[index].device_val = map_cct1(temp_color, 500, 158, MIN_CCT_VALUE, MAX_CCT_VALUE);
 
                                     esp_zb_zcl_status_t status = esp_zb_zcl_set_attribute_val(
-                                        1,
+                                        ENDPOINTS_LIST[index],
                                         ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
                                         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
                                         ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
                                         (uint16_t*)&temp_color,
                                         false
                                     );
-                                    send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
+                                    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
 
                             printf("temp_color:%d   device_val:%d\n", temp_color, device_info[index].device_val);
                         #else
                             device_info[index].device_val = *(uint16_t *)message->attribute.data.value;
                         #endif
                         
-                        if(device_cct_color[index] != device_info[index].device_val){
-                            device_cct_color[index] = device_info[index].device_val;
-                            //printf("index:%d   CCT_VALUE:%d\n", index, device_info[index].device_val);
+                        // if(device_cct_color[index] != device_info[index].device_val){
+                        //     device_cct_color[index] = device_info[index].device_val;
+                            printf("index:%d   CCT_VALUE:%d\n", index, device_info[index].device_val);
                             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                                 is_long_press_brightness = false;
-                                nuos_set_hardware_brightness_2(1);
+                                nuos_set_hardware_brightness_2(1);       
                                 
-
-                                // #ifdef USE_CCT_TIME_SYNC
-                               
-                                // if(device_info[0].color_or_fan_state){
-                                //     device_info[0].color_or_fan_state = false;
-                                //     gpio_set_level(gpio_touch_led_pins[1], 0);
-                                //     stop_color_temp_timer();
-                                // }         
-                                
-                                // #endif
+                            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)    
+                                nuos_zb_set_hardware(index, false);
+                                set_color_to_updown_leds(index);
+                                set_dali_color_temp(index, false);
                             #else
                                 selected_color_mode = 0;    
                             #endif
-                        }
+                        // }
                     }else {
                         ESP_LOGW(TAG, "COLOR_TEMP cluster data: attribute(0x%x), type(0x%x)", message->attribute.id, message->attribute.data.type);
                     }
@@ -6771,15 +6872,24 @@ void nuos_set_attribute_cluster(const esp_zb_zcl_set_attr_value_message_t *messa
 }
 
 void nuos_set_scene_group_cluster(const esp_zb_zcl_recall_scene_message_t *message){
+    static uint16_t last_group_id = 0;
+    static uint8_t last_scene_id = 0;
+
     #ifdef USE_SCENE_RECALL_QUEUE
         esp_zb_zcl_recall_scene_message_t local_copy = *message; // Copy the struct after declaration
         if (xQueueSend(scene_evt_queue, &local_copy, portMAX_DELAY) != pdPASS) {
             ESP_LOGW(TAG, "Scene event queue full, message dropped");
         }
     #else
-        switch_driver_gpios_intr_enabled(false);
-        nuos_set_scene((esp_zb_zcl_recall_scene_message_t*)message);
-        switch_driver_gpios_intr_enabled(true);
+    if(message->group_id == last_group_id && message->scene_id == last_scene_id ){
+        return;
+    }
+    last_group_id = message->group_id;
+    last_scene_id = message->scene_id;
+    
+    switch_driver_gpios_intr_enabled(false);
+    nuos_set_scene((esp_zb_zcl_recall_scene_message_t*)message);
+    switch_driver_gpios_intr_enabled(true);
     #endif 
 }
 
@@ -7010,7 +7120,7 @@ bool nuos_init_sequence(){
             
         #endif 
     #endif
-    scene_queue_init();
+    //scene_queue_init();
     #ifdef USE_WIFI_WEBSERVER
         if(wifi_webserver_active_flag > 0){ //This line, Added by NUOS 
             nuos_get_data_from_nvs();

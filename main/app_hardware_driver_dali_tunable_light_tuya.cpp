@@ -242,7 +242,6 @@
                     nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                 }  
             }
-            //esp_zb_lock_release();
         }
         
         nuos_set_state_attribute(0);
@@ -267,13 +266,11 @@
     }
 
     extern "C" void set_dali_color_temp(uint8_t index, bool status){
-         //esp_zb_lock_acquire(portMAX_DELAY);
         if(scene_group_switch_info.control_type != 0) { 
             dali.set_color_temperature(dali.BROADCAST_C, device_info[index].device_val); 
         }else{
             dali.set_group_color_cct(scene_group_switch_info.group_id[index], device_info[index].device_val);  
-        }
-        //nuos_set_color_temperature_attribute(index);     
+        }   
     }
 
 
@@ -899,7 +896,7 @@
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
 
                         if(scene_group_switch_info.control_type == 0) { 
-                            nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
+                            nuos_dali_normal_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                         }else{
                             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                             dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
@@ -1019,9 +1016,12 @@
                 //find_closest_index_2(device_info[0].device_level);
                 device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
                 set_dimming_control_leds(0);
+            }else{
+                gpio_set_level(gpio_touch_led_pins[1], 1);
+                device_info[0].fan_speed = find_closest_index(device_info[0].device_val);
+                set_color_temp_leds(0);
             }
         }else{
-            printf("color_state:%d \n", device_info[0].color_or_fan_state);
             if(device_info[0].color_or_fan_state){
                 gpio_set_level(gpio_touch_led_pins[1], 1);
                 device_info[0].fan_speed = find_closest_index(device_info[0].device_val);
@@ -1184,7 +1184,12 @@
     extern "C" void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value){
         dali.set_group_level(group_id, map_1_255_to_100_255(value));
     } 
-    
+    extern "C" void nuos_dali_normal_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value) {
+        uint8_t val = map_1_255_to_100_255(value);
+        // printf("Brightness set to %d\n", val);
+        dali.set_group_level_normal(group_id, val);
+    }
+        
     void start_dali_led_blink_task(){
     
         if(start_dali_led_commissioning_task_flag){

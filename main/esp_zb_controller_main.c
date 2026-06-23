@@ -458,27 +458,6 @@ static esp_err_t deferred_driver_init(void)
 }
 
 
-void match_desc_cb_2(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx) {
-    
-    if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
-        ESP_LOGI(TAG, "Device supports Tuya cluster 0xEF00 -> it's a Tuya device");
-    } else {
-        ESP_LOGI(TAG, "No Tuya cluster -> likely standard Zigbee or other");
-    }
-}
-void check_for_tuya_cluster_2(uint16_t short_addr) {
-    esp_zb_zdo_match_desc_req_param_t find_req;
-
-    uint16_t cluster_list[] = {ESP_ZB_ZCL_CLUSTER_ID_BASIC};
-    find_req.num_in_clusters = 1;
-    find_req.num_out_clusters = 0;
-    find_req.dst_nwk_addr = short_addr;
-    find_req.addr_of_interest = short_addr;
-    find_req.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
-    find_req.cluster_list = cluster_list;
-    esp_zb_zdo_match_cluster(&find_req, match_desc_cb_2, NULL);
-}
-
 static void simple_desc_cb(esp_zb_zdp_status_t zdo_status, esp_zb_af_simple_desc_1_1_t *simple_desc, void *user_ctx)
 {
     if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
@@ -505,7 +484,6 @@ static void ep_cb(esp_zb_zdp_status_t zdo_status, uint8_t ep_count, uint8_t *ep_
                 simple_desc_req.endpoint = ep_id_list[i];
                 esp_zb_zdo_simple_desc_req(&simple_desc_req, simple_desc_cb, NULL);
 
-                check_for_tuya_cluster_2(0);
             }
         }
     }
@@ -1418,8 +1396,11 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                 ////////////////////////
                 if(thermostat_temp.bytes[2] == 0x65 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep1 CCT
                     device_info[0].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                    printf("COLORX1:%d\n", device_info[0].device_val);
+                    //printf("COLORX1:%d\n", device_info[0].device_val);
                     nuos_zb_set_hardware(0, false);
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+                    convert_colors_to_index(0, false);
+                    #endif
                     set_dali_color_temp(0, false);
 
                     if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 0)) {
@@ -1429,8 +1410,11 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
 
                 }else if(thermostat_temp.bytes[2] == 0x66 && thermostat_temp.bytes[3] == 2){  //set Multi CCT ep2 CCT
                     device_info[1].device_val = map_cct1(((thermostat_temp.bytes[8] << 8) | thermostat_temp.bytes[9]), 0, 1000, 2000, 6500);
-                    printf("COLORY1:%d\n", device_info[1].device_val);
+                    //printf("COLORX2:%d\n", device_info[1].device_val);
                     nuos_zb_set_hardware(1, false);
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+                    convert_colors_to_index(1, false);
+                    #endif
                     set_dali_color_temp(1, false);
                     if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 1)) {
                         ep_id[1] = 0;
@@ -2191,6 +2175,7 @@ void app_main(void) {
     } else if (ret != ESP_OK) {
         ESP_ERROR_CHECK(ret);
     } 
+ 
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
     #ifdef USE_WIFI_WEBSERVER
         ESP_ERROR_CHECK(esp_netif_init());

@@ -68,6 +68,7 @@ const char* nvram_dali_off_keys = "dali_off_key";
 const char* nvram_dali_ft_keys = "dali_ft_key";
 const char* nvram_dali_fr_keys = "dali_fr_key";
 const char* nvram_nvs_panic_attack = "panic";
+const char* nvram_gateway_type_keys = "gway_key";
 
 #define MAX_DALI_FADE_TIME                  10
 #define DEFAULT_DALI_FADE_TIME              1
@@ -410,6 +411,16 @@ uint8_t read_color_mode_value() {
     return mode;
 }
 
+
+
+
+uint8_t getNVSCoordinatorType(){
+	return (uint8_t)readKeyValueFromNVRAM(nvram_gateway_type_keys);
+}
+void setNVSCoordinatorType(uint8_t value){
+    
+	writeKeyValueToNVRAM(nvram_gateway_type_keys, value);
+}
 
 
 // void store_curtain_cal_time(uint32_t time) {

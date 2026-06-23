@@ -33,7 +33,7 @@ static esp_timer_handle_t rx_group_idle_timer;
     #include "DaliCommands.h"
         DaliCommands 										        dali(gpio_load_pins[1], gpio_load_pins[0]);
 
-        extern "C" void nuos_dali_set_broadcast_color_rgb(uint8_t index, uint8_t r, uint8_t g, uint8_t b ,uint16_t value);
+        extern "C" void nuos_dali_set_broadcast_color_rgb(uint8_t index, uint8_t r, uint8_t g, uint8_t b ,uint16_t value, bool mode_change_flag);
     #else
         #include <Arduino.h>
         //#include "esp_dmx.h"
@@ -355,7 +355,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                 if(scene_group_switch_info.control_type != 0) { 
                     if(mode_change_flag){
                         printf("==============Broadcast color set to 0 for all channels\n");
-                        dali.set_broadcast_color_rgb( 0, 0, 0, device_info[3].device_level);
+                        dali.set_broadcast_color_rgb( 0, 0, 0, device_info[3].device_level, mode_change_flag);
                         mode_change_flag = false; 
                         
                     }  
@@ -403,14 +403,15 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                     #if(USE_COLOR_DEVICE == COLOR_RGBW || USE_COLOR_DEVICE == COLOR_RGB_CW_WW)
                         if(mode_change_flag){
                             dali.set_off_waf_channels(dali.BROADCAST_C);
-                            dali.set_color_temperature(dali.BROADCAST_C, 0); 
+                           // dali.set_color_temperature(dali.BROADCAST_C, 0); 
                             mode_change_flag = false;
                         }  
                     #endif           
-                    dali.set_broadcast_color_rgb(dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2], device_info[4].device_level); 
+                    dali.set_broadcast_color_rgb(dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], 
+                        dmx_data[dmx_start_address+2], device_info[4].device_level, mode_change_flag); 
                 }else{
    
-                    dali.set_group_color_rgb(scene_group_switch_info.group_id[0], 
+                    dali.set_group_color_rgb_normal(scene_group_switch_info.group_id[0], 
                         dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], 
                         dmx_data[dmx_start_address+2], device_info[4].device_level, mode_change_flag);
 
@@ -443,15 +444,16 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                 #endif 
 
               
-                if(!brightness_control_flag){
+                //if(!brightness_control_flag){
                     rgb_t rgb = {dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]}; // Example RGB values
                     hsv_t hsv2 = rgb_to_hsv(rgb);  
                     // if(is_brightness_change){
-                    hsv2.v = device_info[4].device_val; // Store brightness level for later use in brightness control 
+                    //hsv2.v = device_info[4].device_level; // Store brightness level for later use in brightness control 
                     //     hsv2.s = device_info[4].light_color_y;
-                    // }                               
+                    // }
+                    printf("========================>hsv2.v:%d\n", hsv2.v);                               
                     nuos_set_color_xy_attribute(4, &hsv2);   
-                }
+                //}
             }
             #endif
         }
@@ -493,39 +495,63 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
 uint8_t dali_rx_selected_color_mode = 1; // 0 for CCT, 1 for RGB
 
 
-uint8_t total_rx_group_rcvd = 0;
+// static uint8_t count_bits16(uint16_t v)
+// {
+//     uint8_t c = 0;
+//     while (v) {
+//         c += (v & 1U);
+//         v >>= 1;
+//     }
+//     return c;
+// }
 
-static uint8_t count_bits16(uint16_t v)
+// static void rx_group_idle_timeout_cb(void *arg)
+// {
+//     if (rx_group_data_pending) {
+//         total_rx_group_rcvd = count_bits16(rx_group_mask);
+//         printf("Unique group IDs received: %u\r\n", total_rx_group_rcvd);
+//     }
+
+//     rx_group_mask = 0;
+//     rx_group_data_pending = false;
+// }
+
+// void dali_rx_group_timer_init(void)
+// {
+//     const esp_timer_create_args_t t_args = {
+//         .callback = rx_group_idle_timeout_cb,
+//         .arg = NULL,
+//         .dispatch_method = ESP_TIMER_TASK,
+//         .name = "dali_grp_idle"
+//     };
+
+//     esp_timer_create(&t_args, &rx_group_idle_timer);
+// }
+
+
+static esp_timer_handle_t rgb_send_timer = NULL;
+// static TaskHandle_t rgb_sender_task_handle = NULL;
+SemaphoreHandle_t dali_sem = NULL;
+
+static void rgb_send_timer_cb(void *arg)
 {
-    uint8_t c = 0;
-    while (v) {
-        c += (v & 1U);
-        v >>= 1;
-    }
-    return c;
+    printf("********************************************\n");
+    xSemaphoreGive(dali_sem);
 }
 
-static void rx_group_idle_timeout_cb(void *arg)
+void init_rgb_timer(void)
 {
-    if (rx_group_data_pending) {
-        total_rx_group_rcvd = count_bits16(rx_group_mask);
-        printf("Unique group IDs received: %u\r\n", total_rx_group_rcvd);
-    }
-
-    rx_group_mask = 0;
-    rx_group_data_pending = false;
-}
-
-void dali_rx_group_timer_init(void)
-{
-    const esp_timer_create_args_t t_args = {
-        .callback = rx_group_idle_timeout_cb,
+    dali_sem = xSemaphoreCreateBinary();
+    esp_timer_create_args_t timer_args = {
+        .callback = rgb_send_timer_cb,
         .arg = NULL,
         .dispatch_method = ESP_TIMER_TASK,
-        .name = "dali_grp_idle"
+        .name = "rgb_send"
     };
 
-    esp_timer_create(&t_args, &rx_group_idle_timer);
+    ESP_ERROR_CHECK(
+        esp_timer_create(&timer_args, &rgb_send_timer)
+    );
 }
 
 void interpret_frame(uint8_t b1, uint8_t b2)
@@ -545,6 +571,12 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     bool is_group = false;
     bool is_short = false;
     bool is_command = false;
+
+        esp_timer_stop(rgb_send_timer);
+
+        esp_timer_start_once(
+            rgb_send_timer,
+            2000000); // restart 2-second timeout
 
     // -------------------------------------------------
     // Decode address / frame type first
@@ -802,10 +834,10 @@ void interpret_frame(uint8_t b1, uint8_t b2)
         rx_group_mask |= (1U << group);
         rx_group_data_pending = true;
 
-        if (esp_timer_is_active(rx_group_idle_timer)) {
-            esp_timer_stop(rx_group_idle_timer);
-        }
-        esp_timer_start_once(rx_group_idle_timer, 1000000); // 1 second
+        // if (esp_timer_is_active(rx_group_idle_timer)) {
+        //     esp_timer_stop(rx_group_idle_timer);
+        // }
+        // esp_timer_start_once(rx_group_idle_timer, 1000000); // 1 second
     }
     // -------------------------------------------------
     // Count unique group IDs seen within 1 second
@@ -893,7 +925,8 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                 #ifdef ENABLE_DALI_RECEIVER
                     dali.begin_rx(&isr_service_installed, rxFrameQueue);  
                     xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL);
-                    dali_rx_group_timer_init();
+                    //dali_rx_group_timer_init();
+                    init_rgb_timer();
                 #endif
                 vTaskDelay(10 / portTICK_PERIOD_MS); 
             } 
@@ -1002,10 +1035,6 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                     break;
                 default: break;      
             }
-
-            // if(mode_change_flag){
-            //     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
-            // }
         }
     }
 
@@ -1315,6 +1344,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                     }                    
                     #endif                    
                     set_dali_color_temp(0, false);
+                    printf("DALi Color Set Level\n");
                     if(xxcounts++ % 20 == 0){
                         nuos_set_level_attribute(4);
 
@@ -1386,7 +1416,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     } 
 
     extern "C" void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value){
-        dali.set_group_level(group_id, value);
+        dali.set_group_level_normal(group_id, value);
     }
     
     bool _toggle_ = false;

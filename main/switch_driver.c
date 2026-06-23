@@ -208,7 +208,6 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
     if (match_6(0,1,0,1,0,1) || match_6(1,0,1,0,1,0)) {
         ESP_LOGI(TAG, "PATTERN DETECTED: 1,2,1,2,1,2");
         reset_click_pattern();
-        
 
         #ifndef USE_COLOR_CONTROL
             #ifdef USE_WIFI_WEBSERVER

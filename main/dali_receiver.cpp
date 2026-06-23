@@ -284,12 +284,6 @@ void Receiver::rx_task() {
     while (true) {
         if (xQueueReceive(edge_queue_, &ev, portMAX_DELAY) == pdTRUE) {
             int level = gpio_get_level(pin_);
-            // if(inverted_){
-            //    ev.bus_low = !level;
-            // }else{
-            //    ev.bus_low = level; 
-            // }
-            //ev.bus_low = inverted_ ? level : !level;
             ev.bus_low = inverted_ ? !level : level;
             process_edge(ev.t_us, ev.bus_low);
         }

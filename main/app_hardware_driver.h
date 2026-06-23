@@ -1149,7 +1149,7 @@
 
             #ifdef USE_HOME_ASSISTANT
                 const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = { 1, 2};                                                                       
-                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID};
                 
                 char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
                 char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', 'S', 'c', 'e', 'n', 'e'};
@@ -1158,7 +1158,8 @@
                 #ifdef USE_TUYA_BRDIGE 
                     #ifdef USE_COLOR_CONTROL 
                         const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]           = {1, 2};
-                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID}; //0x010C
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]              = {ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID};
+                        //const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]          = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID}; //0x010C
                         // _TZE204_mm9kyoh3
                         //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'm', 'm', '9', 'k', 'y', 'o', 'h', '3'};
                         //_TZE204_zehdwhwb
@@ -1170,12 +1171,18 @@
                         // char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'e', '3', 'o', 'i', 't', 'd', 'y', 'u'};
                         //const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};
                         
-                        //wc1lppx1
-                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'w', 'c', '1', 'l', 'p', 'p', 'x', '1'};
+                        // //wc1lppx1 - ok - original
+                        // char manufname[]                                        = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'w', 'c', '1', 'l', 'p', 'p', 'x', '1'};
+                        // const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'};  
+                        
+                        //d7d9ojav - testing
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'd', '7', 'd', '9', 'o', 'j', 'a', 'v'};
+                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'}; 
 
-                        //char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'z', 'e', 'h', 'd', 'w', 'h', 'w', 'b'};
-                        //const char modelid[]                                    = {6, 'T', 'S', '0', '0', '5', '2'}; 
-                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'};            
+                        // // home assistant
+                        // char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0',  '_', 'w', 'c', '1', 'l', 'p', 'p', 'x', '1'};
+                        // // TS0505B
+                        // char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '4', 'B'};  
                     #else
                         //lbdxarah
                         char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
@@ -1344,7 +1351,7 @@
         bool start_dali_led_commissioning_task_flag = false;
 
         
-
+        uint8_t total_rx_group_rcvd = 0;
     #else
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
         extern bool curtain_cal_mode_active_flag;
@@ -1573,11 +1580,14 @@ extern "C" {
     extern void nuos_dali_set_group_color_temperature(uint8_t group_id, uint8_t index, uint16_t value);
     extern void nuos_dali_set_group_rgb_temperature(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b);
     extern void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value);
+    extern void nuos_dali_normal_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value);
+    
     extern void nuos_set_state_touch_leds(bool state);
     extern void nuos_set_state_touch_leds_to_original();
     extern void nuos_toggle_leds(uint8_t index);
     extern void nuos_on_off_led(uint8_t index, uint8_t _level);
     extern void set_level_value(uint8_t _level);
+    extern uint8_t total_rx_group_rcvd;
     extern uart_word_length_t string_to_uart_word_length_t(const char *data_bits_str);
     extern uart_stop_bits_t string_to_uart_stop_bits_t(const char *stop_bits_str);
     extern uart_parity_t string_to_uart_parity_t(const char *parity_str);

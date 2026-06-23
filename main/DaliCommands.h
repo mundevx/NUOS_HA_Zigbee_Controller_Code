@@ -101,6 +101,7 @@ public:
     void set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     bool set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     bool set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
+    bool set_rgb_3X(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     void set_rgb_32(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_color_cct_waf_dim(uint8_t addr, uint8_t dim);
     void set_cct_channel_4_5_dim(uint8_t addr, uint8_t warm_dim, uint8_t cool_dim);
@@ -135,7 +136,7 @@ public:
     void set_broadcast_fade_time(uint8_t time);
     void send_broadcast(uint8_t status);
     void set_broadcast_level(uint8_t value);
-    void set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
+    void set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool ss);
     void set_broadcast_color_rgb_2(uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_broadcast_color_cct(uint16_t color_temp_kelvin);
     void set_cct_dimming(uint8_t addr, uint8_t dim);
@@ -150,9 +151,10 @@ public:
     void set_group_on(uint8_t addr);
     uint8_t get_group_addr(uint8_t group_number);
     void set_group_level(uint8_t group_addr, uint8_t value);
+    void set_group_level_normal(uint8_t group_id, uint8_t value);
     void set_group_color_cct(uint8_t group_addr, uint16_t color_temp_kelvin);
     void set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
-
+    void set_group_color_rgb_normal(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     // Scene functions
     void set_scene(uint8_t addr, uint8_t scene, uint8_t level);
     void set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp);
@@ -173,12 +175,21 @@ public:
     void enable_query_mode();
     void disable_query_mode();
     void set_group_cc_primary_level(uint8_t group_id, uint16_t cct_color);
-private:
-    gpio_num_t txPin;
-    gpio_num_t rxPin;
+ 
+    bool send_command_special_ret_retry(uint8_t opcode, uint8_t address, uint8_t* retryCount);
 
-    DALI daliCore;
-    dali_rx::Receiver receiver;
-};
+    bool send_command_standard_ret_retry(uint8_t opcode, uint8_t address, uint8_t* retryCount);
+
+    bool send_command_special_normal(uint8_t opcode, uint8_t address);
+
+    bool send_command_standard_normal(uint8_t opcode, uint8_t address);
+
+    private:
+        gpio_num_t txPin;
+        gpio_num_t rxPin;
+
+        DALI daliCore;
+        dali_rx::Receiver receiver;
+    };
 
 #endif // __DALICOMP_H__

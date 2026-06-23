@@ -615,7 +615,7 @@
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE   
              
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                       3 
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                       2 
         #define DIMMING_STEPS                                       2 
 
         #define COLOR_SET_CHECKER_COUNTS                            20 
@@ -726,7 +726,7 @@
         #define BRIGHTNESS_SET_CHECKER_COUNTS                           2
         #define DIMMING_LAST_REACH_OFFSET                               50
 
-        #define COLOR_SET_CHECKER_COUNTS                                10
+        #define COLOR_SET_CHECKER_COUNTS                                5
         #define COLOR_STEPS                                             100 
         #define COLOR_LAST_REACH_OFFSET                                 500     
 
@@ -823,7 +823,7 @@
             #define MIN_DIM_LEVEL_VALUE                                 10 // (0 to 254)
             #define MAX_DIM_LEVEL_VALUE                                 254  
         #else
-            #define BRIGHTNESS_SET_CHECKER_COUNTS                       2
+            #define BRIGHTNESS_SET_CHECKER_COUNTS                       1
             #define DIMMING_STEPS                                       5
             //#define DIMMING_RGB_STEPS                                   20
 

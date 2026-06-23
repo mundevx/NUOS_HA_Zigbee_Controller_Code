@@ -1035,15 +1035,12 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     set_dali_color_temp(0, false);
                     set_dali_level(3);                
                 #else
-                // if(device_info[button_index].device_state){
-                //      set_dali_color_temp(0, false);
-                // }
-                set_dali_color_temp(0, false);
-                if(button_index < 3){
-                    set_state(4);
-                }else{
-                    set_state(3);
-                }
+                    set_dali_color_temp(0, false);
+                    if(button_index < 3){
+                        set_state(4);
+                    }else{
+                        set_state(3);
+                    }
                 #endif                
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)    
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
@@ -1066,11 +1063,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     }
                 }
                 #ifdef USE_COLOR_CONTROL
-                // else{
-                //     //change_cw_ww_color_flag = false;  
-                //     //nuos_zb_set_hardware(button_index-2, false); 
-                //     nuos_set_hardware_brightness(gpio_touch_btn_pins[button_index]);                    
-                // } 
                 else{
                     sindex = get_parameter_ep_index_selected();
                     printf("sindex: %d\n", sindex);
@@ -1078,13 +1070,14 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     if(device_info[sindex].device_state){
                         nuos_zb_set_hardware(button_index, false);
                         if(device_info[sindex].device_state){
-                            set_dali_level(sindex);  
+                            set_dali_level(sindex);
+                            if(device_info[sindex].color_or_fan_state){
+                                set_dali_color_temp(sindex, false);
+                            }else{
+                                set_dali_level(sindex); 
+                            }  
                         }
-                        if(device_info[sindex].color_or_fan_state){
-                            set_dali_color_temp(sindex, false);
-                        }else{
-                            set_dali_level(sindex); 
-                        }
+                        
                     }
                 }
                 #endif      
@@ -1095,7 +1088,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
         #ifndef DONT_USE_ZIGBEE 
         if((is_my_device_commissionned == true) && (!wifi_webserver_active_flag)){
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                // nuos_set_zigbee_attribute(0); 
+                nuos_set_zigbee_attribute(0); 
                 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
 
@@ -1265,11 +1258,13 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
             if(btn_index < 2){
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
                     is_long_press_brightness = true;
+                    
                     nuos_set_hardware_brightness(io_num);
                 } 
             }else{
                 if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
                     is_long_press_brightness = true;
+                    
                     nuos_set_hardware_brightness(io_num);
                     
                 }                                                
@@ -1304,7 +1299,7 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
                 }
-                printf("brightness_count:%lld\n", brightness_count);
+                // printf("brightness_count:%lld\n", brightness_count);
                 if(change_cw_ww_color_flag){
                     if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
                         is_long_press_brightness = true;

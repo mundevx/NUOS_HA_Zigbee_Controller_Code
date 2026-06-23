@@ -13,10 +13,9 @@
 #include "esp_timer.h"
 
 
-
-extern uint8_t total_rx_group_rcvd;
-
 static const char *TAG = "ESP_ZB_SCENE_COMMANDS";
+
+// extern uint8_t total_rx_group_rcvd = 0;
 
 extern void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *message);
 extern esp_err_t nuos_set_state_attribute(uint8_t index);
@@ -26,10 +25,8 @@ extern void xyToRgb(uint16_t x, uint16_t y, float brightness, uint8_t *r, uint8_
 extern void nuos_set_scene_group_cluster(const esp_zb_zcl_recall_scene_message_t *message);
 extern void set_load(uint8_t index, uint8_t v);
 extern uint16_t device_cct_color[TOTAL_ENDPOINTS];
+// static void scene_print_task(void *pvParameters);
 uint8_t total_cnts = 0;
-static void scene_print_task(void *pvParameters);
-
-
 
 /* Queue handle */
 static QueueHandle_t scene_queue = NULL;
@@ -40,6 +37,7 @@ typedef enum {
     CMD_SET_DALI_COLOR_TEMP,
     CMD_SET_DALI_COLOR_RGB
 } zb_cmd_type_t;
+
 typedef struct {
     zb_cmd_type_t type;
     uint8_t       index;
@@ -117,35 +115,35 @@ void nuos_zb_scenes_remove_scene_request(uint16_t group_id, uint8_t scene_id, ui
     esp_zb_zcl_scenes_remove_scene_cmd_req(&cmd_req);
 }
 
-typedef union colorControlExtensionField_u
+typedef union
 {
-   struct colorControlExtensionField_s
-   {
+    struct __attribute__((packed))
+    {
         uint8_t mode;
         uint8_t r;
         uint8_t g;
         uint8_t b;
         uint8_t bright;
         uint16_t colorTemp;
-   }fields;
+    } fields;
 
-   uint8_t raw[7];
-}colorControlExtensionField_t;
+    uint8_t raw[7];
+
+} colorControlExtensionField_t;
 
 colorControlExtensionField_t colorControlExtensionField = {0};
 
-typedef union colorCCTExtensionField_u
-{
-   struct colorCCTExtensionField_s
-   {
-        uint16_t colorTemp;
-        // uint16_t colorTemp2;
-   }fields;
+// typedef union colorCCTExtensionField_u
+// {
+//    struct colorCCTExtensionField_s
+//    {
+//         uint16_t colorTemp;
+//    }fields;
 
-   uint8_t raw[4];
-}colorCCTExtensionField_t;
+//    uint8_t raw[4];
+// }colorCCTExtensionField_t;
 
-colorCCTExtensionField_t colorCCTExtensionField = {0};
+// colorCCTExtensionField_t colorCCTExtensionField = {0};
 
 void nuos_zb_scenes_add_scene_request(uint16_t group_id, uint8_t scene_id, uint8_t src_ep, uint8_t dst_ep, uint16_t dst_addr_short, 
                                         uint8_t on_off_value, uint8_t brightness_value, uint16_t colorx, uint16_t colory) {
@@ -381,13 +379,12 @@ void nuos_zb_scenes_add_scene_color_request(uint16_t group_id, uint8_t scene_id,
   
             colorControlExtensionField.fields.mode = mode;
         
-            colorControlExtensionField.fields.colorTemp = colorTemp; 
-
             colorControlExtensionField.fields.r = r;
             colorControlExtensionField.fields.g = g;
             colorControlExtensionField.fields.b = b;
            
-            colorControlExtensionField.fields.bright = brightness_value;
+            colorControlExtensionField.fields.bright = (uint8_t)(brightness_value & 0xff);
+            colorControlExtensionField.fields.colorTemp = colorTemp;
 
             esp_zb_zcl_scenes_extension_field_t color_control_extension_field = {
                 .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, // Cluster ID for Level Control cluster
@@ -1828,7 +1825,22 @@ bool decode_scene_extension_fields(
     return true;
 }
 
-
+uint32_t get_backoff_time(){
+    uint32_t backoff = 1;
+    if(dali_fade_time == 0){
+        backoff = 800;
+    }else if(dali_fade_time == 1){
+        backoff = 800 + (esp_random() % 1200);
+    }else if(dali_fade_time == 2){
+        backoff = 1200 + (esp_random() % 2000);
+    }else if(dali_fade_time == 3){
+        backoff = 2000 + (esp_random() % 3000);
+    }else if(dali_fade_time == 4){
+        backoff = 3000 + (esp_random() % 4000);
+    }
+    return backoff;
+}
+extern SemaphoreHandle_t dali_sem;
 void print_decoded_scene(decoded_scene_t *scene)
 {
     if (!scene)
@@ -1898,7 +1910,7 @@ void print_decoded_scene(decoded_scene_t *scene)
         for(int j=0; j<TOTAL_ENDPOINTS; j++){
             if(ENDPOINTS_LIST[j] == scene->ep[i].endpoint){ 
                 index_1 = j;
-                printf("Matched Endpoint:%d, index:%d\n", scene->ep[i].endpoint, index_1);
+                //printf("Matched Endpoint:%d, index:%d\n", scene->ep[i].endpoint, index_1);
                 break; 
             }
         }
@@ -1934,24 +1946,12 @@ void print_decoded_scene(decoded_scene_t *scene)
 
                  if(prev_onoff != scene->ep[i].onoff){
                     prev_onoff = scene->ep[i].onoff;
-                    printf("DALI FADE TIME:%d\n", dali_fade_time);
+
                     device_info[0].device_state = scene->ep[i].onoff;
                     device_info[0].device_level = scene->ep[i].level;
                     
                     set_dali_level(0);
-                    if(dali_fade_time == 0){
-                        vTaskDelay(500 / portTICK_PERIOD_MS);
-                    }else if(dali_fade_time == 1){
-                        vTaskDelay(800 / portTICK_PERIOD_MS);
-                    }else if(dali_fade_time == 2){
-                        vTaskDelay(1000 / portTICK_PERIOD_MS);
-                    }else if(dali_fade_time == 3){
-                        vTaskDelay(1400 / portTICK_PERIOD_MS);
-                    }else if(dali_fade_time == 4){
-                        vTaskDelay(2000 / portTICK_PERIOD_MS);
-                    }else{
-                        vTaskDelay(3000 / portTICK_PERIOD_MS);
-                    }
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
                     set_dali_color_temp(0, false);
                     
                 }else{
@@ -1960,10 +1960,15 @@ void print_decoded_scene(decoded_scene_t *scene)
 
                     
                     nuos_zb_set_hardware(0, false);
+                    
+
                     is_long_press_brightness = false;
                     nuos_set_hardware_brightness_2(1);
+                    set_dali_level(0);
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
                     set_dali_color_temp(0, false);
-                    set_dali_level(0); 
+                    
+                    
                 }
 
                 nuos_set_color_temperature_attribute(0);  
@@ -1982,46 +1987,27 @@ void print_decoded_scene(decoded_scene_t *scene)
                 if(device_info[index_1].device_state){
                     #ifdef USE_COLOR_CONTROL
                     device_info[index_1].device_val = scene->ep[i].color;
-                    printf("DALI DIRECT SWITCH - COLOR TEMP VALUE:%d index_1:%d\n", device_info[index_1].device_val,index_1);
                     #endif
                 
                     if(scene->ep[i].level == 0) scene->ep[i].level = MIN_DIM_LEVEL_VALUE;
 
                     device_info[index_1].device_level = scene->ep[i].level;
-                    // nuos_zb_set_hardware(index_1, false);
                     process_dali_tasks(index_1, false, true);
+
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
+                    set_dali_color_temp(index_1, false);
+
                     set_color_to_updown_leds(index_1);
                     nuos_set_state_attribute(index_1);
 
-                    // zb_cmd_t cmd;
-                    // cmd.type = CMD_SET_DALI_SET_STATE;
-                    // cmd.index = index_1;
-                    // cmd.state = device_info[index_1].device_state;
-                    // cmd.level = device_info[index_1].device_level;  
-                    // cmd.color_temp = scene->ep[i].color;
-
-                    // /* Send decoded scene to queue */
-                    // if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    //     ESP_LOGW(TAG, "Scene queue full");
-                    // }
-
-                    // /* Send decoded scene to queue */
-                    // if (xQueueSend(scene_queue, &cmd, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
-                    //     ESP_LOGW(TAG, "Scene queue full");
-                    // }
                     nuos_set_level_attribute(index_1);
-                    //nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index_1], index_1, device_info[index_1].device_level);
                     #ifdef USE_COLOR_CONTROL
-                    // cmd.type = CMD_SET_DALI_COLOR_TEMP;
-                    // /* Send decoded scene to queue */
-                    // if (xQueueSend(scene_queue, &cmd, 0) != pdTRUE) {
-                    //     ESP_LOGW(TAG, "Scene queue full");
-                    // }
-                    // set_dali_color_temp(index_1, false);
                     nuos_set_color_temperature_attribute(index_1);
                     #endif
+                    vTaskDelay(500  / portTICK_PERIOD_MS);
                 } else{
                     nuos_zb_set_hardware(index_1, false);
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
                     nuos_set_state_attribute(index_1);
                 } 
             }
@@ -2075,10 +2061,14 @@ void print_decoded_scene(decoded_scene_t *scene)
                     store_color_mode_value(selected_color_mode);
                 }
             }
-            vTaskDelay((total_rx_group_rcvd*500)  / portTICK_PERIOD_MS);
+
             device_info[index_1].device_state = scene->ep[i].onoff;
+            nuos_set_state_attribute(index_1);
+
+            
             printf("index_1:%d state:%d\n", index_1, device_info[index_1].device_state);
             if(device_info[index_1].device_state){
+                xSemaphoreTake(dali_sem, pdMS_TO_TICKS(10000));
                 //set color
                 if(scene->ep[i].color_mode == 0){
                     device_info[3].device_state = true;
@@ -2087,6 +2077,7 @@ void print_decoded_scene(decoded_scene_t *scene)
     
                     device_info[3].device_state = true;
                     nuos_zb_set_hardware(3, false);
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
                     set_dali_color_temp(0, false);
                     //set_dali_level(3);
                           
@@ -2130,8 +2121,14 @@ void print_decoded_scene(decoded_scene_t *scene)
                     #endif
 
                     nuos_zb_set_hardware(4, false); 
+
+
+                    set_dali_level(4);
+                    vTaskDelay(get_backoff_time() / portTICK_PERIOD_MS);
                     set_dali_color_temp(0, false);
-                    set_dali_level(4);                                  
+
+                    
+                                                      
                 }
             }else{
                 nuos_zb_set_hardware(index_1, false);
@@ -2148,121 +2145,13 @@ void print_decoded_scene(decoded_scene_t *scene)
 }
 
 
-
-
-/* =========================================================
-   Queue Init
-   ========================================================= */
-void scene_queue_init(void)
-{
-    /* Create queue for 20 scene objects */
-    scene_queue = xQueueCreate(20, sizeof(zb_cmd_t));
-
-    if (scene_queue == NULL) {
-        ESP_LOGE(TAG, "Failed to create scene queue");
-        return;
-    }
-
-    /* Create task */
-    xTaskCreate(
-        scene_print_task,
-        "scene_print_task",
-        4096,
-        NULL,
-        TASK_PRIORITY_SCENE_QUEUE_TASK,
-        NULL
-    );
-
-    ESP_LOGI(TAG, "Scene queue and task created");
-}
-
-
-
-
-/* =========================================================
-   Scene Print Task
-   ========================================================= */
-static void scene_print_task(void *pvParameters)
-{
-    //decoded_scene_t rx_scene;
-    zb_cmd_t cmd;
-    while (1) {
-
-        /* Wait forever for scene data */
-        if (xQueueReceive(scene_queue, &cmd, portMAX_DELAY) == pdTRUE) {
-
-            printf("\nReceived scene from queue:\n");
-            // /* Random delay here instead of callback */
-            /* Print received scene */
-            //print_decoded_scene(&rx_scene);
-
-            switch (cmd.type) {
-                case CMD_SET_DALI_SET_STATE: {
-                    printf("CMD_SET_DALI_SET_STATE : %d\n", cmd.index);
-                    // Call your functions here, in this task context
-
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-                    nuos_zb_set_hardware(cmd.index, false);
-                    set_color_to_updown_leds(cmd.index);
-                    set_dali_level(cmd.index);
-                    //nuos_set_state_attribute(cmd.index);
-                    //nuos_set_level_attribute(cmd.index);
-                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-        
-
-                    nuos_zb_set_hardware(0, false);
-                    is_long_press_brightness = false;
-                    nuos_set_hardware_brightness_2(1);
-                    if(cmd.level == 0) cmd.level = MIN_DIM_LEVEL_VALUE;
-                    device_info[cmd.index].device_level = cmd.level;
-                    nuos_dali_set_state_group(cmd.index, device_info[cmd.index].device_level);
-                    set_dali_level(0); 
-                    nuos_set_state_attribute(0);
-                    nuos_set_color_temp_level_attribute(0);
-                    #endif
-                    break;
-                }
-                case CMD_SET_DALI_SET_LEVEL: {
-                    // Call your functions here, in this task context
-                    nuos_dali_set_group_brightness(scene_group_switch_info.group_id[cmd.index], cmd.index, device_info[cmd.index].device_level);
-                    nuos_set_level_attribute(cmd.index);
-                    break;
-                }
-                case CMD_SET_DALI_COLOR_TEMP: {
-                    printf("CMD_SET_DALI_COLOR_TEMP : %d\n", cmd.index);
-                    // Call your functions here, in this task context
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-                    set_dali_color_temp(cmd.index, cmd.color_temp);
-                    nuos_set_color_temperature_attribute(cmd.index);
-
-                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                    set_dali_color_temp(0, false);
-                    
-                    nuos_set_color_temperature_attribute(0);  
-                    #endif
-                       
-                    break;
-                }                
-                default:
-                printf("Unknown command type received: %d\n", cmd.type);
-                    break;
-            }
-        }
-    }
-}
-
 void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
         decoded_scene_t local_scene;
         if(decode_scene_extension_fields(
             message->field_set,
             message->info.dst_endpoint,
             &local_scene)) {
-                //vTaskDelay(random_50_to_200 () / portTICK_PERIOD_MS);
                 print_decoded_scene(&local_scene);
-                // /* Send decoded scene to queue */
-                // if (xQueueSend(scene_queue, &local_scene, random_20_to_100 () / portTICK_PERIOD_MS) != pdTRUE) {
-                //     ESP_LOGW(TAG, "Scene queue full");
-                // }
 
             }
 }

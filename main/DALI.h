@@ -124,6 +124,7 @@ public:
     void setMax(uint8_t nodeAddress);
     void setValue(uint8_t nodeAddress, uint8_t value);
     bool sendCommandPublic(uint8_t command, uint8_t data);
+    bool sendCommandNormalPublic(uint8_t command, uint8_t data);
     void sendCommandPublic32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     void task_delayMicroseconds(uint32_t microseconds);
     void task_delay(uint32_t milliseconds);
@@ -139,18 +140,26 @@ public:
     void IRAM_ATTR markBusActivityFromISR();
     uint32_t getBusActivityCounter();
     bool isBusIdle();
-    bool sendCommandWithRetry(uint8_t command, uint8_t data);
+    bool sendCommandWithRetry(uint8_t command, uint8_t data, uint8_t* retryCount);
+    
+    bool sendCommandRetryPublic(uint8_t command, uint8_t data, uint8_t* retryCount);
     void daliSetFrameDelay(uint16_t delay_us);
 private:
     volatile bool tx_in_progress_ = false;
     bool sendZero(void);
     bool sendOne(void);
+
+    void sendZeroNormal(void);
+    void sendOneNormal(void);
+
     void releaseBus();
     // bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
     //                             uint8_t command2, uint8_t data2);
     bool sendCommand32Raw(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);                            
 
     bool sendCommand(uint8_t command, uint8_t data);
+    void sendCommandNormal(uint8_t command, uint8_t data);
+    bool sendCommandRetry(uint8_t command, uint8_t data, uint8_t* retryCount);
     bool sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     bool sendSearchAddr(uint32_t addr);
     bool sendProgramShortAddr(uint8_t nodeNumber);
@@ -167,7 +176,7 @@ private:
     static constexpr uint32_t DALI_FRAME_BITS = 17;                    // 1 start + 16 data
     static constexpr uint32_t DALI_FORWARD_FRAME_US = DALI_FRAME_BITS * DALI_BIT_US; // ~14144 us
     static constexpr uint32_t DALI_POST_TX_IDLE_US = 3700;             // your existing stop/settle
-    static constexpr uint32_t DALI_COMPLETE_FRAME_US = DALI_FORWARD_FRAME_US + DALI_POST_TX_IDLE_US;
+    static constexpr uint32_t DALI_COMPLETE_FRAME_US = DALI_FORWARD_FRAME_US + DALI_POST_TX_IDLE_US;  //17844
     static constexpr uint32_t DALI_BUS_IDLE_MIN_US = 5000;             // choose 9TE or your required value
     
     bool sendCommandRaw(uint8_t command, uint8_t data);       // add this

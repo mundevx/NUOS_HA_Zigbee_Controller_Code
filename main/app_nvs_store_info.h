@@ -73,11 +73,16 @@
         extern void nuos_toggle_tmp_selection(int dali_id, int group_id, int state);
         extern int nuos_read_scene_membership_from_nvs(int scene_index, int *out_ids, int *out_count);
         extern void nuos_store_scene_membership_to_nvs(int group_id, int *ids, int count);
+
+        extern uint8_t getNVSCoordinatorType();
+        extern void setNVSCoordinatorType(uint8_t value);
     #ifdef __cplusplus
     }
     #endif
 
     
+
+
     extern void writeSceneInfoStruct(uint8_t index, void * strt);
     extern void readSceneInfoStruct(uint8_t index, void* my_data, size_t* length);
 
