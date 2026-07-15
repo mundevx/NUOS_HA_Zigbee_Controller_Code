@@ -418,7 +418,7 @@ uint8_t getNVSCoordinatorType(){
 	return (uint8_t)readKeyValueFromNVRAM(nvram_gateway_type_keys);
 }
 void setNVSCoordinatorType(uint8_t value){
-    
+    gateway_type = value;
 	writeKeyValueToNVRAM(nvram_gateway_type_keys, value);
 }
 
@@ -466,6 +466,120 @@ void setNVSAllLedsOff(uint8_t value){
 	writeKeyValueToNVRAM(nvram_all_leds_off_keys, value);
 }
 
+#define NVS_KEY_CONFIG "dali_cfg"
+
+esp_err_t save_dali_config_to_nvs(const dali_nvs_storage_t *storage_data) {
+
+    esp_err_t err;
+
+    // 1. Open NVS namespace
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+        return err;
+    }
+   #endif
+    // 2. Write the structure as a binary blob
+    size_t required_size = sizeof(dali_nvs_storage_t);
+    err = nvs_set_blob(my_handle, NVS_KEY_CONFIG, storage_data, required_size);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "Failed to write config blob to NVS: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // 3. Commit changes
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "NVS commit failed: %s", esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG_NVS, "Successfully saved config for %d DALI nodes to NVS.", storage_data->total_nodes);
+    }
+
+    // 4. Close NVS
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+
+esp_err_t load_dali_config_from_nvs(dali_nvs_storage_t *storage_data) {
+
+    esp_err_t err;
+
+    // 1. Open NVS namespace
+    #ifdef USE_NVS_INIT
+    err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READONLY, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG_NVS, "Error (%s) opening NVS handle for reading!", esp_err_to_name(err));
+        return err;
+    }
+    #endif
+
+    // 2. Get the expected size first
+    size_t required_size = 0;
+    err = nvs_get_blob(my_handle, NVS_KEY_CONFIG, NULL, &required_size);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG_NVS, "Failed to get blob size from NVS: %s", esp_err_to_name(err));
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // If key doesn't exist
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(TAG_NVS, "No previous DALI configuration found in NVS.");
+        nvs_close(my_handle);
+        return err;
+    }
+
+    // Safety check: ensure size matches our structure
+    if (required_size != sizeof(dali_nvs_storage_t)) {
+        ESP_LOGW(TAG_NVS, "Size mismatch in NVS storage! Expected %d, got %d", sizeof(dali_nvs_storage_t), required_size);
+    }
+
+    // 3. Read the binary blob into our structure
+    err = nvs_get_blob(my_handle, NVS_KEY_CONFIG, storage_data, &required_size);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG_NVS, "Loaded config for %d nodes successfully from NVS.", storage_data->total_nodes);
+    } else {
+        ESP_LOGE(TAG_NVS, "Error reading config blob: %s", esp_err_to_name(err));
+    }
+
+    // 4. Close NVS
+    #ifdef USE_NVS_INIT
+    nvs_close(my_handle);
+    #endif
+    return err;
+}
+
+/*
+
+// 2. Prepare storage variable
+    dali_nvs_storage_t my_dali_system;
+    
+    // 3. Attempt to load existing configurations
+    esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        // First boot! Setup default dummy configurations
+        ESP_LOGI(TAG_NVS, "Writing default configurations...");
+        my_dali_system.total_nodes = 1;
+        my_dali_system.nodes[0].dali_id = 1;
+        my_dali_system.nodes[0].power_on_value = 255;
+        my_dali_system.nodes[0].fade_rate = 15;
+        my_dali_system.nodes[0].fade_time = 15;
+        my_dali_system.nodes[0].group = 0;
+
+        // Save them so they persist next time
+        save_dali_config_to_nvs(&my_dali_system);
+    } else if (err == ESP_OK) {
+        // Successfully loaded from flash memory
+        ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
+                 my_dali_system.nodes[0].dali_id, 
+                 my_dali_system.nodes[0].power_on_value);
+    }
+                 */
 void nuos_write_default_value(){
 	for(int index=0; index<TOTAL_ENDPOINTS; index++){
         device_info[index].device_state = 1;

@@ -205,6 +205,10 @@
         #endif
     } scene_switch_s;
 
+   typedef struct{
+        int total;
+        uint8_t addresses[64];
+    } DaliNodeList; 
 
     #define SINGLE_PRESS_MAX_INTERVAL                                           20
     #define DOUBLE_PRESS_MAX_INTERVAL                                           1000
@@ -1151,8 +1155,8 @@
                 const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = { 1, 2};                                                                       
                 const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_COLOR_DIMMABLE_LIGHT_DEVICE_ID};
                 
-                char manufname[]                                                = {4, 'N', 'U', 'O', 'S'};
-                char modelid []                                                 = {10, 'D', 'A', 'L', 'I', ' ', 'S', 'c', 'e', 'n', 'e'};
+                char manufname[]                                                = {16, '_', 'T', 'Z', '3', '2', '1', '0', '_', 'd', '7', 'd', '9', 'o', 'j', 'a', 'v'};
+                char modelid []                                                 = {7, 'T', 'S', '0', '5', '0', '2', 'A'};
  
             #else //if tuya
                 #ifdef USE_TUYA_BRDIGE 
@@ -1182,7 +1186,10 @@
                         // // home assistant
                         // char manufname[]                                            = {16, '_', 'T', 'Z', '3', '0', '0', '0',  '_', 'w', 'c', '1', 'l', 'p', 'p', 'x', '1'};
                         // // TS0505B
-                        // char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '4', 'B'};  
+                        // char modelid[]                                              = {7, 'T', 'S', '0', '5', '0', '4', 'B'}; 
+                        
+                        // char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'd', '7', 'd', '9', 'o', 'j', 'a', 'v'};
+                        // char modelid []                                         = {7, 'T', 'S', '0', '5', '0', '2', 'A'};
                     #else
                         //lbdxarah
                         char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '8', '4', '_', 'l', 'b', 'd', 'x', 'a', 'r', 'a', 'h'};
@@ -1193,13 +1200,13 @@
                 #endif
             #endif
 
-            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};  
+            const gpio_num_t gpio_load_pins[TOTAL_LOADS]                        = { DALI_RX_PIN, DALI_TX_PIN};
             #ifdef USE_COLOR_CONTROL 
-            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_4}; 
-            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4}; 
+                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_4}; 
+                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_4}; 
             #else
-            const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4}; 
-            const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
+                const gpio_num_t gpio_touch_led_pins[TOTAL_LEDS]                    = { HW_TOUCH_LED_PIN_1, HW_TOUCH_LED_PIN_2, HW_TOUCH_LED_PIN_3, HW_TOUCH_LED_PIN_4}; 
+                const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]                 = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4}; 
             #endif
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 
@@ -1352,6 +1359,8 @@
 
         
         uint8_t total_rx_group_rcvd = 0;
+
+        uint8_t gateway_type = 0;
     #else
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
         extern bool curtain_cal_mode_active_flag;
@@ -1359,6 +1368,7 @@
         extern bool is_bt_start_pressed;
         extern bool is_bt_end_pressed;
         #endif
+        extern uint8_t gateway_type;
         extern uint8_t ep_selected_index;
         extern bool isr_service_installed;
      
@@ -1549,6 +1559,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+    DaliNodeList read_dali_addressed_nodes();
+    int32_t daliQueryPowerOnLevel(uint8_t addr);
+    int32_t daliQueryFadeTimeFadeRate(uint8_t addr);
+    int32_t daliQueryDeviceType(uint8_t addr);
+    int32_t daliQueryNextDeviceType(uint8_t addr);
+    int32_t daliQueryGearFeatures(uint8_t addr);
+    int32_t daliQueryDeviceInGroupA(uint8_t addr);
+    int32_t daliQueryDeviceInGroupB(uint8_t addr);
+    uint16_t daliQueryGear(uint8_t addr);
     void dali_enable_query_mode();
     void dali_disable_query_mode();
     void dali_query_send(uint8_t id, uint8_t command);
@@ -1602,6 +1621,7 @@ extern "C" {
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);
     #else
     extern void nuos_dali_set_state_group(uint8_t index, bool brightness);
+    extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);
     #endif
     extern void nuos_dali_set_state(uint8_t dali_id, uint8_t state);
     extern void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level);
@@ -1616,6 +1636,8 @@ extern "C" {
     extern void nuos_dali_remove_group_from_scene(uint8_t device_id, uint8_t scene_id);
 
     extern void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id);
+    extern void nuos_dali_set_power_on_level(uint8_t dali_id, uint8_t level);
+    extern void nuos_dali_set_fade_time_fade_rate(uint8_t dali_id, uint8_t fade_time, uint8_t fade_rate);
     extern int get_all_dali_addresses(uint8_t *foundAddresses); 
 
     void send_ac_model(uint8_t model_num);

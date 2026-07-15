@@ -27,6 +27,7 @@
 #include "app_zigbee_scene_commands.h"
 #include "app_zigbee_misc.h"
 #include "app_zigbee_query_nodes.h"
+
 #ifdef USE_C3_ADAPTER_UART_HW
 #include "zigbee_2_uart.h"
 #endif
@@ -63,7 +64,7 @@ QueueHandle_t json_queue;
 
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-    extern void process_dali_tasks(uint8_t index, uint8_t is_toggle);
+    extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);
 #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);     
 #endif
@@ -90,6 +91,8 @@ int final_result_size;
 uint8_t tmp_selected_ids[MAX_DALI_DEVICES_IN_SCENES] = {0};
 const char resp1[] = "Post data received successfully";
 const char resp2[] = "Error Getting Responses!!";
+
+
 
 int map(int x, int in_min, int in_max, int out_min, int out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -546,7 +549,7 @@ void parse_json(const char *json_string) {
                 //remove 
                 for (int i = 0; i < dali_nvs_stt[index].total_ids; ++i) {
                     nuos_dali_remove_light_from_group(dali_nvs_stt[index].device_ids[i], dali_nvs_stt[index].group_id);
-                    vTaskDelay(20);
+                    vTaskDelay(20 / portTICK_PERIOD_MS);
                 }
                 // Remove duplicates
                 j=0;
@@ -577,6 +580,27 @@ void parse_json(const char *json_string) {
                 }
                 
                 nuos_store_dali_data_to_nvs(index);
+                break;
+
+            case 304:  //Toggle DALI ID
+                cJSON* sdali_id= cJSON_GetObjectItem(root, "dali_id");
+                if (sdali_id == NULL) {
+                    printf("Missing JSON keys sdali_id\n");
+                    cJSON_Delete(root);
+                    return;
+                }     
+                uint8_t dali_id = sdali_id->valueint;
+                printf("dali_id: %d\n", dali_id);
+                cJSON*  sdali_state= cJSON_GetObjectItem(root, "state");
+                if (sdali_state == NULL) {
+                    printf("Missing JSON keys sdali_state\n");
+                    cJSON_Delete(root);
+                    return;
+                }     
+                uint8_t dali_state = sdali_state->valueint;
+                printf("dali_state: %d\n", dali_state);
+                nuos_dali_set_state(dali_id, dali_state);
+    
                 break;
 
             case 11:  //Toggle DALI Group
@@ -2109,6 +2133,386 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
         return response;
     }
 
+// A mock structure representing your DALI configuration items.
+// Replace this or load this array dynamically from your NVS, SPIFFS, or RAM.
+typedef struct {
+    int dali_id;
+    int power_on_value;
+    int fade_rate;
+    int fade_time;
+    int group;
+    int scene;
+} dali_config_t;
+
+
+esp_err_t http_set_config_handler(httpd_req_t *req) {
+    char buf[256];
+    int ret, remaining = req->content_len;
+
+    // Check if payload fits in local buffer safely
+    if (remaining >= sizeof(buf)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Payload too large");
+        return ESP_FAIL;
+    }
+
+    // Read the incoming data stream
+    int offset = 0;
+    while (remaining > 0) {
+        if ((ret = httpd_req_recv(req, buf + offset, remaining)) <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            return ESP_FAIL;
+        }
+        remaining -= ret;
+        offset += ret;
+    }
+    buf[offset] = '\0'; // Null-terminate string
+
+    // Parse the received JSON string
+    cJSON *root = cJSON_Parse(buf);
+    if (root == NULL) {
+        ESP_LOGE(TAG, "Malformed JSON received");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    // Retrieve fields securely
+    cJSON *dali_id_json       = cJSON_GetObjectItem(root, "dali_id");
+    cJSON *power_on_value_json = cJSON_GetObjectItem(root, "power_on_value");
+    cJSON *fade_rate_json     = cJSON_GetObjectItem(root, "fade_rate");
+    cJSON *fade_time_json     = cJSON_GetObjectItem(root, "fade_time");
+    cJSON *group_json         = cJSON_GetObjectItem(root, "group");
+    // cJSON *scene_json         = cJSON_GetObjectItem(root, "scene");
+
+    if (dali_id_json && power_on_value_json && fade_rate_json && fade_time_json && group_json) {
+        int dali_id        = dali_id_json->valueint;
+        int power_on_value = power_on_value_json->valueint;
+        int fade_rate      = fade_rate_json->valueint;
+        int fade_time      = fade_time_json->valueint;
+        int group          = group_json->valueint;
+        // int scene          = scene_json->valueint;
+
+        // Server-side validation check
+        if (power_on_value >= 0 && power_on_value <= 255 &&
+            fade_rate >= 0 && fade_rate <= 100 &&
+            fade_time >= 0 && fade_time <= 12 &&
+            group >= 0 && group <= 15) {
+
+            ESP_LOGI(TAG, "Updating ID %d: Power=%d, Rate=%d, Time=%d, Gp=%d, Sc=%d", 
+                     dali_id, power_on_value, fade_rate, fade_time, group);
+
+            /* 
+               TODO: Save these variables into your local storage arrays, 
+                     NVS Flash, or deploy directly to your physical DALI bus layout.
+            */
+            nuos_dali_set_power_on_level(dali_id, power_on_value);
+            nuos_dali_set_fade_time_fade_rate(dali_id, fade_time, fade_rate);
+            // Additional storage logic here...
+            httpd_resp_sendstr(req, "{\"status\":\"success\"}");
+        } else {
+            ESP_LOGE(TAG, "Values dropped: Parameters are out of range bounds");
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Parameter values out of limits");
+        }
+    } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing required JSON fields");
+    }
+
+    cJSON_Delete(root);
+    return ESP_OK;
+}
+
+esp_err_t http_get_config_handler(httpd_req_t *req) {
+    char query[128];
+    char value_fxn[32];
+
+    
+    cJSON *root = cJSON_CreateArray();
+    if (root == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for JSON Array");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON creation failed");
+        return ESP_FAIL;
+    }
+
+    // Prepare storage variable
+    dali_nvs_storage_t my_dali_system;
+
+
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+
+        ESP_LOGI(TAG, "Found URL query => %s", query);
+        // Retrieve specific query parameter value
+        if (httpd_query_key_value(query, "dali_id", value_fxn, sizeof(value_fxn)) == ESP_OK) {
+            ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
+
+            // 3. Attempt to load existing configurations
+            esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
+            if (err == ESP_ERR_NVS_NOT_FOUND) {
+                // First boot! Setup default dummy configurations
+            } else if (err == ESP_OK) {
+                // Successfully loaded from flash memory
+                // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
+                //         my_dali_system.nodes[0].dali_id, 
+                //         my_dali_system.nodes[0].power_on_value);      
+            }
+
+
+            int dali_id = atoi(value_fxn);  
+            int k_index = 255;
+            for(int k=0; k<my_dali_system.total_nodes; k++){
+                if(my_dali_system.nodes[k].dali_id == dali_id){
+                    ESP_LOGI(TAG, "Driver %d Config -> ID: %d, PowerOn: %d", 
+                        k, 
+                        my_dali_system.nodes[k].dali_id, 
+                        my_dali_system.nodes[k].power_on_value);  
+                        k_index = k;
+                }
+            }
+            // 1. Create a single root JSON object
+            cJSON *root_o = cJSON_CreateObject();
+            if (root_o == NULL) {
+                ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+                return ESP_FAIL;
+            }
+
+            // 2. Add the properties directly to root_o
+            cJSON_AddNumberToObject(root_o, "dali_id", dali_id);
+
+            uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(dali_id) & 0xff);
+            printf("DALI ID: %d, Power On Value: %d\n", dali_id, powerOnValue);
+            cJSON_AddNumberToObject(root_o, "power_on_value", powerOnValue);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            uint16_t rawResponse = daliQueryFadeTimeFadeRate(dali_id);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+
+            // Isolate the upper 4 bits (High Nibble) by shifting right by 4
+            uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
+            // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
+            uint8_t fadeRateRaw = rawResponse & 0x0F;
+            cJSON_AddNumberToObject(root_o, "fade_rate", fadeRateRaw);
+            cJSON_AddNumberToObject(root_o, "fade_time", fadeTimeRaw);
+            printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", dali_id, fadeRateRaw, fadeTimeRaw);
+
+            int32_t deviceType = daliQueryDeviceType(dali_id);
+            int32_t nextDeviceType = 0;
+            if(deviceType == 0xff){
+                nextDeviceType = daliQueryNextDeviceType(dali_id);
+
+            }
+            int32_t query_gear = daliQueryGearFeatures(dali_id);
+            printf("DALI ID: %d, deviceType:%ld, nextDeviceType:%ld, Gear Features Query Result: %ld\n", dali_id, deviceType, nextDeviceType, query_gear);
+            if(nextDeviceType == 0){
+                cJSON_AddStringToObject(root_o, "driver_type", "DT8");
+                //QUERY GEAR FEATURES 247
+                //deviceType = 0; // Default to 0 if the query fails
+            }else{
+                cJSON_AddStringToObject(root_o, "driver_type", "DT6");
+            }
+            
+
+            int32_t deviceGroupA = daliQueryDeviceInGroupA(dali_id);
+            int32_t deviceGroupB = daliQueryDeviceInGroupB(dali_id);
+
+            uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
+
+            cJSON_AddNumberToObject(root_o, "group", groups_bitmask);
+
+            // No nesting or adding items to objects is needed anymore!
+
+            char *response_o = cJSON_PrintUnformatted(root_o);
+            cJSON_Delete(root_o); // Free the JSON structures now that we have the string representation
+
+            printf("JSON Response_o: %s\n", response_o); // Log the JSON response for debugging
+            if (response_o == NULL) {
+                ESP_LOGE(TAG, "Failed to print JSON");
+                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
+                return ESP_FAIL;
+            }
+
+            if(k_index != 255){
+                my_dali_system.nodes[k_index].power_on_value = powerOnValue;
+                my_dali_system.nodes[k_index].fade_rate = fadeRateRaw;
+                my_dali_system.nodes[k_index].fade_time = fadeTimeRaw;
+                my_dali_system.nodes[k_index].group = groups_bitmask;
+                my_dali_system.nodes[k_index].device_type = deviceType;
+                save_dali_config_to_nvs(&my_dali_system); 
+            }
+
+            // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
+            httpd_resp_set_type(req, "application/json");
+
+            // Enable CORS header if your frontend is hosted on a different port/device during development
+            httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+            // 5. Send response
+            httpd_resp_send(req, response_o, HTTPD_RESP_USE_STRLEN);
+
+            // Free the printed string string to avoid a memory leak
+            free(response_o);
+
+            return ESP_OK;
+
+        }else if (httpd_query_key_value(query, "init", value_fxn, sizeof(value_fxn)) == ESP_OK) {
+            // ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
+            // Attempt to load existing configurations
+
+            int load_from_nvs = atoi(value_fxn);  
+
+            if(load_from_nvs == 0) goto label0; // Skip loading from NVS and proceed to read DALI nodes
+
+            esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
+            if (err == ESP_ERR_NVS_NOT_FOUND) {
+                // First boot! Setup default dummy configurations
+            } else if (err == ESP_OK) {
+                // Successfully loaded from flash memory
+                // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
+                //         my_dali_system.nodes[0].dali_id, 
+                //         my_dali_system.nodes[0].power_on_value);     
+                        
+                
+                        for(int m=0; m<my_dali_system.total_nodes; m++){
+                                printf("Address[%d] = %d\n", m, my_dali_system.nodes[m].dali_id);
+
+                                //  Loop through your configuration items and add them to the array
+                                // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
+                                cJSON *item = cJSON_CreateObject();
+                                if (item == NULL) {
+                                    ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+                                    cJSON_Delete(root);
+                                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+                                    return ESP_FAIL;
+                                }
+
+                                // Match the exact keys expected by your JavaScript frontend
+                                cJSON_AddNumberToObject(item, "dali_id", my_dali_system.nodes[m].dali_id);
+                                cJSON_AddNumberToObject(item, "power_on_value", my_dali_system.nodes[m].power_on_value);
+
+                                cJSON_AddNumberToObject(item, "fade_rate", my_dali_system.nodes[m].fade_rate);
+                                cJSON_AddNumberToObject(item, "fade_time", my_dali_system.nodes[m].fade_time);
+            
+                                if(my_dali_system.nodes[m].device_type == 0){
+                                    cJSON_AddStringToObject(item, "driver_type", "DT8");
+                                }else{
+                                    cJSON_AddStringToObject(item, "driver_type", "DT6");
+                                }
+                                cJSON_AddNumberToObject(item, "group", my_dali_system.nodes[m].group);
+
+                                // Append the item object to our root array
+                                cJSON_AddItemToArray(root, item);
+
+                                goto label1;
+ 
+                        }
+            }
+
+        }else{
+            return ESP_OK;
+        }
+    }
+
+
+
+    label0:
+    DaliNodeList nodes = read_dali_addressed_nodes();
+    my_dali_system.total_nodes = nodes.total;
+    printf("Total Drivers = %d\n", nodes.total);
+
+    for (int i = 0; i < nodes.total; i++)
+    {
+        printf("Address[%d] = %d\n", i, nodes.addresses[i]);
+
+    // 2. Loop through your configuration items and add them to the array
+    // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
+        cJSON *item = cJSON_CreateObject();
+        if (item == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+            cJSON_Delete(root);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+            return ESP_FAIL;
+        }
+
+        // Match the exact keys expected by your JavaScript frontend
+        cJSON_AddNumberToObject(item, "dali_id", nodes.addresses[i]);
+
+        uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(nodes.addresses[i]) & 0xff);
+        printf("DALI ID: %d, Power On Value: %d\n", nodes.addresses[i], powerOnValue);
+        cJSON_AddNumberToObject(item, "power_on_value", powerOnValue);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        uint16_t rawResponse = daliQueryFadeTimeFadeRate(nodes.addresses[i]);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        // Isolate the upper 4 bits (High Nibble) by shifting right by 4
+        uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
+        // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
+        uint8_t fadeRateRaw = rawResponse & 0x0F;
+        cJSON_AddNumberToObject(item, "fade_rate", fadeRateRaw);
+        cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
+        printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", nodes.addresses[i], fadeRateRaw, fadeTimeRaw);
+
+        int32_t deviceType = daliQueryDeviceType(nodes.addresses[i]);
+        int32_t nextDeviceType = 0;
+        if(deviceType == 0xff){
+            nextDeviceType = daliQueryNextDeviceType(nodes.addresses[i]);
+
+        }
+        
+        int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
+        printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType, query_gear);
+        if(nextDeviceType == 0){
+            cJSON_AddStringToObject(item, "driver_type", "DT8");
+        }else{
+            cJSON_AddStringToObject(item, "driver_type", "DT6");
+        }
+
+        int32_t deviceGroupA = daliQueryDeviceInGroupA(nodes.addresses[i]);
+        int32_t deviceGroupB = daliQueryDeviceInGroupB(nodes.addresses[i]);
+
+        uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
+
+        
+        printf("DALI ID: %d, Device Type: 0x%lx, Group A: 0x%lx, Group B: 0x%lx\n", nodes.addresses[i], deviceType, deviceGroupA, deviceGroupB);
+        cJSON_AddNumberToObject(item, "group", groups_bitmask);
+
+        // Append the item object to our root array
+        cJSON_AddItemToArray(root, item);
+
+
+        my_dali_system.nodes[i].dali_id = nodes.addresses[i];
+        my_dali_system.nodes[i].power_on_value = powerOnValue;
+        my_dali_system.nodes[i].fade_rate = fadeRateRaw;
+        my_dali_system.nodes[i].fade_time = fadeTimeRaw;
+        my_dali_system.nodes[i].group = groups_bitmask;
+        my_dali_system.nodes[i].device_type = deviceType;
+        save_dali_config_to_nvs(&my_dali_system); 
+    }
+
+    
+    label1:
+    // 3. Print JSON to a raw string buffer
+    char *response = cJSON_PrintUnformatted(root);
+
+    printf("JSON Response: %s\n", response); // Log the JSON response for debugging
+    if (response == NULL) {
+        ESP_LOGE(TAG, "Failed to print JSON");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
+        return ESP_FAIL;
+    }
+
+     // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
+    httpd_resp_set_type(req, "application/json");
+
+    // Enable CORS header if your frontend is hosted on a different port/device during development
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+    // 5. Send response
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+
+    free(response);
+
+    return ESP_OK;
+
+}
+
     esp_err_t http_get_items_handler(httpd_req_t *req) {
 
         char query[128];
@@ -2478,6 +2882,21 @@ void start_webserver() {
             .handler   = http_get_items_handler,
             .user_ctx  = NULL
         };
+
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        httpd_uri_t get_config = {
+            .uri       = "/get-config",
+            .method    = HTTP_GET,
+            .handler   = http_get_config_handler,
+            .user_ctx  = NULL
+        };
+        httpd_uri_t set_config = {
+            .uri       = "/set-config",
+            .method    = HTTP_POST,
+            .handler   = http_set_config_handler,
+            .user_ctx  = NULL
+        };
+        #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)    
         httpd_uri_t items_uri = {
             .uri       = "/items",
@@ -2490,6 +2909,11 @@ void start_webserver() {
     	httpd_register_uri_handler(server, &index_uri);
 		httpd_register_uri_handler(server, &submit_uri);
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            httpd_register_uri_handler(server, &items_uri);
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                httpd_register_uri_handler(server, &get_config);
+                httpd_register_uri_handler(server, &set_config);
+            #endif
             httpd_register_uri_handler(server, &items_uri);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
             httpd_register_uri_handler(server, &items_uri);
@@ -2518,6 +2942,7 @@ bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
         json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
         xTaskCreate(json_worker_task, "json_worker_task", 16384, NULL, TASK_PRIORITY_WEBSERVER, NULL);
+        
         #ifdef USE_C3_ADAPTER_UART_HW
         //uart_init();
         #else

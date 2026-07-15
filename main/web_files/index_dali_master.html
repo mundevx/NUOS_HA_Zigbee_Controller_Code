@@ -204,16 +204,70 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
 #sceneModeModal .modal-card h3{ margin-top:0; }
 #sceneModeModal .modal-actions{ display:flex; gap:8px; margin-top:12px; }
 #sceneModeModal .modal-actions button{ flex:1; }
+
+/* Custom Styles for Configuration Table Card */
+.card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #6dd5ed;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+.card-header-row h2 {
+    margin: 0;
+    text-align: left;
+}
+.refresh-btn {
+    background: #2193b0;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.refresh-btn:hover {
+    background: #1976D2;
+}
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.config-table th, .config-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+}
+.config-table th {
+    background-color: #2193b0;
+    color: white;
+    font-weight: bold;
+}
+.config-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+.config-table input[type="number"] {
+    margin: 0;
+    padding: 6px;
+    text-align: center;
+}
+.config-table button {
+    font-size: 13px;
+    font-weight: bold;
+}
 </style>
 </head>
 <body>
 
-<!-- <div class="tabs">
-  <button class="tab-btn active" data-tab="sceneControl">Home</button>
-  <button class="tab-btn" data-tab="groupMembership">Group Assignment</button>
-  <button class="tab-btn" data-tab="sceneManagement">Scene Assignment</button>
-  <button class="tab-btn" data-tab="daliAddressing">Settings</button>
-</div> -->
 <div class="tabs">
   <button id="tabSceneControl" class="tab-btn active" data-tab="sceneControl">Home</button>
   <button id="tabGroup" class="tab-btn" data-tab="groupMembership">Group Assignment</button>
@@ -256,6 +310,7 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     </form>
     <pre id="result"></pre>
   </div>
+
   <div class="overlay" id="overlay" style="display: none;"></div>
   <div class="popup" id="popup" style="display: none;">
     <h3>Select IDs</h3>
@@ -284,12 +339,42 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     </div>
     <button class="stylish-button" id="sendDaliAddress">Send Address</button>
   </div>
+
+  <!-- Table Card: Scene Column Removed Completely -->
+  <div class="card">
+    <div class="card-header-row">
+      <h2>Set Configuration Parameters</h2>
+      <button id="configRefreshBtn" class="refresh-btn">🔄 Refresh</button>
+    </div>
+    <div class="table-responsive">
+      <table class="config-table">
+        <thead>
+          <tr>
+            <th>DALI ID</th>
+            <th>Type</th>
+            <th>Power On Value</th>
+            <th>Fade Rate</th>
+            <th>Fade Time</th>
+            <th>Group</th>
+            <th colspan="3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="entries4">
+          <tr>
+            <td colspan="8" style="color: #666; font-style: italic;">No configuration metrics downloaded. Click Refresh.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
   <div class="card">
     <h2>Controller Action</h2>
     <button class="stylish-button" id="rebootControllerBtn" style="background:#dc3545;">
       Reboot Controller
     </button>
   </div>
+
   <div id="daliConfirmPopup" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.45);justify-content:center;align-items:center;">
     <div style="background:white;padding:2em;border-radius:10px;box-shadow:0 0 20px #333;min-width:350px;text-align:center;">
       <div style="font-size:1.15em;color:#2193b0;margin-bottom:1em;">
@@ -523,6 +608,9 @@ const FXN_POWER = 301, FXN_BRIGHT = 302, FXN_CCT = 303;
 const FXN_SAVE_SCENE = 202;
 const FXN_CLEAR_SCENE = 202;
 
+
+
+    
 function fillSelect(selectId, start, end){
   const el = document.getElementById(selectId);
   if(!el) return;
@@ -604,7 +692,7 @@ function updateGroupIdVisibility(show) {}
 
 document.getElementById('control_type').addEventListener('change', function() {
   var val = this.value;
-  updateTabVisibility(val);   // 👈 ADD THIS
+  updateTabVisibility(val);
   var sceneLabels = [
     document.getElementById('scene1Label'),
     document.getElementById('scene2Label'),
@@ -729,44 +817,8 @@ function closePopup() {
 
 document.addEventListener('DOMContentLoaded', function () {
   const ctrl = document.getElementById('control_type');
-  updateTabVisibility(ctrl.value);   // 👈 ensures correct state after refresh
-  // Restore DALI Addressing values
-  // fetch('/items?fxn=12')
-  //   .then(res => res.json())
-  //   .then(data => {
-  //     console.log('DALI restore data:', data);
+  updateTabVisibility(ctrl.value);
 
-  //     if (!data) return;
-
-  //     const startEl = document.getElementById('daliStartAddress');
-  //     const numEl   = document.getElementById('daliNumAddresses');
-
-  //     // support multiple possible backend key names
-  //     const start =
-  //       data.startaddr ??
-  //       data.start_addr ??
-  //       data.startAddress ??
-  //       data.start ??
-  //       0;
-
-  //     const num =
-  //       data.maxaddr ??
-  //       data.numaddr ??
-  //       data.num_addresses ??
-  //       data.numberOfAddresses ??
-  //       data.count ??
-  //       0;
-
-  //     if (startEl) startEl.value = String(start);
-  //     if (numEl)   numEl.value   = String(num);
-
-  //     console.log('Restored start/num =', startEl?.value, numEl?.value);
-  //   })
-  //   .catch(err => {
-  //     console.error('Failed to restore DALI addressing values:', err);
-  //   });
-
-    // Restore saved Scene Control values on page refresh
   fetch('/items?fxn=15')
     .then(response => response.json())
     .then(data => {
@@ -821,7 +873,6 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   tabButtons.forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
   switchTab('sceneControl');
-
 });
 
 
@@ -891,7 +942,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!ok) return;
 
     try {
-      const payload = { fxn: "13" };   // change fxn if your reboot command uses another code
+      const payload = { fxn: "13" };
       await fetch('/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1014,6 +1065,204 @@ document.addEventListener('DOMContentLoaded', ()=> {
   const blueVal     = document.getElementById('deviceBlueVal');
   const rgbPreview  = document.getElementById('deviceRgbPreview');
 
+  // Configuration parameters refresh logic
+  const configRefreshBtn = document.getElementById('configRefreshBtn');
+  const tableBody = document.getElementById('entries4');
+
+  if (configRefreshBtn && tableBody) {
+    // --- Event Delegation for Row Action Buttons ---
+    tableBody.addEventListener('click', async (event) => {
+      const tr = event.target.closest('tr');
+      if (!tr) return;
+
+      const daliId = tr.dataset.daliId;
+
+      // 1. Handle Write Row Execution
+      const writeBtn = event.target.closest('.btn-write');
+      if (writeBtn) {
+        await handleWriteRow(daliId, tr, writeBtn);
+        return;
+      }
+
+      // 2. Handle Read Row Action (HTTP GET Query String)
+      const readBtn = event.target.closest('.btn-read');
+      if (readBtn) {
+        await handleReadRow(daliId, tr, readBtn);
+        return;
+      }
+
+      // 3. Handle Identify Row Toggle (JSON POST Body)
+      const identifyBtn = event.target.closest('.btn-identify');
+      if (identifyBtn) {
+        await handleIdentifyRow(daliId, tr, identifyBtn);
+        return;
+      }
+    });
+
+    // --- Refresh Parameters Click Listener ---
+    configRefreshBtn.addEventListener('click', async () => {
+      configRefreshBtn.textContent = '⏳ Loading...';
+      configRefreshBtn.disabled = true;
+      try {
+        const res = await fetch('/get-config');
+        if (!res.ok) throw new Error('HTTP request failed');
+        const data = await res.json();
+        
+        tableBody.innerHTML = '';
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            // Store properties directly inside structural layout references
+            tr.dataset.daliId = item.dali_id;
+            tr.dataset.identifyState = "0"; // Default start mode (0=Idle, 1=Blinking)
+            
+            // Render editable parameters omitting the Scene field column entirely
+            tr.innerHTML = `
+              <td><strong>${item.dali_id ?? '-'}</strong></td>
+              <td><input type="text" value="${item.device_type??'DT6'}"></td>
+              <td><input type="number" class="form-input power-on" min="0" max="255" value="${item.power_on_value ?? 0}"></td>
+              <td><input type="number" class="form-input fade-rate" min="0" max="100" value="${item.fade_rate ?? 0}"></td>
+              <td><input type="number" class="form-input fade-time" min="0" max="10" value="${item.fade_time ?? 0}"></td>
+              <td><input type="number" class="form-input group" min="0" max="15" value="${item.group ?? 0}"></td>
+              <td><button type="button" class="btn-read" style="padding: 4px 10px; cursor: pointer; background: #e0e0e0; border: 1px solid #ccc; border-radius: 4px;">📖 Read</button></td>
+              <td><button type="button" class="btn-identify" style="padding: 4px 10px; cursor: pointer; background: #ffc107; border: 1px solid #d39e00; border-radius: 4px;">🔍 Identify</button></td>
+              <td><button type="button" class="btn-write" style="padding: 4px 10px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px;">💾 Write</button></td>
+            `;
+
+            tableBody.appendChild(tr);
+          });
+          showToast('Configuration loaded successfully', 'success');
+        } else {
+          tableBody.innerHTML = `<tr><td colspan="8" style="color: #666; font-style: italic;">No configurations available or invalid payload format.</td></tr>`;
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to fetch config parameters', 'error');
+        tableBody.innerHTML = `<tr><td colspan="8" style="color: #dc3545; font-weight: bold;">Error retrieving parameters from device.</td></tr>`;
+      } finally {
+        configRefreshBtn.textContent = '🔄 Refresh';
+        configRefreshBtn.disabled = false;
+      }
+    });
+  }
+
+  // --- Function to Write Configuration row values via JSON POST ---
+  async function handleWriteRow(daliId, rowElement, buttonElement) {
+    const powerOn = parseInt(rowElement.querySelector('.power-on').value, 10);
+    const fadeRate = parseInt(rowElement.querySelector('.fade-rate').value, 10);
+    const fadeTime = parseInt(rowElement.querySelector('.fade-time').value, 10);
+    const group = parseInt(rowElement.querySelector('.group').value, 10);
+
+    // Validate parameter configurations client-side before submission
+    if (isNaN(powerOn) || powerOn < 0 || powerOn > 255) return showToast('Power On must be between 0 and 255', 'error');
+    if (isNaN(fadeRate) || fadeRate < 0 || fadeRate > 100) return showToast('Fade Rate must be between 0 and 100', 'error');
+    if (isNaN(fadeTime) || fadeTime < 0 || fadeTime > 10) return showToast('Fade Time must be between 0 and 10', 'error');
+    if (isNaN(group) || group < 0 || group > 15) return showToast('Group must be between 0 and 15', 'error');
+
+    const payload = {
+      dali_id: parseInt(daliId, 10),
+      power_on_value: powerOn,
+      fade_rate: fadeRate,
+      fade_time: fadeTime,
+      group: group
+    };
+
+    buttonElement.textContent = '⏳ Saving...';
+    buttonElement.disabled = true;
+
+    try {
+      const res = await fetch('/set-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to update config');
+      showToast(`DALI ID ${daliId} updated successfully!`, 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(`Error saving configuration for DALI ID ${daliId}`, 'error');
+    } finally {
+      buttonElement.textContent = '💾 Write';
+      buttonElement.disabled = false;
+    }
+  }
+
+  // --- Function to fetch configuration row metrics via HTTP GET query strings ---
+  async function handleReadRow(daliId, rowElement, buttonElement) {
+    buttonElement.textContent = '⏳ Reading...';
+    buttonElement.disabled = true;
+
+    try {
+      const response = await fetch(`/get-config?dali_id=${encodeURIComponent(daliId)}`);
+      if (!response.ok) throw new Error('Server read processing failure');
+      
+      const data = await response.json();
+      
+      if (data) {
+        rowElement.querySelector('.device-type').value = data.device_type ?? 'DT6';
+        rowElement.querySelector('.power-on').value = data.power_on_value ?? 0;
+        rowElement.querySelector('.fade-rate').value = data.fade_rate ?? 0;
+        rowElement.querySelector('.fade-time').value = data.fade_time ?? 0;
+        rowElement.querySelector('.group').value = data.group ?? 0;
+        
+        showToast(`DALI ID ${daliId} details updated successfully!`, 'success');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(`Error pulling current details for device ${daliId}`, 'error');
+    } finally {
+      buttonElement.textContent = '📖 Read';
+      buttonElement.disabled = false;
+    }
+  }
+
+  // --- Function to toggle device physical indicator routing cycles via JSON POST payload ---
+  async function handleIdentifyRow(daliId, rowElement, buttonElement) {
+    const currentStatus = rowElement.dataset.identifyState === "1" ? 1 : 0;
+    const targetStatus = currentStatus === 1 ? 0 : 1;
+
+    buttonElement.textContent = '⏳ Processing...';
+    buttonElement.disabled = true;
+
+    const payload = {
+      fxn: 304, // Identification toggle macro operation mapping sequence
+      dali_id: parseInt(daliId, 10),
+      state: targetStatus 
+    };
+
+    try {
+      const response = await fetch('/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error('Identifier call execution failure');
+
+      rowElement.dataset.identifyState = String(targetStatus);
+      
+      if (targetStatus === 1) {
+        buttonElement.textContent = '🛑 Stop ID';
+        buttonElement.style.background = '#dc3545'; // Flashing Red indication warning
+        buttonElement.style.color = '#fff';
+        showToast(`DALI ID ${daliId} started flashing identification markers.`, 'info');
+      } else {
+        buttonElement.textContent = '🔍 Identify';
+        buttonElement.style.background = '#ffc107'; 
+        buttonElement.style.color = '#000';
+        showToast(`DALI ID ${daliId} identification sequence deactivated.`, 'success');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(`Command error configuring flashing lights for device ${daliId}`, 'error');
+      buttonElement.textContent = currentStatus === 1 ? '🛑 Stop ID' : '🔍 Identify';
+    } finally {
+      buttonElement.disabled = false;
+    }
+  }
+
   function updateRgbPreview(){
     const r = parseInt(redSlider.value), g = parseInt(greenSlider.value), b = parseInt(blueSlider.value);
     rgbPreview.style.background = `rgb(${r},${g},${b})`;
@@ -1042,22 +1291,16 @@ document.addEventListener('DOMContentLoaded', ()=> {
   colorModeCCT.addEventListener('change', () => switchColorMode('cct'));
   colorModeRGB.addEventListener('change', () => switchColorMode('rgb'));
 
-[redSlider, greenSlider, blueSlider].forEach(sl => {
-
-  sl.addEventListener('input', () => {
-
-    redVal.textContent   = redSlider.value;
-    greenVal.textContent = greenSlider.value;
-    blueVal.textContent  = blueSlider.value;
-
-    updateRgbPreview();
-
-    cacheCurrentUI();
-
-    applyValuesToAllSelectedDevices();
+  [redSlider, greenSlider, blueSlider].forEach(sl => {
+    sl.addEventListener('input', () => {
+      redVal.textContent   = redSlider.value;
+      greenVal.textContent = greenSlider.value;
+      blueVal.textContent  = blueSlider.value;
+      updateRgbPreview();
+      cacheCurrentUI();
+      applyValuesToAllSelectedDevices();
+    });
   });
-
-});
 
   document.getElementById('sendDeviceRgb').addEventListener('click', async () => {
     const r = parseInt(redSlider.value), g = parseInt(greenSlider.value), b = parseInt(blueSlider.value);
@@ -1077,194 +1320,150 @@ document.addEventListener('DOMContentLoaded', ()=> {
     if (devicePowerToggle) devicePowerToggle.setAttribute('aria-checked', bool ? 'true':'false');
   }
   function updateDeviceCCTPreview(val){ if (!deviceCctPreview) return; const col = cctToRgb(Number(val)); deviceCctPreview.style.background = `rgb(${col.r},${col.g},${col.b})`; }
-function populateDeviceUIFromData(data){
-  const redSlider   = document.getElementById('deviceRedSlider');
-  const greenSlider = document.getElementById('deviceGreenSlider');
-  const blueSlider  = document.getElementById('deviceBlueSlider');
-  const redVal      = document.getElementById('deviceRedVal');
-  const greenVal    = document.getElementById('deviceGreenVal');
-  const blueVal     = document.getElementById('deviceBlueVal');
+  
+  function populateDeviceUIFromData(data){
+    const redSlider   = document.getElementById('deviceRedSlider');
+    const greenSlider = document.getElementById('deviceGreenSlider');
+    const blueSlider  = document.getElementById('deviceBlueSlider');
+    const redVal      = document.getElementById('deviceRedVal');
+    const greenVal    = document.getElementById('deviceGreenVal');
+    const blueVal     = document.getElementById('deviceBlueVal');
 
-  function updateRgbPreviewLocal(){
-    const r = parseInt(redSlider?.value || 0, 10);
-    const g = parseInt(greenSlider?.value || 0, 10);
-    const b = parseInt(blueSlider?.value || 0, 10);
-    const rgbPreview = document.getElementById('deviceRgbPreview');
-    if (rgbPreview) rgbPreview.style.background = `rgb(${r},${g},${b})`;
-  }
-
-  if (!data) {
-    if (deviceIncluded) deviceIncluded.checked = false;
-    setDevicePowerUI(false);
-
-    if (deviceBrightnessSlider){
-      deviceBrightnessSlider.value = 50;
-      deviceBrightnessValue.textContent = '50%';
+    function updateRgbPreviewLocal(){
+      const r = parseInt(redSlider?.value || 0, 10);
+      const g = parseInt(greenSlider?.value || 0, 10);
+      const b = parseInt(blueSlider?.value || 0, 10);
+      const rgbPreview = document.getElementById('deviceRgbPreview');
+      if (rgbPreview) rgbPreview.style.background = `rgb(${r},${g},${b})`;
     }
 
-    if (deviceCctSlider){
-      deviceCctSlider.value = 3500;
-      deviceCctValue.textContent = '3500K';
-      updateDeviceCCTPreview(3500);
-    }
-
-    if (redSlider) redSlider.value = 255;
-    if (greenSlider) greenSlider.value = 128;
-    if (blueSlider) blueSlider.value = 0;
-    if (redVal) redVal.textContent = '255';
-    if (greenVal) greenVal.textContent = '128';
-    if (blueVal) blueVal.textContent = '0';
-    updateRgbPreviewLocal();
-
-    if (typeof switchColorMode === 'function') switchColorMode('cct');
-    return;
-  }
-
-  if (deviceIncluded) deviceIncluded.checked = !!data.included;
-  setDevicePowerUI(Boolean(data.power));
-
-  if (deviceBrightnessSlider){
-    deviceBrightnessSlider.value = data.brightness ?? 50;
-    deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
-  }
-
-  if (deviceCctSlider){
-    deviceCctSlider.value = data.cct ?? 3500;
-    deviceCctValue.textContent = deviceCctSlider.value + 'K';
-    updateDeviceCCTPreview(deviceCctSlider.value);
-  }
-
-  if (redSlider) redSlider.value = data.r ?? 255;
-  if (greenSlider) greenSlider.value = data.g ?? 128;
-  if (blueSlider) blueSlider.value = data.b ?? 0;
-  if (redVal) redVal.textContent = redSlider?.value ?? '255';
-  if (greenVal) greenVal.textContent = greenSlider?.value ?? '128';
-  if (blueVal) blueVal.textContent = blueSlider?.value ?? '0';
-  updateRgbPreviewLocal();
-
-  const mode = data.colorMode || 'cct';
-  if (typeof switchColorMode === 'function') switchColorMode(mode);
-}
-
-  function populateDeviceUIFromData123(data){
     if (!data) {
       if (deviceIncluded) deviceIncluded.checked = false;
       setDevicePowerUI(false);
-      if (deviceBrightnessSlider){ deviceBrightnessSlider.value=50; deviceBrightnessValue.textContent='50%'; }
-      if (deviceCctSlider){ deviceCctSlider.value=3500; deviceCctValue.textContent='3500K'; updateDeviceCCTPreview(3500); }
-      if (redSlider){ redSlider.value=255; greenSlider.value=128; blueSlider.value=0; }
-      if (redVal){ redVal.textContent='255'; greenVal.textContent='128'; blueVal.textContent='0'; }
-      updateRgbPreview();
-      switchColorMode('cct');
+
+      if (deviceBrightnessSlider){
+        deviceBrightnessSlider.value = 50;
+        deviceBrightnessValue.textContent = '50%';
+      }
+
+      if (deviceCctSlider){
+        deviceCctSlider.value = 3500;
+        deviceCctValue.textContent = '3500K';
+        updateDeviceCCTPreview(3500);
+      }
+
+      if (redSlider) redSlider.value = 255;
+      if (greenSlider) greenSlider.value = 128;
+      if (blueSlider) blueSlider.value = 0;
+      if (redVal) redVal.textContent = '255';
+      if (greenVal) greenVal.textContent = '128';
+      if (blueVal) blueVal.textContent = '0';
+      updateRgbPreviewLocal();
+
+      if (typeof switchColorMode === 'function') switchColorMode('cct');
       return;
     }
+
     if (deviceIncluded) deviceIncluded.checked = !!data.included;
     setDevicePowerUI(Boolean(data.power));
+
     if (deviceBrightnessSlider){
       deviceBrightnessSlider.value = data.brightness ?? 50;
       deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
     }
+
     if (deviceCctSlider){
       deviceCctSlider.value = data.cct ?? 3500;
       deviceCctValue.textContent = deviceCctSlider.value + 'K';
       updateDeviceCCTPreview(deviceCctSlider.value);
     }
-    const cm = data.colorMode || 'cct';
-    if (redSlider){
-      redSlider.value   = data.r ?? 255;
-      greenSlider.value = data.g ?? 128;
-      blueSlider.value  = data.b ?? 0;
-      redVal.textContent   = redSlider.value;
-      greenVal.textContent = greenSlider.value;
-      blueVal.textContent  = blueSlider.value;
-      updateRgbPreview();
-    }
-    switchColorMode(cm);
+
+    if (redSlider) redSlider.value = data.r ?? 255;
+    if (greenSlider) greenSlider.value = data.g ?? 128;
+    if (blueSlider) blueSlider.value = data.b ?? 0;
+    if (redVal) redVal.textContent = redSlider?.value ?? '255';
+    if (greenVal) greenVal.textContent = greenSlider?.value ?? '128';
+    if (blueVal) blueVal.textContent = blueSlider?.value ?? '0';
+    updateRgbPreviewLocal();
+
+    const mode = data.colorMode || 'cct';
+    if (typeof switchColorMode === 'function') switchColorMode(mode);
   }
-function applyValuesToAllSelectedDevices() {
 
-  const syncEnabled = document.getElementById('syncSelectedDevices')?.checked;
+  function applyValuesToAllSelectedDevices() {
+    const syncEnabled = document.getElementById('syncSelectedDevices')?.checked;
+    if (!syncEnabled) return;
 
-  if (!syncEnabled) return;
+    const sid = String(parseInt(sceneSelector.value || 0, 10));
+    const currentDid = String(parseInt(deviceSelector.value || 0, 10));
 
-  const sid = String(parseInt(sceneSelector.value || 0, 10));
-  const currentDid = String(parseInt(deviceSelector.value || 0, 10));
+    const mode = (document.getElementById('colorModeRGB')?.checked) ? 'rgb' : 'cct';
 
-  const mode = (document.getElementById('colorModeRGB')?.checked)
-    ? 'rgb'
-    : 'cct';
+    const sharedData = {
+      included: true,
+      power: devicePowerToggle.classList.contains('on') ? 1 : 0,
+      brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+      cct: parseInt(deviceCctSlider?.value || 3500, 10),
+      colorMode: mode,
+      r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
+      g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
+      b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
+    };
 
-  const sharedData = {
-    included: true,
-    power: devicePowerToggle.classList.contains('on') ? 1 : 0,
-    brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
-    cct: parseInt(deviceCctSlider?.value || 3500, 10),
-    colorMode: mode,
-    r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
-    g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
-    b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
-  };
-
-  for (let id = 0; id < 64; id++) {
-
-    const did = String(id);
-
-    if (did === currentDid) continue;
-
-    const cache = getCache(sid, did);
-
-    if (cache && cache.included === true) {
-
-      setCache(sid, did, {
-        ...cache,
-        ...sharedData
-      });
-
+    for (let id = 0; id < 64; id++) {
+      const did = String(id);
+      if (did === currentDid) continue;
+      const cache = getCache(sid, did);
+      if (cache && cache.included === true) {
+        setCache(sid, did, {
+          ...cache,
+          ...sharedData
+        });
+      }
     }
   }
-}
+
   function cacheCurrentUI(){
-  const sid = String(parseInt(sceneSelector.value || 0, 10));
-  const did = String(parseInt(deviceSelector.value || 0, 10));
+    const sid = String(parseInt(sceneSelector.value || 0, 10));
+    const did = String(parseInt(deviceSelector.value || 0, 10));
 
-  const mode = (document.getElementById('colorModeRGB')?.checked) ? 'rgb' : 'cct';
+    const mode = (document.getElementById('colorModeRGB')?.checked) ? 'rgb' : 'cct';
 
-  const entry = {
-    included: !!(deviceIncluded && deviceIncluded.checked),
-    power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
-    brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
-    cct: parseInt(deviceCctSlider?.value || 3500, 10),
-    colorMode: mode,
-    r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
-    g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
-    b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
-  };
+    const entry = {
+      included: !!(deviceIncluded && deviceIncluded.checked),
+      power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+      brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+      cct: parseInt(deviceCctSlider?.value || 3500, 10),
+      colorMode: mode,
+      r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
+      g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
+      b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
+    };
 
-  setCache(sid, did, entry);
-}
+    setCache(sid, did, entry);
+  }
 
-
-if (deviceIncluded) {
-  deviceIncluded.addEventListener('change', ()=> {
-    cacheCurrentUI();
-    applyValuesToAllSelectedDevices();
-  });
-}
-if (deviceBrightnessSlider) {
-  deviceBrightnessSlider.addEventListener('input', ()=> {
-    deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
-    cacheCurrentUI();
-    applyValuesToAllSelectedDevices();
-  });
-}
-if (deviceCctSlider) {
-  deviceCctSlider.addEventListener('input', ()=> {
-    deviceCctValue.textContent = deviceCctSlider.value + 'K';
-    updateDeviceCCTPreview(deviceCctSlider.value);
-    cacheCurrentUI();
-    applyValuesToAllSelectedDevices();
-  });
-}
+  if (deviceIncluded) {
+    deviceIncluded.addEventListener('change', ()=> {
+      cacheCurrentUI();
+      applyValuesToAllSelectedDevices();
+    });
+  }
+  if (deviceBrightnessSlider) {
+    deviceBrightnessSlider.addEventListener('input', ()=> {
+      deviceBrightnessValue.textContent = deviceBrightnessSlider.value + '%';
+      cacheCurrentUI();
+      applyValuesToAllSelectedDevices();
+    });
+  }
+  if (deviceCctSlider) {
+    deviceCctSlider.addEventListener('input', ()=> {
+      deviceCctValue.textContent = deviceCctSlider.value + 'K';
+      updateDeviceCCTPreview(deviceCctSlider.value);
+      cacheCurrentUI();
+      applyValuesToAllSelectedDevices();
+    });
+  }
 
   if (devicePowerToggle) {
     devicePowerToggle.addEventListener('click', async ()=> {
@@ -1410,7 +1609,6 @@ if (deviceCctSlider) {
               b: c.b ?? 0,
               dali_id: id
             });
-
           }
         }
 
@@ -1421,7 +1619,6 @@ if (deviceCctSlider) {
                 brightness: Number(d.brightness) || 0,
                 dali_id: Number(d.dali_id)
               };
-
               if ((d.colorMode || 'cct') === 'rgb') {
                 obj.r = Number(d.r) || 0;
                 obj.g = Number(d.g) || 0;
@@ -1429,7 +1626,6 @@ if (deviceCctSlider) {
               } else {
                 obj.cct = Number(d.cct) || 0;
               }
-
               return obj;
             });
 
@@ -1440,7 +1636,6 @@ if (deviceCctSlider) {
               devices
             };
           }
-
 
         if (cachedIncludedDevices.length > 0) {
           const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
@@ -1501,37 +1696,6 @@ if (deviceCctSlider) {
   }
 
   if (removeDeviceBtn) {
-    // removeDeviceBtn.addEventListener('click', async ()=> {
-    //   const sid = parseInt(sceneSelector.value || 0,10);
-    //   const did = parseInt(deviceSelector.value || 0,10);
-    //   if (!confirm('Clear device ' + did + ' from scene ' + sid + '?')) return;
-    //   const mode = sceneModeMap[String(sid)] || 'device';
-    //   try {
-
-    //     const body = {
-    //       fxn: FXN_CLEAR_SCENE,
-    //       scene_id: sid,
-    //       action: "remove",
-    //       devices
-    //     };
-    //     if (mode === 'group') body.group_id = parseInt(sceneGroupIdSelect?.value || 0,10);
-    //     else body.device_id = did;
-
-    //     const res = await postJson('/action', body);
-    //     if (res.ok) {
-    //       setCache(String(sid), String(did), { included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
-    //       populateDeviceUIFromData({ included:false, power:0, brightness:50, cct:3500, colorMode:'cct', r:255, g:128, b:0 });
-    //       alert('Device cleared from scene');
-    //     } else {
-    //       alert('Failed to clear device');
-    //     }
-    //   } catch(e){ alert('Failed to clear device'); console.error(e); }
-    // });
-
-
-
-
-
     removeDeviceBtn.addEventListener('click', async () => {
       try {
         const sid = parseInt(sceneSelector.value || 0, 10);
@@ -1540,7 +1704,6 @@ if (deviceCctSlider) {
         const mode = sceneModeMap[String(sid)] || 'device';
 
         if (mode === 'group') {
-          const currentMode = colorModeRGB.checked ? 'rgb' : 'cct';
           const payload = {
             fxn: FXN_SAVE_SCENE,
             scene_id: sid,
@@ -1550,26 +1713,22 @@ if (deviceCctSlider) {
           };
 
           const rGroup = await fetch('/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-          if (rGroup.ok) alert('Scene saved (group)');
-          else alert('Failed saving scene (group)');
+          if (rGroup.ok) alert('Scene cleared (group)');
+          else alert('Failed clearing scene (group)');
           return;
         }
 
-        const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
         const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
-
         const cachedIncludedDevices = [];
         for (let id = 0; id < 64; id++) {
           const c = getCache(sidStr, String(id));
           if (c && c.included === true) {
-            const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
             cachedIncludedDevices.push({
               fxn: FXN_SAVE_SCENE,
               scene_id: sid,
               included: true,
               dali_id: id
             });
-
           }
         }
 
@@ -1580,7 +1739,6 @@ if (deviceCctSlider) {
                 brightness: Number(d.brightness) || 0,
                 dali_id: Number(d.dali_id)
               };
-
               if ((d.colorMode || 'cct') === 'rgb') {
                 obj.r = Number(d.r) || 0;
                 obj.g = Number(d.g) || 0;
@@ -1588,7 +1746,6 @@ if (deviceCctSlider) {
               } else {
                 obj.cct = Number(d.cct) || 0;
               }
-
               return obj;
             });
 
@@ -1599,7 +1756,6 @@ if (deviceCctSlider) {
               devices
             };
           }
-
 
         if (cachedIncludedDevices.length > 0) {
           const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
@@ -1615,19 +1771,16 @@ if (deviceCctSlider) {
               g: d.g ?? 128,
               b: d.b ?? 0
             }));
-            alert('Saved ' + cachedIncludedDevices.length + ' device(s) to scene');
+            alert('Cleared cached device(s) from scene');
             return;
           }
         }
-
       } catch (err) {
         console.error('saveDevice error:', err);
         alert('Error saving devices');
       }
     });
-
   }
-
 
   if (sendDeviceBrightness) {
     sendDeviceBrightness.addEventListener('click', async ()=> {
@@ -1679,8 +1832,72 @@ if (deviceCctSlider) {
     restoreUIFor(sceneSelector.value, document.getElementById('sceneDeviceSelect').value);
   })();
 });
+
+
+// 2. GET Configuration
+async function loadConfig(init) {
+
+  const configRefreshBtn = document.getElementById('configRefreshBtn');
+  const tableBody = document.getElementById('entries4');
+
+  configRefreshBtn.textContent = '⏳ Loading...';
+  configRefreshBtn.disabled = true;
+  try {
+    // Modified: Dynamically append the init query parameter to the URL
+    const res = await fetch(`/get-config?init=${encodeURIComponent(init)}`);
+    if (!res.ok) throw new Error('HTTP request failed');
+    
+    const data = await res.json();
+    
+    tableBody.innerHTML = '';
+
+    // Normalization: If ESP returns a flat single object instead of an array, 
+    // wrap it in an array so your rendering loop works perfectly without changing.
+    const items = Array.isArray(data) ? data : (data && data.dali_id !== undefined ? [data] : []);
+
+    if (items.length > 0) {
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        // Store properties directly inside structural layout references
+        tr.dataset.daliId = item.dali_id;
+        tr.dataset.identifyState = "0"; // Default start mode (0=Idle, 1=Blinking)
+        
+        // Render editable parameters omitting the Scene field column entirely
+        tr.innerHTML = `
+          <td><strong>${item.dali_id ?? '-'}</strong></td>
+          <td><input type="text" value="${item.device_type??'DT6'}"></td>
+          <td><input type="number" class="form-input power-on" min="0" max="255" value="${item.power_on_value ?? 0}"></td>
+          <td><input type="number" class="form-input fade-rate" min="0" max="100" value="${item.fade_rate ?? 0}"></td>
+          <td><input type="number" class="form-input fade-time" min="0" max="10" value="${item.fade_time ?? 0}"></td>
+          <td><input type="number" class="form-input group" min="0" max="15" value="${item.group ?? 0}"></td>
+          <td><button type="button" class="btn-read" style="padding: 4px 10px; cursor: pointer; background: #e0e0e0; border: 1px solid #ccc; border-radius: 4px;">📖 Read</button></td>
+          <td><button type="button" class="btn-identify" style="padding: 4px 10px; cursor: pointer; background: #ffc107; border: 1px solid #d39e00; border-radius: 4px;">🔍 Identify</button></td>
+          <td><button type="button" class="btn-write" style="padding: 4px 10px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px;">💾 Write</button></td>
+        `;
+
+        tableBody.appendChild(tr);
+      });
+      showToast('Configuration loaded successfully', 'success');
+    } else {
+      tableBody.innerHTML = `<tr><td colspan="8" style="color: #666; font-style: italic;">No configurations available or invalid payload format.</td></tr>`;
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to fetch config parameters', 'error');
+    tableBody.innerHTML = `<tr><td colspan="8" style="color: #dc3545; font-weight: bold;">Error retrieving parameters from device.</td></tr>`;
+  } finally {
+    configRefreshBtn.textContent = '🔄 Refresh';
+    configRefreshBtn.disabled = false;
+  }
+}
+
+// --- Trigger on Page Initialization/Refresh ---
+// This runs automatically whenever the user visits or refreshes the webpage
+window.addEventListener('DOMContentLoaded', () => {
+  loadConfig(0); // Sends init = 1 to retrieve from NVS instantly
+});
+
 </script>
 </body>
 </html>
-
-

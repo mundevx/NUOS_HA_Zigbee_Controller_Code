@@ -24,6 +24,26 @@
     extern device_scene_t *g_device_scene_store;
     extern size_t g_device_scene_count;
 
+
+
+    #define MAX_DALI_NODES 64 // DALI maximum short addresses
+
+    // Structure representing a single driver's configuration
+    typedef struct {
+        uint8_t dali_id;
+        uint8_t device_type;
+        uint8_t power_on_value;
+        uint8_t fade_rate;
+        uint8_t fade_time;
+        uint16_t group;
+    } __attribute__((packed)) dali_node_config_t;
+
+    // Structure representing the array of drivers to store in NVS
+    typedef struct {
+        uint8_t total_nodes;
+        dali_node_config_t nodes[MAX_DALI_NODES];
+    } __attribute__((packed)) dali_nvs_storage_t;
+
     #ifdef __cplusplus
     extern "C" {
     #endif
@@ -76,6 +96,9 @@
 
         extern uint8_t getNVSCoordinatorType();
         extern void setNVSCoordinatorType(uint8_t value);
+
+        esp_err_t load_dali_config_from_nvs(dali_nvs_storage_t *storage_data);
+        esp_err_t save_dali_config_to_nvs(const dali_nvs_storage_t *storage_data);
     #ifdef __cplusplus
     }
     #endif

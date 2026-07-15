@@ -610,9 +610,9 @@ void DaliCommands::set_fade_rate(uint8_t addr, uint8_t rate)
     
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, rate);
-    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    //vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
-    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    //vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
     send_command_standard(SET_FADE_RATE, addr);
     
@@ -876,6 +876,9 @@ int DaliCommands::initNodes(const uint8_t* addresses, uint8_t numAddresses)
 return daliCore.initNodes(addresses, numAddresses);
 }
 
+int DaliCommands::commissionNewNodes(){
+    return daliCore.commissionNewNodes();
+}
 int DaliCommands::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses)
 {
 return daliCore.scanAssignedShortAddresses(foundAddresses, maxAddresses);
@@ -911,9 +914,51 @@ void DaliCommands::query(uint8_t shortAddress, uint8_t queryCommand) {
     // receiver.set_query_mode(true);  
     // enableRxInterrupt(); 
     // vTaskDelay(50 / portTICK_PERIOD_MS);
-    // receiver.set_query_mode(false);  // Set to 16-bit mode
-    
+    // receiver.set_query_mode(false);  // Set to 16-bit mode   
 }
 
+
+int DaliCommands::readExistingDrivers(uint8_t *addressList, int maxDevices){
+    return daliCore.readExistingDrivers(addressList, maxDevices);
+}
+bool DaliCommands::waitForResponse(){
+    return daliCore.waitForResponse();
+}
+
+bool DaliCommands::clearShortAddress(uint8_t shortAddr){
+    return daliCore.clearShortAddress(shortAddr);
+}
+bool DaliCommands::resetDriver(uint8_t shortAddr){
+    return daliCore.resetDriver(shortAddr);
+}
+
+int32_t DaliCommands::queryGear(uint8_t shortAddr, uint8_t query_cmd){
+    return daliCore.queryGear(shortAddr, query_cmd);
+}
+
+int32_t DaliCommands::queryPowerOnLevel(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xA3);
+}
+int32_t DaliCommands::queryFadeTimeFadeRate(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xA5);
+}
+int32_t DaliCommands::queryDeviceType(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0x99);
+}
+
+int32_t DaliCommands::queryNextDeviceType(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xA7);
+}
+
+int32_t DaliCommands::queryDeviceInGroupA(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xC0);
+}
+int32_t DaliCommands::queryDeviceInGroupB(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xC1);
+}
+
+int32_t DaliCommands::queryGearFeatures(uint8_t shortAddr) {
+    return daliCore.queryGear(shortAddr, 0xF7);
+}
 
 

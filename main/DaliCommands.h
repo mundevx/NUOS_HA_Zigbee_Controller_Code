@@ -87,6 +87,7 @@ public:
     void begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue);
 
     int initNodes(const uint8_t* addresses, uint8_t numAddresses);
+    int commissionNewNodes();
     void turn_off(uint8_t nodeAddress);
     void turn_on_to_max(uint8_t nodeAddress);
     void turn_on_to_last_level(uint8_t nodeAddress);
@@ -184,10 +185,23 @@ public:
 
     bool send_command_standard_normal(uint8_t opcode, uint8_t address);
 
+    
+    int readExistingDrivers(uint8_t *addressList, int maxDevices);
+    bool waitForResponse();
+
+    bool clearShortAddress(uint8_t shortAddr);
+    bool resetDriver(uint8_t shortAddr);
+    int32_t queryGear(uint8_t shortAddr, uint8_t query_cmd);
+    int32_t queryPowerOnLevel(uint8_t shortAddr);
+    int32_t queryFadeTimeFadeRate(uint8_t shortAddr);
+    int32_t queryDeviceType(uint8_t shortAddr);
+    int32_t queryNextDeviceType(uint8_t shortAddr);
+    int32_t queryDeviceInGroupA(uint8_t shortAddr);
+    int32_t queryDeviceInGroupB(uint8_t shortAddr);
+    int32_t queryGearFeatures(uint8_t shortAddr);
     private:
         gpio_num_t txPin;
         gpio_num_t rxPin;
-
         DALI daliCore;
         dali_rx::Receiver receiver;
     };

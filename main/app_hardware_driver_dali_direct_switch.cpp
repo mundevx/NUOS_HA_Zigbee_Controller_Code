@@ -34,10 +34,6 @@
     #define LEDC_DUTY_RES          		 	                    LEDC_TIMER_8_BIT // Set duty resolution to 13 bits
     #define LEDC_DUTY               		                    100      // Set duty to 50%. ((2 ** 8) - 1) * 50% = 4095
     #define LEDC_MAX_DUTY           		                    254     //8191
-    //#define LEDC_MIN_DUTY           		                    (LEDC_MAX_DUTY*10)/100     //10%
-
-    // #define LEDC_FREQUENCY          	                        1000    // Frequency in Hertz. Set frequency at 1 KHz
-
 
     #define LEDC_FREQUENCY                                      (1000) // Frequency in Hz (5 kHz)
     #define LEDC_FADE_TIME                                      (500) // Fade time in milliseconds (1 second)
@@ -150,204 +146,6 @@ extern void nuos_store_dali_scene_switch_data_to_nvs(const void *str_data);
     uint8_t last_color_dtr1 = 0;
     uint8_t scene_table[MAX_DEVICES][MAX_SCENES];
     
-
-// void nvs_save_device_task(void *arg)
-// {
-//     nvs_item_t evt;
-//     while (1) {
-//         if (xQueueReceive(nvs_save_queue, &evt, portMAX_DELAY) == pdTRUE) {
-//             dali.dali_rx_intr_enabled(false);   // remove DALI ISR
-//             nuos_store_dali_scene_switch_data_to_nvs(&evt);
-//             dali.dali_rx_intr_enabled(true); // re-add
-//         }
-//     }
-// }
-
-//     void interpret_frame(uint8_t b1, uint8_t b2)
-//     {
-//         uint8_t addr;
-//         uint8_t scene;
-
-//         // ---------------------------
-//         // SET_DTR0
-//         // ---------------------------
-//         if(b1 == 0xC3)
-//         {
-//             last_color_dtr0 = last_dtr0;
-//             last_color_dtr1 = b2;
-
-//             return;
-//         }
-
-//         // ---------------------------
-//         // ENABLE DEVICE TYPE
-//         // ---------------------------
-//         if(b1 == 0xC1 && b2 == 0x08)
-//         {
-//             //printf("ENABLE DEVICE TYPE 8\n");
-//             return;
-//         }
-
-//         // ---------------------------
-//         // COLOR ACTIVATE
-//         // ---------------------------
-//         if(b1 == 0xA3)
-//         {
-//             //printf("COLOR ACTIVATE\n");
-//             last_dtr0 = b2;
-//             //printf("SET_DTR0 = %d\n", last_dtr0);
-//             return;
-//         }
-
-        
-// // ---------------------------
-//         // BROADCAST SCENE RECALL
-//         // ---------------------------
-//         if(b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F)
-//         {
-//             scene = b2 - 0x10;
-//             printf("RECALL SCENE BROADCAST %d\n", scene);
-//             bool all_off[2] = {true, true};
-//             uint8_t max_level[2] = {MIN_DIM_LEVEL_VALUE, MIN_DIM_LEVEL_VALUE};
-//             uint16_t max_cct[2] = {MIN_CCT_VALUE, MIN_CCT_VALUE}; //default 2000K
-
-//             for(int b=0; b<2; b++){
-//                 for(int j=0; j<scene_group_switch_info.total_ids[b]; j++){
-//                     printf("====>SCENE:%d\n", scene_group_switch_info.device_scene[scene][j]);
-//                     if(scene_group_switch_info.device_scene[scene][j] == scene){
-//                         if(scene_group_switch_info.device_state[b][scene][j]){
-//                             all_off[b] = false;
-//                         }
-//                         if(scene_group_switch_info.device_level[b][scene][j] > max_level[b]){
-//                             max_level[b] = scene_group_switch_info.device_level[b][scene][j];
-                            
-//                         }
-//                         //printf("LEVEL:%d\n", max_level[b]);
-//                         #ifdef USE_COLOR_CONTROL
-//                         if(scene_group_switch_info.device_color[b][scene][j] > max_cct[b]){
-//                             max_cct[b] = scene_group_switch_info.device_color[b][scene][j];
-//                         }
-//                         #endif
-//                     }
-//                 }  
-//                 if(all_off[b]){
-//                     device_info[b].device_state = false;
-//                     process_dali_receive_tasks(b, false, 0, max_cct[b]);
-//                 }else{
-//                     device_info[b].device_state = true;
-//                     device_info[b].device_level = max_level[b];
-//                     #ifdef USE_COLOR_CONTROL
-//                     device_info[b].device_val = max_cct[b];
-//                     #endif
-//                     process_dali_receive_tasks(b, true, max_level[b], max_cct[b]);  
-//                 }   
-//             }         
-//             return;
-//         }
-        
-//         if((b1 & 0x80) == 0x80){
-//             return;
-//         }
-//         // ---------------------------
-//         // SET COLOR TEMPERATURE (DT8)
-//         // ---------------------------
-//         if(b2 == 0xE7)
-//         {
-//             addr = (b1 >> 1) & 0x3F;
-//             return;
-//         }
-//         // ---------------------------
-//         // STORE SCENE
-//         // ---------------------------
-//         if(b2 >= 0x40 && b2 <= 0x4F)
-//         {
-//             addr = (b1 >> 1) & 0x3F;
-//             scene = b2 - 0x40;
-
-//             scene_table[addr][scene] = last_dtr0;
-
-//             printf("STORE SCENE %d → Device %d  Level=%d\n",
-//                 scene, addr, last_dtr0);
-   
-//             for(int b=0; b<2; b++){
-//                 //printf("---------START Loop%d  total_ids:%d--------\n", b+1, scene_group_switch_info.total_ids[b]);
-//                 for(int i=0; i<scene_group_switch_info.total_ids[b]; i++){
-//                     if(addr == scene_group_switch_info.device_ids[b][i]){
-//                         scene_group_switch_info.device_scene[scene][i] = scene;  
-//                         printf("==========================last_dtr0 level[%d]:%d\n", b, last_dtr0);
-//                         scene_group_switch_info.device_level[b][scene][i] = last_dtr0;
-//                         #ifdef USE_COLOR_CONTROL  
-//                             uint16_t color_temp_mirek = ((last_color_dtr1 << 8) & 0xff00) | last_color_dtr0;
-//                             uint16_t kelvin_cct = 1000000 / color_temp_mirek;
-//                             //2000 to 6500
-//                             scene_group_switch_info.device_color[b][scene][i] = kelvin_cct;  
-//                         #endif
-//                         if(last_dtr0 == 0) scene_group_switch_info.device_state[b][scene][i]  = false;
-//                         else scene_group_switch_info.device_state[b][scene][i]  = true;
-//                         printf("=======DATA EP:%d SAVED SUCCESSFULLY=======\n", b+1);
-
-                        
-//                         //xQueueSend(nvs_save_queue, &scene_group_switch_info, 0);
-//                         //nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info); 
-
-//                         switch_driver_gpios_intr_enabled(false); // disable switch GPIO interrupts
-//                         dali.dali_rx_intr_enabled(false);   // remove DALI ISR
-//                         nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
-//                         dali.dali_rx_intr_enabled(true); // re-add
-//                         switch_driver_gpios_intr_enabled(true); // re-enable switch GPIO interrupts
-//                         break;
-//                     }
-//                 }   
-//             }           
-//             return;
-//         }
-
-        
-//         // ---------------------------
-//         // ARC POWER CONTROL (DAPC)
-//         // ---------------------------
-//         if(b2 <= 0xFE)
-//         {
-//             // Broadcast
-//             if(b1 == 0xFE)
-//             {
-//                 if(b2 == 0){
-//                     //printf("BROADCAST → OFF\n");
-//                     //device_info[0].device_state = false;
-//                     //nuos_zb_set_hardware(0, false);
-//                 }else{
-//                     //printf("BROADCAST → LEVEL %d\n", b2);
-//                     // device_info[0].device_state = true;
-//                     // device_info[0].device_level = b2;
-//                     //nuos_zb_set_hardware(0, false);                    
-//                 }
-//                 return;
-//             }
-//             // Group command
-//             if(b1 & 0x80)
-//             {
-//                 uint8_t group = (b1 >> 1) & 0x0F;
-//                 // if(b2 == 0)
-//                 //     printf("GROUP %d → OFF\n", group);
-//                 // else
-//                 //     printf("GROUP %d → LEVEL %d\n", group, b2);
-
-//                 return;
-//             }
-//             // Short address command
-//             addr = (b1 >> 1) & 0x3F;
-//             // if(b2 == 0){
-//             //     printf("DEVICE %d → OFF\n", addr);
-//             // }else{
-//             //     printf("DEVICE %d → LEVEL %d\n", addr, b2);
-//             // }
-//             return;
-//         }
-//         // ---------------------------
-//         // UNKNOWN
-//         // ---------------------------
-//         printf("UNKNOWN FRAME: %02X %02X\n", b1, b2);
-//     }
 void interpret_frame(uint8_t b1, uint8_t b2)
 {
     uint8_t addr        = 0xFF;
@@ -579,26 +377,6 @@ void interpret_frame(uint8_t b1, uint8_t b2)
             }
             return;
         }
-
-        // if (is_group) {
-        //     printf("GROUP %u -> LEVEL %u\n", group, b2);
-        //     for(int i=0; i<MAX_TOUCH_BTNS; i++){
-        //         if(scene_group_switch_info.group_id[i] == group){
-        //             printf("==> MATCHED GROUP ID %u at index %d\n", group, i);
-
-        //             if(b2 == 0){
-        //                 device_info[i].device_state = false;
-        //                 process_dali_receive_tasks(i, false, device_info[i].device_level, device_info[i].device_val);
-        //             } else {
-        //                 device_info[i].device_state = true;
-        //                 device_info[i].device_level = b2;
-        //                 process_dali_receive_tasks(i, true, device_info[i].device_level, device_info[i].device_val);
-        //             }
-        //             break;
-        //         }
-        //     }
-        //     return;
-        // }
 
         if (is_short) {
             printf("DEVICE %u -> LEVEL %u\n", addr, b2);
@@ -1281,7 +1059,7 @@ uint32_t get_backoff_time(){
     bool nuos_set_hardware_brightness(uint32_t pin) {
         call_common_check_auto_off();
         uint8_t index = nuos_get_button_press_index(pin);
-        printf("brightness index:%d\n", index);
+        // printf("brightness index:%d\n", index);
         if(index < 2){
             if(!device_info[index].device_state){
                 device_info[index].device_state = true;
@@ -1289,7 +1067,6 @@ uint32_t get_backoff_time(){
                 device_info[index].dim_up = 1;
             }
             if(device_info[index].device_state){
-                
                 printf("prev_brightness: %d\n", device_info[index].device_level);
                 if(device_info[index].dim_up == 1){
                     if(device_info[index].device_level + DIMMING_STEPS <= (MAX_DIM_LEVEL_VALUE)){
@@ -1305,8 +1082,6 @@ uint32_t get_backoff_time(){
                     } 
                 }
                 printf("brightness1: %d\n", device_info[index].device_level);
-                // ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
-                // ledc_update_duty(LEDC_MODE, pwm_channels[index]);
                 process_dali_tasks(index, false, false); 
                 printf("brightness2: %d\n", device_info[index].device_level);
                     

@@ -21,10 +21,16 @@
 // ============================================================
 
 #include "DALI.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "driver/gpio.h"
 #include "esp_timer.h"
 #include "esp_rom_sys.h"
 #include "esp_log.h"
 #include "esp_random.h"
+
+
+
 
 #define DALI_RETRY_COUNTS   100
 #define DALI_FRAME_DELAY_US 3700
@@ -143,6 +149,8 @@ bool DALI::sendOne() {
     return true;
 }
 
+
+
 void DALI::sendZeroNormal(void) {
     gpio_set_level(txPin, DALI_LOW);
     task_delayMicroseconds(416);
@@ -156,6 +164,18 @@ void DALI::sendOneNormal(void) {
     task_delayMicroseconds(416);
     gpio_set_level(txPin, DALI_LOW);
     task_delayMicroseconds(416);
+}
+
+
+void DALI::sendBit(bool bit)
+{
+    if (bit){
+        // Manchester '1' = LOW -> HIGH
+        sendZeroNormal();
+    }else{
+        // Manchester '0' = HIGH -> LOW
+        sendOneNormal();
+    }
 }
 
 void DALI::releaseBus() {
@@ -372,40 +392,237 @@ bool DALI::sendCommandWithRetry(uint8_t command, uint8_t data, uint8_t* retryCou
     return false;
 }
 
+// bool DALI::sendSearchAddr(uint32_t addr) {
+//     sendCommand(SEARCHADDRH, (addr >> 16) & 0xFF);
+//     sendCommand(SEARCHADDRM, (addr >> 8)  & 0xFF);
+//     sendCommand(SEARCHADDRL,  addr        & 0xFF);
+//     sendCommand(COMPARE, 0);
+//     for (uint32_t n = 0; n < 50000; n++) {
+// #ifdef IS_INVERTED
+//         if (!gpio_get_level(rxPin))
+// #else
+//         if ( gpio_get_level(rxPin))
+// #endif
+//         { task_delay(20); return true; }
+//         task_delayMicroseconds(1);
+//     }
+//     return false;
+// }
 bool DALI::sendSearchAddr(uint32_t addr) {
-    sendCommand(SEARCHADDRH, (addr >> 16) & 0xFF);
-    sendCommand(SEARCHADDRM, (addr >> 8)  & 0xFF);
-    sendCommand(SEARCHADDRL,  addr        & 0xFF);
-    sendCommand(COMPARE, 0);
-    for (uint32_t n = 0; n < 50000; n++) {
+    // Distribute the 24-bit address space across DTR registers with explicit pacing gaps
+    if (!sendCommand(SEARCHADDRH, (addr >> 16) & 0xFF)) return false;
+    task_delayMicroseconds(u16_frame_delay_us);
+    
+    if (!sendCommand(SEARCHADDRM, (addr >> 8)  & 0xFF)) return false;
+    task_delayMicroseconds(u16_frame_delay_us);
+    
+    if (!sendCommand(SEARCHADDRL,  addr        & 0xFF)) return false;
+    task_delayMicroseconds(u16_frame_delay_us);
+    
+    // Send the final activation query
+    if (!sendCommand(COMPARE, 0)) return false;
+
+    // The driver must reply within 11.5ms (the standard DALI backward window)
+    // We sample cleanly up to ~25ms to account for circuit optocoupler lag
+    for (uint32_t n = 0; n < 25000; n++) {
 #ifdef IS_INVERTED
         if (!gpio_get_level(rxPin))
 #else
-        if ( gpio_get_level(rxPin))
+        if (gpio_get_level(rxPin))
 #endif
-        { task_delay(20); return true; }
-        task_delayMicroseconds(1);
+        { 
+            // Device detected! Pause briefly to let its response finish transmitting
+            task_delay(15); 
+            return true; 
+        }
+        esp_rom_delay_us(1); // Standardized microsecond poll
     }
     return false;
 }
-
 void DALI::withdrawNode(uint32_t addr) {
     sendCommand(SEARCHADDRH, (addr >> 16) & 0xFF);
     sendCommand(SEARCHADDRM, (addr >> 8)  & 0xFF);
     sendCommand(SEARCHADDRL,  addr        & 0xFF);
     sendCommand(WITHDRAW, 0);
+    task_delay(20);
+}
+
+int DALI::getNextFreeShortAddress()
+{
+    for(int addr=0; addr<64; addr++)
+    {
+        if(!isShortAddressUsed(addr))
+            return addr;
+    }
+
+    return -1;
+}
+
+#define QUERY_CONTROL_GEAR_PRESENT   0x91
+
+bool DALI::isShortAddressUsed(uint8_t shortAddr)
+{
+    uint8_t command = (shortAddr << 1) | 0x01;
+
+    sendCommand(command, QUERY_CONTROL_GEAR_PRESENT);
+
+    for(uint32_t i=0;i<50000;i++)
+    {
+#ifdef IS_INVERTED
+        if(!gpio_get_level(rxPin))
+#else
+        if(gpio_get_level(rxPin))
+#endif
+        {
+            task_delay(20);
+            return true;
+        }
+
+        task_delayMicroseconds(1);
+    }
+
+    return false;
+}
+
+int DALI::commissionNewNodes()
+{
+    uint32_t searchLower, searchUpper, searchCurrent;
+    int assigned = 0;
+
+    ESP_LOGI(TAG, "Starting DALI Addressing Sequence (Unaddressed Gear Only)...");
+
+    // Protect the entire loop execution from interleaved commands
+    if (xSemaphoreTake(dali_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "commissionNewNodes: Could not acquire dali_mutex");
+        return 0;
+    }
+
+    // -------------------------------------------------------------
+    // 1. Initialise Mode: 0xFF targets ONLY unaddressed devices
+    // -------------------------------------------------------------
+    sendCommand(TERMINATE, 0);
+    task_delay(100);
+
+    sendCommand(INITIALISE, 0xFF);  // 0xFF = Gear without a short address
+    task_delay(20);
+    sendCommand(INITIALISE, 0xFF);  // Standard requires sending twice
+    task_delay(300);
+
+    // -------------------------------------------------------------
+    // 2. Generate Random 24-bit Addresses
+    // -------------------------------------------------------------
+    sendCommand(RANDOMISE, 0);
+    task_delay(20);
+    sendCommand(RANDOMISE, 0);      // Standard requires sending twice
+    task_delay(300);
+
+    // -------------------------------------------------------------
+    // 3. Search Loop
+    // -------------------------------------------------------------
+    while (1)
+    {
+        // Reset full 24-bit search space boundaries
+        searchLower = 0x000000;
+        searchUpper = 0xFFFFFF;
+
+        // Verify if at least one unaddressed device responds to the ceiling address
+        if (!sendSearchAddr(searchUpper)) {
+            ESP_LOGI(TAG, "No unaddressed DALI devices found responding to search.");
+            break;
+        }
+
+        // ---------------------------------------------------------
+        // 4. Binary Search Sequence (Guaranteed to finish in 24 iterations)
+        // ---------------------------------------------------------
+        while (searchLower < searchUpper)
+        {
+            // Calculate midpoint safely avoiding overflow
+            searchCurrent = searchLower + ((searchUpper - searchLower) / 2);
+
+            if (sendSearchAddr(searchCurrent)) {
+                // Device(s) exist at or below searchCurrent; tighten upper bound
+                searchUpper = searchCurrent;
+            } else {
+                // No devices below searchCurrent; shift search space up
+                searchLower = searchCurrent + 1;
+            }
+        }
+
+        // searchLower now holds the exact, lowest 24-bit random address found
+        uint32_t foundRandomAddr = searchLower;
+
+        // ---------------------------------------------------------
+        // 5. Short Address Assignment
+        // ---------------------------------------------------------
+        int shortAddr = getNextFreeShortAddress();
+        if (shortAddr < 0) {
+            ESP_LOGE(TAG, "No free short addresses left (Bus full at 64 devices).");
+            break;
+        }
+
+        // Target the specific device by setting the search address register to its match
+        sendSearchAddr(foundRandomAddr);
+
+        // Program and verify short address
+        if (!sendProgramShortAddr(shortAddr)) {
+            ESP_LOGE(TAG, "Failed to program short address %d", shortAddr);
+            break; 
+        }
+
+        ESP_LOGI(TAG, "Assigned Short Address %d to RandomAddr 0x%06lX", shortAddr, foundRandomAddr);
+
+        // ---------------------------------------------------------
+        // 6. Squelch Found Gear
+        // ---------------------------------------------------------
+        // withdrawNode isolates the device matching the search address 
+        // out of the INITIALISE state so it no longer answers binary searches.
+        withdrawNode(foundRandomAddr);
+        assigned++;
+    }
+
+    // -------------------------------------------------------------
+    // 7. Cleanup & Release Bus Control
+    // -------------------------------------------------------------
+    sendCommand(TERMINATE, 0);
+    xSemaphoreGive(dali_mutex);
+
+    ESP_LOGI(TAG, "DALI Addressing Completed. Total assigned: %d", assigned);
+    return assigned;
 }
 
 int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
     uint32_t searchLower, searchDifference, searchTop;
     int ret = 0;
+    #if 0
+        sendCommand(TERMINATE, 0);
+        task_delay(100);
+        sendCommand(INITIALISE, 0);
+        task_delay(10);
+        sendCommand(INITIALISE, 0);
+        task_delay(200);
+    #else
+        // Reinicia los modulos
+        sendCommand(COMMAND_BROADCAST, RESET);
+        task_delay(10);
+        sendCommand(COMMAND_BROADCAST, RESET);
+        task_delay(300);
 
-    sendCommand(TERMINATE, 0);
-    task_delay(100);
-    sendCommand(INITIALISE, 0);
-    task_delay(10);
-    sendCommand(INITIALISE, 0);
-    task_delay(200);
+        // Termina con todos los nodos que puedan estar en configuración
+        sendCommand(TERMINATE, 0);
+        task_delay(100);
+
+        // Reinicia los modulos
+        sendCommand(INITIALISE, 0);
+        task_delay(10);
+        sendCommand(INITIALISE, 0);
+        task_delay(200);
+
+        // Pone a una dirección aleatoria los nodos
+        sendCommand(RANDOMISE, 0);
+        task_delay(10);
+        sendCommand(RANDOMISE, 0);
+        task_delay(200);
+    #endif
 
     while (1) {
         searchLower      = 0;
@@ -528,4 +745,477 @@ int DALI::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddress
         }
     }
     return found;
+}
+
+
+
+#define QUERY_STATUS                0x90
+#define QUERY_CONTROL_GEAR_PRESENT  0x91
+
+
+bool DALI::waitForResponse()
+{
+    for (uint32_t i = 0; i < 50000; i++)
+    {
+#ifdef IS_INVERTED
+        if (!gpio_get_level(rxPin))
+#else
+        if (gpio_get_level(rxPin))
+#endif
+        {
+            task_delay(20);
+            return true;
+        }
+
+        task_delayMicroseconds(1);
+    }
+
+    return false;
+}
+
+
+
+
+// Assuming rxPin is stored as a gpio_num_t type in your DALI class instance
+// e.g., gpio_num_t rxPin = GPIO_NUM_4;
+
+// bool DALI::waitForResponseValue(uint8_t *outputByte) {
+//     uint8_t decoded = 0;
+    
+//     // 1. Wait for the START BIT transition
+//     // esp_timer_get_time() returns microseconds since boot as an int64_t
+//     int64_t wait_start = esp_timer_get_time();
+//     bool start_bit_detected = false;
+    
+//     while ((esp_timer_get_time() - wait_start) < 11500) { // Standard DALI 11.5ms window
+// #ifdef IS_INVERTED
+//         if (gpio_get_level(rxPin) == 0) // Bus dropped from idle High to active Low
+// #else
+//         if (gpio_get_level(rxPin) == 1)
+// #endif
+//         {
+//             start_bit_detected = true;
+//             break;
+//         }
+//     }
+    
+//     if (!start_bit_detected) {
+//         return false; // Timeout: Device did not reply
+//     }
+
+//     // DALI timing constants: Half-bit window (TE) is ~417 microseconds
+//     const uint32_t TE_US = 417; 
+
+//     // 2. Step past the start bit (Manchester logical '1' transition)
+//     esp_rom_delay_us(TE_US - 50); 
+    
+//     // 3. Sample 8 Data Bits
+//     for (int8_t bit = 7; bit >= 0; bit--) {
+//         // Sample first half of bit cell
+//         esp_rom_delay_us(TE_US / 2);
+//         int first_half = gpio_get_level(rxPin);
+        
+//         // Sample second half of bit cell
+//         esp_rom_delay_us(TE_US);
+//         int second_half = gpio_get_level(rxPin);
+        
+//         // Manchester decoding: Low-to-High = '1', High-to-Low = '0'
+// #ifdef IS_INVERTED
+//         first_half = !first_half;
+//         second_half = !second_half;
+// #endif
+
+//         if (first_half == 0 && second_half == 1) {
+//             decoded |= (1 << bit);
+//         } else if (first_half == 1 && second_half == 0) {
+//             decoded &= ~(1 << bit);
+//         } else {
+//             return false; // Manchester violation (no transition in the middle)
+//         }
+        
+//         esp_rom_delay_us(TE_US / 2); // Transition to the next bit cell boundary
+//     }
+    
+//     // Write back the decoded value and return success
+//     *outputByte = decoded;
+//     return true;
+// }
+
+// #include "esp_timer.h"
+// #include "hal/gpio_ll.h"
+// #include "soc/gpio_reg.h"
+// #include "freertos/FreeRTOS.h"
+
+// int IRAM_ATTR DALI::waitForResponseValue(uint8_t *outputByte)
+// {
+//     constexpr int TE_US = 417;
+//     constexpr int START_TIMEOUT_US = 12000;
+
+//     uint8_t decoded = 0;
+
+//     // Fast GPIO read
+//     auto readPin = [this]() -> int
+//     {
+// #if CONFIG_IDF_TARGET_ESP32C6
+//        // uint32_t in = gpio_get_level(rxPin);
+//         int in = gpio_ll_get_level(&GPIO, rxPin);
+// #else
+//         int in = gpio_ll_get_level(&GPIO, rxPin);
+// #endif
+//         return (in >> rxPin) & 1;
+//     };
+
+// #ifdef IS_INVERTED
+//     int prev = !readPin();
+// #else
+//     int prev = readPin();
+// #endif
+
+//     int64_t timeout = esp_timer_get_time();
+
+//     //------------------------------------------------------
+//     // Wait for start-bit transition
+//     //------------------------------------------------------
+//     while ((esp_timer_get_time() - timeout) < START_TIMEOUT_US)
+//     {
+// #ifdef IS_INVERTED
+//         int now = !readPin();
+// #else
+//         int now = readPin();
+// #endif
+
+//         // Rising edge = beginning of start bit
+//         if (prev == 0 && now == 1)
+//         {
+//             break;
+//         }
+
+//         prev = now;
+//     }
+
+//     if ((esp_timer_get_time() - timeout) >= START_TIMEOUT_US)
+//         return -1;
+
+//     //------------------------------------------------------
+//     // Timestamp exactly after edge detection
+//     //------------------------------------------------------
+//     int64_t t0 = esp_timer_get_time();
+
+//     portDISABLE_INTERRUPTS();
+
+//     bool framingError = false;
+
+//     //------------------------------------------------------
+//     // Sample 8 Manchester bits
+//     //------------------------------------------------------
+//     for (int bit = 7; bit >= 0; bit--)
+//     {
+//         // Center of first half
+//         while (esp_timer_get_time() < (t0 + 1042 + (7 - bit) * 2 * TE_US));
+
+// #ifdef IS_INVERTED
+//         int first = !readPin();
+// #else
+//         int first = readPin();
+// #endif
+
+//         // Center of second half
+//         while (esp_timer_get_time() < (t0 + 1042 + TE_US + (7 - bit) * 2 * TE_US));
+
+// #ifdef IS_INVERTED
+//         int second = !readPin();
+// #else
+//         int second = readPin();
+// #endif
+
+//         if (first == 0 && second == 1)
+//         {
+//             decoded |= (1 << bit);
+//         }
+//         else if (first == 1 && second == 0)
+//         {
+//             // bit = 0
+//             //decoded &= ~(1 << bit);
+//         }
+//         else
+//         {
+//             framingError = true;
+//             break;
+//         }
+//     }
+
+//     portENABLE_INTERRUPTS();
+
+//     if (framingError)
+//         return -2;
+
+//     *outputByte = decoded;
+
+//     return 0;
+// }
+
+
+#define DALI_BACKWARD_TE_US      416
+#define DALI_RESPONSE_TIMEOUT_US 12000
+
+static inline int IRAM_ATTR fastRead(gpio_num_t pin)
+{
+    int level = gpio_get_level(pin);
+
+#ifdef IS_INVERTED
+    level = !level;
+#endif
+
+    return level;
+}
+
+int IRAM_ATTR DALI::waitForResponseValue(uint8_t *value)
+{
+    uint8_t data = 0;
+
+#ifdef IS_INVERTED
+    int idle = 0;
+#else
+    int idle = 1;
+#endif
+
+    //---------------------------------------------------------
+    // Wait for start bit
+    //---------------------------------------------------------
+
+    int64_t start = esp_timer_get_time();
+
+    while ((esp_timer_get_time() - start) < DALI_RESPONSE_TIMEOUT_US)
+    {
+
+        if (fastRead(rxPin))
+            break;
+
+    }
+
+    if ((esp_timer_get_time() - start) >= DALI_RESPONSE_TIMEOUT_US)
+        return -1;
+
+    //---------------------------------------------------------
+    // First edge detected
+    //---------------------------------------------------------
+
+    int64_t t0 = esp_timer_get_time();
+
+    portDISABLE_INTERRUPTS();
+
+    for (int bit = 7; bit >= 0; bit--)
+    {
+        //-----------------------------------------------------
+        // Sample first half
+        //-----------------------------------------------------
+
+        while (esp_timer_get_time() < (t0 + 3 * DALI_BACKWARD_TE_US / 2 +
+                                       (7 - bit) * 2 * DALI_BACKWARD_TE_US));
+
+
+        int first = fastRead(rxPin);
+
+        //-----------------------------------------------------
+        // Sample second half
+        //-----------------------------------------------------
+
+        while (esp_timer_get_time() < (t0 + 5 * DALI_BACKWARD_TE_US / 2 +
+                                       (7 - bit) * 2 * DALI_BACKWARD_TE_US));
+
+
+        int second = fastRead(rxPin);
+
+
+        if ((first == 0) && (second == 1))
+        {
+            data |= (1 << bit);
+        }
+        else if ((first == 1) && (second == 0))
+        {
+            // bit = 0
+        }
+        else
+        {
+            portENABLE_INTERRUPTS();
+            return -2;
+        }
+    }
+
+    portENABLE_INTERRUPTS();
+
+    *value = data;
+
+    return 0;
+}
+
+int32_t DALI::queryPowerOnLevel(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_POWER_ON_LEVEL);
+}
+int32_t DALI::queryFadeTimeFadeRate(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_FADE_TIME_FADE_RATE);
+}
+int32_t DALI::queryDeviceType(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_DEVICE_TYPE);
+}
+int32_t DALI::queryNextDeviceType(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_NEXT_DEVICE_TYPE);
+}
+int32_t DALI::queryGearFeatures(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_GEAR_FEATURES);
+}
+
+int32_t DALI::queryDeviceInGroupA(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_GROUPS_0_TO_7);
+}
+int32_t DALI::queryDeviceInGroupB(uint8_t shortAddr) {
+    return queryGear(shortAddr, QUERY_GROUPS_8_TO_15);
+}
+int DALI::readExistingDrivers(uint8_t *addressList, int maxDevices)
+{
+    int count = 0;
+
+    // printf("Scanning DALI short addresses...\n");
+
+    for (uint8_t shortAddr = 0; shortAddr < 64; shortAddr++)
+    {
+        uint8_t daliAddr = (shortAddr << 1) | 0x01;
+
+        // Send query
+        sendCommand(daliAddr, QUERY_CONTROL_GEAR_PRESENT);
+
+        // Wait for backward frame
+        if (waitForResponse())
+        {
+            printf("Device found at Short Address %d\n", shortAddr);
+
+            if (count < maxDevices)
+                addressList[count] = shortAddr;
+
+            count++;
+        }
+
+        task_delay(10);
+    }
+
+    printf("Total Devices Found = %d\n", count);
+
+    return count;
+}
+
+
+// Change your function return type to an explicit int32_t to separate errors from 255
+int32_t DALI::queryGear(uint8_t shortAddr, uint8_t query_cmd) {
+    //uint8_t daliAddr = (shortAddr << 1) | 0x01; 
+    //sendCommand(daliAddr, query_cmd);
+    query(shortAddr,  query_cmd);
+    //uint8_t responseValue = 0;//waitForResponseValue();
+    // Pass the clean uint8_t pointer directly to your ESP-IDF decoder
+    // if (waitForResponseValue(&responseValue) == 0) {
+    //     // Explicitly return the clean 0-255 unsigned byte cast into the wider integer
+    //     return (int32_t)responseValue; 
+    // }
+    return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+}
+
+
+bool DALI::resetDriver(uint8_t shortAddr)
+{
+    if (shortAddr > 63)
+        return false;
+
+    // Forward address frame for short address
+    uint8_t daliAddr = (shortAddr << 1) | 0x01;
+
+    // // RESET must be sent twice within 100 ms
+    // sendCommand(daliAddr, RESET);
+    // task_delay(20);
+
+    // sendCommand(daliAddr, RESET);
+    // task_delay(150);
+        // Reinicia los modulos
+    sendCommand(0xff, RESET);
+    task_delay(10);
+    sendCommand(0xff, RESET);
+    task_delay(300);
+
+    // Termina con todos los nodos que puedan estar en configuración
+    sendCommand(TERMINATE, 0);
+    task_delay(100);
+
+    // Reinicia los modulos
+    sendCommand(INITIALISE, 0);
+    task_delay(10);
+    sendCommand(INITIALISE, 0);
+    task_delay(200);
+
+    // Pone a una dirección aleatoria los nodos
+    sendCommand(RANDOMISE, 0);
+    task_delay(10);
+    sendCommand(RANDOMISE, 0);
+    task_delay(200);
+    return true;
+}
+
+void DALI::sendData(uint8_t value)
+{
+
+}
+
+#define DALI_CMD_SET_DTR           0xA3  // Special command 257 (1010 0011)
+#define DALI_CMD_STORE_DTR_AS_SA   128   // Configuration command 128 (1000 0000)
+#define DALI_MASK_ADDRESS          0xFF  // 0xFF clears/deletes the short address
+
+/**
+ * @brief Removes/clears the short address from a specific DALI device.
+ * @param shortAddr The short address to clear (0 to 63).
+ * @return true if commands were transmitted successfully, false otherwise.
+ */
+bool DALI::clearShortAddress(uint8_t shortAddr) {
+    if (shortAddr > 63) {
+        ESP_LOGE(TAG, "clearShortAddress: Invalid short address %d", shortAddr);
+        return false;
+    }
+
+    // 1. Prepare the targeted address byte for Command 128.
+    // Standard format for a short address command: 0AAAAAA1
+    uint8_t addressedByte = (shortAddr << 1) | 0x01;
+
+    // Mutex guard to protect back-to-back transmission sequence from other threads
+    if (xSemaphoreTake(dali_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+        ESP_LOGW(TAG, "clearShortAddress: Could not acquire dali_mutex");
+        return false;
+    }
+
+    // 2. Set DTR0 to 0xFF (MASK value)
+    // Special commands use their own raw formatting, sendCommand handles bus idling
+    if (!sendCommand(DALI_CMD_SET_DTR, DALI_MASK_ADDRESS)) {
+        ESP_LOGW(TAG, "clearShortAddress: Failed to set DTR to 0xFF");
+        xSemaphoreGive(dali_mutex);
+        return false;
+    }
+
+    // Small delay between different logical commands to prevent bus collisions
+    task_delayMicroseconds(u16_frame_delay_us);
+
+    // 3. Send STORE DTR AS SHORT ADDRESS (Twice required by DALI standard)
+    // First transmission
+    if (!sendCommand(addressedByte, DALI_CMD_STORE_DTR_AS_SA)) {
+        ESP_LOGW(TAG, "clearShortAddress: Failed to send first STORE_DTR command");
+        xSemaphoreGive(dali_mutex);
+        return false;
+    }
+
+    task_delayMicroseconds(u16_frame_delay_us);
+
+    // Second transmission (must happen within 100ms)
+    if (!sendCommand(addressedByte, DALI_CMD_STORE_DTR_AS_SA)) {
+        ESP_LOGW(TAG, "clearShortAddress: Failed to send second STORE_DTR command");
+        xSemaphoreGive(dali_mutex);
+        return false;
+    }
+
+    xSemaphoreGive(dali_mutex);
+    ESP_LOGI(TAG, "Successfully cleared short address %d", shortAddr);
+    return true;
 }

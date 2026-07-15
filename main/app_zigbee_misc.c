@@ -1065,7 +1065,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #ifdef USE_COLOR_CONTROL
                 else{
                     sindex = get_parameter_ep_index_selected();
-                    printf("sindex: %d\n", sindex);
+                    printf("sindex_2_3: %d\n", sindex);
                     if(sindex > 1) return;
                     if(device_info[sindex].device_state){
                         nuos_zb_set_hardware(button_index, false);
@@ -1093,7 +1093,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                //nuos_set_zigbee_attribute(0); 
+                nuos_set_zigbee_attribute(0); 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX) 
                 nuos_set_zigbee_attribute(0);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)   
@@ -1299,7 +1299,6 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
                 }
-                // printf("brightness_count:%lld\n", brightness_count);
                 if(change_cw_ww_color_flag){
                     if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
                         is_long_press_brightness = true;

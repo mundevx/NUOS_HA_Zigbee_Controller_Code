@@ -1,4 +1,7 @@
 #include "app_config.h"
+
+
+
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 #include <stdio.h>
 #include <string.h>
@@ -30,7 +33,7 @@
 #define DEBOUNCE_US                  30000
 #define LONG_PRESS_US                700000
 #define LONG_HOLD_REPEAT_US          70000//150000
-#define MULTI_CLICK_GAP_US           250000
+#define MULTI_CLICK_GAP_US           500000 //250000
 #define COMBO_LONG_PRESS_US          800000
 #define COMBO_HOLD_REPEAT_US         1000000
 
@@ -111,8 +114,8 @@ int combo_led_toggle_counts_1 = 0;
 bool combo_led_toggle_2 = false;
 int combo_led_toggle_counts_2 = 0;
 
-static TimerHandle_t ready_commissioning_timer = NULL;
 
+TimerHandle_t ready_commissioning_timer = NULL;
 extern bool ready_commisioning_flag;
 
 static void clear_ready_commissioning_flag(TimerHandle_t xTimer)
@@ -1055,6 +1058,15 @@ extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mo
 #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
 extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
 #endif
+
+extern bool ready_commisioning_flag;
+TimerHandle_t ready_commissioning_timer = NULL;
+// static void clear_ready_commissioning_flag(TimerHandle_t xTimer)
+// {
+//     ready_commisioning_flag = false;
+//     ESP_LOGI(TAG, "ready_commisioning_flag cleared after 30s timeout");
+// }
+
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
     // Critical section entry
@@ -1304,11 +1316,11 @@ void button_click_handler(TimerHandle_t xTimer)
                 } else {
 
                     #ifdef USE_WIFI_WEBSERVER
-                        if(wifi_webserver_active_flag){
-                            wifi_webserver_active_flag = false;
-                        }else{
-                            wifi_webserver_active_flag = true;  
-                        }
+                        // if(wifi_webserver_active_flag){
+                        //    wifi_webserver_active_flag = false;
+                        // }else{
+                             wifi_webserver_active_flag = true;  
+                        // }
                         setNVSCommissioningFlag(0);
                         setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
                         esp_restart();			
@@ -1851,13 +1863,13 @@ static void switch_driver_button_detected(void *arg) {
                             ESP_LOGI(TAG, "Long press %d s -> ready_commisioning_flag = true", press_sec);
 
                             // Start a 30s timer to auto‑clear the flag
-                            if (ready_commissioning_timer == NULL) {
-                                ready_commissioning_timer = xTimerCreate("ready_cmsn_tmr",
-                                                                        pdMS_TO_TICKS(30000),
-                                                                        pdFALSE,
-                                                                        NULL,
-                                                                        clear_ready_commissioning_flag);
-                            }
+                            // if (ready_commissioning_timer == NULL) {
+                            //     ready_commissioning_timer = xTimerCreate("ready_cmsn_tmr",
+                            //                                             pdMS_TO_TICKS(30000),
+                            //                                             pdFALSE,
+                            //                                             NULL,
+                            //                                             clear_ready_commissioning_flag);
+                            // }
                             // Reset the timer (stop & start) so it always gives 30s from last release
                             if (ready_commissioning_timer) {
                                 xTimerStop(ready_commissioning_timer, 0);

@@ -102,6 +102,9 @@
     #define TASK_STACK_SIZE_UNBIND_NODES                            8192
 
     #define DALI_INVALID_ADDRESS                                    0xFF
+
+    #define MIREDS_MIN                                              156
+    #define MIREDS_MAX                                              500
     
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     4
@@ -641,7 +644,7 @@
             #define TOTAL_LEDS                                          4
         #endif
 
-        #define USE_C3_ADAPTER_UART_HW
+        // #define USE_C3_ADAPTER_UART_HW
         
         #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
         #define USE_RGB_LED

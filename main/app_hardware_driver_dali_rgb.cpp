@@ -1297,7 +1297,9 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                         set_hardware(3, false);
                         set_dali_color_temp(0, false);
                         
-                    }                
+                    }     
+                    
+                   // nuos_set_color_temp_attribute(3);
                 } 
             }else{
                 change_cw_ww_color_flag = false;

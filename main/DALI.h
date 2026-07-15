@@ -100,7 +100,15 @@ private:
         VERIFY_SHORT_ADDRESS = 0b10111001,
         CONTROL_BROADCAST = 0b11111110,
     };
-
+    enum {
+        QUERY_DEVICE_TYPE = 0x99,
+        QUERY_POWER_ON_LEVEL = 0xA3,
+        QUERY_FADE_TIME_FADE_RATE = 0xA5,
+        QUERY_NEXT_DEVICE_TYPE = 0xA7,
+        QUERY_GROUPS_0_TO_7 = 0xC0,
+        QUERY_GROUPS_8_TO_15 = 0xC1,
+        QUERY_GEAR_FEATURES = 0xF7,
+    } ;
 public:
 
     #define IS_INVERTED
@@ -118,8 +126,10 @@ public:
     ~DALI();                          // Destructor for cleanup
     void begin(bool* is_isr_handler);
     
+    bool isShortAddressUsed(uint8_t shortAddr);
+    int getNextFreeShortAddress();
     int initNodes(const uint8_t* addresses, uint8_t numAddresses);
-    int initNodes(uint8_t address);
+    int commissionNewNodes();
     void turnOff(uint8_t nodeAddress);
     void setMax(uint8_t nodeAddress);
     void setValue(uint8_t nodeAddress, uint8_t value);
@@ -144,6 +154,22 @@ public:
     
     bool sendCommandRetryPublic(uint8_t command, uint8_t data, uint8_t* retryCount);
     void daliSetFrameDelay(uint16_t delay_us);
+
+    int readExistingDrivers(uint8_t *addressList, int maxDevices);
+    bool waitForResponse();
+    bool clearShortAddress(uint8_t shortAddr);
+    bool resetDriver(uint8_t shortAddr);
+    void sendData(uint8_t value);
+    void sendBit(bool bit);
+    int32_t queryGear(uint8_t shortAddr, uint8_t query_cmd);
+    int waitForResponseValue(uint8_t *outputByte);
+    int32_t queryPowerOnLevel(uint8_t shortAddr);
+    int32_t queryFadeTimeFadeRate(uint8_t shortAddr);
+    int32_t queryDeviceType(uint8_t shortAddr);
+    int32_t queryNextDeviceType(uint8_t shortAddr);
+    int32_t queryDeviceInGroupA(uint8_t shortAddr);
+    int32_t queryDeviceInGroupB(uint8_t shortAddr);
+    int32_t queryGearFeatures(uint8_t shortAddr);
 private:
     volatile bool tx_in_progress_ = false;
     bool sendZero(void);

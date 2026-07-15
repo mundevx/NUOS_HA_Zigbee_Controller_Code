@@ -1400,8 +1400,9 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                     nuos_zb_set_hardware(0, false);
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                     convert_colors_to_index(0, false);
-                    #endif
                     set_dali_color_temp(0, false);
+                    #endif
+                    
 
                     if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 0)) {
                         ep_id[0] = 0;
@@ -1414,8 +1415,9 @@ static esp_err_t zb_cmd_custom_cluster_handler(const esp_zb_zcl_custom_cluster_c
                     nuos_zb_set_hardware(1, false);
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                     convert_colors_to_index(1, false);
-                    #endif
                     set_dali_color_temp(1, false);
+                    #endif
+                    
                     if (ep_cnts < TOTAL_ENDPOINTS && !is_value_present(ep_id, ep_cnts, 1)) {
                         ep_id[1] = 0;
                         ep_cnts++;

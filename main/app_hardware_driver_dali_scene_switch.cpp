@@ -137,9 +137,64 @@
         printf("===Sending DALi Query...\n");
         dali.query(id, command); // Send your query command
     }
-   
+    struct DaliMessage {
+        uint8_t data[3];
+        size_t len;
+    };
+
+    TaskHandle_t xQueryingTaskHandle = NULL;
+    volatile uint8_t queryResponseValue = 0;
+
+static void receiveDaliFrame(void *arg) {
+    DaliMessage msg;
+    // Assuming 'dali' instance is accessible here (either global or passed via arg)
+    while (1) {
+        if (rxFrameQueue != nullptr) {
+            if (xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY) == pdTRUE) {
+                
+                // Check if a query task is currently waiting for this data
+                if (xQueryingTaskHandle != NULL) {
+                    // Store the incoming data byte directly into the response buffer
+                    queryResponseValue = msg.data[0];
+                    
+                    // Immediately unblock the waiting query task
+                    xTaskNotifyGive(xQueryingTaskHandle);
+                } else {
+                    // Handle asynchronous DALI events/traffic here if needed
+                    printf("Asynchronous DALI data received: 0x%02X\n", msg.data[0]);
+                }
+            }
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+    }
+}
+//    static void receiveDaliFrame(void *arg) {
+//         DaliMessage msg;
+//         while (1) {
+//             if (rxFrameQueue != nullptr) {
+//                 if(xQueueReceive(rxFrameQueue, &msg, portMAX_DELAY)== pdTRUE) {
+//                     printf("===Received DALi Frame: 0x%02X 0x%02X\n", msg.data[0], msg.data[1]);  
+//                     //interpret_frame(msg.data[0], msg.data[1]);
+//                 }
+//             }else{
+//                 vTaskDelay(10 / portTICK_PERIOD_MS);
+//             }
+//         }
+//     }
     void init_dali_hw() {
-          
+        if(wifi_webserver_active_flag > 0){
+        #ifdef IS_USE_DALI_HARDWARE
+            rxFrameQueue = xQueueCreate(10, sizeof(DaliMessage));
+            if (rxFrameQueue == nullptr) {  
+            }   
+                 
+            dali.begin_rx(&isr_service_installed, rxFrameQueue);  
+        #endif
+
+            xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL); 
+
+        }              
         is_init_done = true;  
     }
 
@@ -207,7 +262,7 @@
     }
 
 
-    extern "C" void process_dali_tasks(uint8_t index, uint8_t is_toggle){
+    extern "C" void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene){
         send_command_flag = true;
         button_pressed_index = index;
         
@@ -286,7 +341,6 @@
         nuos_store_data_to_nvs(index);   
     }
 
-
     // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_){
     //     send_command_flag = true;
     //     button_pressed_index = index;
@@ -336,7 +390,7 @@
         if(is_init_done){  
             call_common_check_auto_off();
             esp_stop_timer();
-            process_dali_tasks(index, is_toggle);  
+            process_dali_tasks(index, is_toggle, false);  
             esp_start_timer(); 
         }
     }
@@ -445,7 +499,7 @@
                     nuos_set_level_attribute(index);
                 #endif
                 
-                process_dali_tasks(index, false);  
+                process_dali_tasks(index, false, false);  
             }
         }
         return false;
@@ -473,7 +527,7 @@
         dali.set_color_temperature(did, value);
     }
     extern "C" void nuos_dali_set_rgb_color(uint8_t did, uint8_t r, uint8_t g, uint8_t b) {
-        dali.set_color_rgb(did, r, g, b, 0xff);
+        dali.set_color_rgb(did, r, g, b, 0xff, false);
     }
     extern "C" void nuos_dali_broadcast_state(uint8_t toggle_state) { 
         if(!toggle_state) dali.send_broadcast(0b00000000);
@@ -517,6 +571,20 @@
     extern "C" void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id) {
         dali.add_to_scene(device_id, scene_id);
     }
+
+    
+    extern "C" void nuos_dali_set_power_on_level(uint8_t dali_id, uint8_t level) {
+        printf("Setting Power On Level of dali_id:%d to %d\n", dali_id, level);
+        dali.set_power_on_level(dali_id, level);
+    }
+
+    extern "C" void nuos_dali_set_fade_time_fade_rate(uint8_t dali_id, uint8_t fade_time, uint8_t fade_rate) {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        dali.set_fade_time(dali_id, fade_time);
+        printf("Setting Fade Time:%d fade Rate:%d of dali_id:%d\n", fade_time, fade_rate, dali_id);
+        vTaskDelay(pdMS_TO_TICKS(20));
+        dali.set_fade_rate(dali_id, fade_rate);
+    }
    extern "C" int get_all_dali_addresses(uint8_t *foundAddresses) {
          // DALI allows up to 64 short addresses (0-63)
         uint8_t maxAddresses = 64;
@@ -539,7 +607,7 @@
     } 
 
     extern "C" void nuos_dali_set_group_rgb_temperature(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b) { 
-        dali.set_group_color_rgb(group_id, r, g, b, 255);
+        dali.set_group_color_rgb(group_id, r, g, b, 255, false);
     } 
     
 
@@ -584,6 +652,227 @@
         vTaskDelete(NULL);
     }
 
+
+
+    DaliNodeList read_dali_addressed_nodes() {
+        DaliNodeList nodeList;
+        // Initialize
+        nodeList.total = 0;
+        memset(nodeList.addresses, 0xFF, sizeof(nodeList.addresses));
+
+        // Read existing drivers
+        nodeList.total = dali.readExistingDrivers(nodeList.addresses, 64);
+
+        return nodeList;
+}
+uint16_t daliQueryGear(uint8_t addr, uint8_t query_cmd){
+    // 1. Save the current task handle so the RX task knows who to notify
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryGear(addr, query_cmd);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 50ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }
+}
+
+int32_t daliQueryPowerOnLevel(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryPowerOnLevel(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(50)   // 50ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }
+}
+
+int32_t daliQueryFadeTimeFadeRate(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryFadeTimeFadeRate(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
+
+int32_t daliQueryDeviceType(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryDeviceType(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
+
+
+int32_t daliQueryNextDeviceType(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryNextDeviceType(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
+
+int32_t daliQueryGearFeatures(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryGearFeatures(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
+
+int32_t daliQueryDeviceInGroupA(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryDeviceInGroupA(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
+
+int32_t daliQueryDeviceInGroupB(uint8_t addr){
+
+    xQueryingTaskHandle = xTaskGetCurrentTaskHandle();
+    queryResponseValue = 0; // Reset response buffer
+    dali.queryDeviceInGroupB(addr);    
+// 3. Wait for the RX task to notify us. Timeout after 50ms (DALI typical max response window)
+    uint32_t notificationValue = 0;
+    BaseType_t status = xTaskNotifyWait(
+        0x00,               // Do not clear bits on entry
+        ULONG_MAX,          // Clear all bits on exit
+        &notificationValue, // Stores notification value (optional)
+        pdMS_TO_TICKS(100)   // 100ms timeout window (much better than 1000ms!)
+    );
+
+    // 4. Clean up the handle reference
+    xQueryingTaskHandle = NULL;
+
+    // 5. Evaluate if we successfully received data or timed out
+    if (status == pdTRUE) {
+        // Return the clean 0-255 byte cast into the wider signed integer
+        return (int32_t)queryResponseValue; 
+    } else {
+        return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
+    }    
+}
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;
         
@@ -608,12 +897,28 @@
         //vTaskPrioritySet(NULL, DALI_TASK_PRIORITY);
         uint8_t total_addr = (numAddresses-startAddresses)+1;
         printf("Initialize %d DALI nodes...\n", total_addr);
-        int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
 
-        printf("Found nodes: %d\n", totalfoundnodes);
-        for (int i = 0; i < totalfoundnodes; i++) {
-            printf("Node number %d, node address %d\n", i, global_dali_id[startAddresses+i]);
-        }
+      //  dali.commissionNewNodes();
+
+        // uint8_t addresses[64];
+
+        // int total = dali.readExistingDrivers(addresses, 64);
+
+        // for (int i = 0; i < total; i++)
+        // {
+        //     printf("Address[%d] = %d\n", i, addresses[i]);
+            
+        //    //dali.resetDriver(addresses[i]);
+
+        //   // dali.clearShortAddress(addresses[i]);
+        // }
+        dali.commissionNewNodes();   
+        // int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
+
+        // printf("Found nodes: %d\n", totalfoundnodes);
+        // for (int i = 0; i < totalfoundnodes; i++) {
+        //     printf("Node number %d, node address %d\n", i, global_dali_id[startAddresses+i]);
+        // }
         
         // Signal completion
         if (recordsSemaphore != NULL) {
