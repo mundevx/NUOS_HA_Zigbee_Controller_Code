@@ -933,7 +933,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     
     button_index = nuos_get_button_press_index(io_num);
     uint8_t sindex = 0;
-    printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
+    //printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
     brightness_control_flag = false;
     //recheckTimer();
     #ifndef DONT_USE_ZIGBEE
@@ -1021,6 +1021,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     mode_change_flag = true;
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
+                    //printf("============ selected_color_mode:%d\n", selected_color_mode);
                 }
 
                 
@@ -1127,7 +1128,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
 void nuos_switch_double_click_task(uint32_t io_num){
     
     button_index = nuos_get_button_press_index(io_num);
-    printf("DOUBLE CLICK Detected!! button_index:%d\n", button_index);
+    //printf("DOUBLE CLICK Detected!! button_index:%d\n", button_index);
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
         nuos_set_scene_button_attribute(button_index);
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH) 
@@ -1175,7 +1176,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
 }
 
 void nuos_switch_long_press_brightness_task123(uint32_t io_num){
-    printf("LONG PRESS BRIGHTNESS Detected!!\n");
+    //printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
     //recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 

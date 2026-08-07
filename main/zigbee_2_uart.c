@@ -25,9 +25,11 @@
     #endif
     #define UART_BAUD_RATE                                          115200
     #define UART_BUF_SIZE                                           2048
+    #define RX_ACC_BUF_SIZE                                         4096
 
     static bool toggle_status_led_long_press = false;
     extern void parse_json(const char *json_string);
+    extern char * parse_query(const char *query);
 
     void json_parse_data_light(const char* data) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
@@ -230,26 +232,6 @@
         cJSON_Delete(root);
         return true;  // Valid JSON
     }
-    // void uart_receiver_task(void *arg)
-    // {
-    //     uint8_t data[UART_BUF_SIZE];
-    //     bool scene_set_flag = false;
-
-    //     while (1) {
-    //         int len = uart_read_bytes(UART_PORT_NUM, data, sizeof(data), 10 / portTICK_PERIOD_MS);
-    //         if (len > 0 && len < UART_BUF_SIZE) {
-    //             data[len] = '\0'; // Null-terminate safely
-    //             const char* m_data = (const char*)data;
-    //             printf("As string: %s len:%d\n", m_data, len);
-    //             if(m_data != NULL){
-    //                 json_parse_data_light(m_data);
-    //             }
-    //         }
-    //         //vTaskDelay(10 / portTICK_PERIOD_MS);
-    //     }
-    // }
-
-    #define RX_ACC_BUF_SIZE 4096
 
     void uart_receiver_task(void *arg)
     {
@@ -281,9 +263,9 @@
                         if (is_valid_json((uint8_t*)rx_buffer, rx_index)) {
                             json_parse_data_light(rx_buffer);
                         } else {
-                            printf("Invalid JSON received\n");
+                            // printf("Invalid JSON received\n");
+                            // parse_query(rx_buffer);
                         }
-
                         // Reset buffer
                         rx_index = 0;
                     }
@@ -306,14 +288,12 @@
 
         //uart_set_pin(UART_PORT_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
-        xTaskCreate(uart_receiver_task, "uart_receiver_task", 4096, NULL, TASK_PRIORITY_UART_RECEIVER, NULL);
+        xTaskCreate(uart_receiver_task, "uart_receiver_task", 8192, NULL, TASK_PRIORITY_UART_RECEIVER, NULL);
         printf("========>UART initialized\n");
     }
 
     void send_serial(const char* data){
         printf("%s\n", data);
-        //uart_write_bytes(UART_PORT_NUM, data, strlen(data));
-        //uart_write_bytes(UART_PORT_NUM, "\n", 1);
     }
     
 #endif

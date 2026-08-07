@@ -2146,14 +2146,14 @@ void print_decoded_scene(decoded_scene_t *scene)
 
 
 void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
-        decoded_scene_t local_scene;
-        if(decode_scene_extension_fields(
-            message->field_set,
-            message->info.dst_endpoint,
-            &local_scene)) {
-                print_decoded_scene(&local_scene);
-
-            }
+    decoded_scene_t local_scene;
+    if(decode_scene_extension_fields(
+        message->field_set,
+        message->info.dst_endpoint,
+        &local_scene)) {
+            
+        print_decoded_scene(&local_scene);
+    }
 }
 
 

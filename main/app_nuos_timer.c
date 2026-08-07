@@ -181,9 +181,9 @@ void start_zb_commissioning_timer_task(){
 			#endif
 			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
 				if(wifi_webserver_active_flag  == 0){
-					printf("Commissioning....\n");
+					//printf("Commissioning....\n");
 				}else{
-					printf("Set AC Model....\n");
+					//printf("Set AC Model....\n");
 				}
 			#else
 				printf("Zigbee Commissioning...\n");	
@@ -211,7 +211,7 @@ void start_zb_commissioning_timer_task(){
 					#ifdef USE_RGB_LED
 						light_driver_set_color_RGB(0x00, 0xff, 0x00);
 						light_driver_set_power(0);
-						printf("stop_commissioning\n");
+						//printf("stop_commissioning\n");
 						light_driver_deinit_flag = true;
 					#else
 						nuos_set_state_touch_leds(false);

@@ -60,8 +60,9 @@ typedef struct {
     #endif
 } json_msg_t;
 
+extern SemaphoreHandle_t recordsSemaphore;
+json_msg_t msg;
 QueueHandle_t json_queue;
-
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);
@@ -92,8 +93,12 @@ uint8_t tmp_selected_ids[MAX_DALI_DEVICES_IN_SCENES] = {0};
 const char resp1[] = "Post data received successfully";
 const char resp2[] = "Error Getting Responses!!";
 
-
-
+extern  void nuos_prepare_color_mode(uint8_t mode);
+static TaskHandle_t dali_worker_task_handle = NULL;
+static TaskHandle_t dali_group_worker_task_handle = NULL;
+char * parse_query(const char *req_query);
+char * parse_query_2(const char *req_query);
+void parse_json_3(const char *json_str);
 int map(int x, int in_min, int in_max, int out_min, int out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -102,6 +107,61 @@ int map(int x, int in_min, int in_max, int out_min, int out_max) {
     void add_scene_task(void* args);
     void view_scene_table_task(void* args);
 #endif
+
+
+
+void dali_group_state_worker_task(void *pvParameters) {
+    bool dali_state = false;
+    // If you need to pass variables like dali_id, handle them here
+    uint8_t target_id = (uint32_t)pvParameters; 
+
+    printf("DALI Worker Task Started for ID: %d\n", target_id);
+    uint8_t cct = 0;
+    TaskHandle_t l_task_handle;
+    while (1) {
+        // Place your continuous DALI execution code here
+        // Example: query gear status, cycle colors, or dimming loops
+        dali_state = !dali_state;
+
+        nuos_dali_set_state_group(target_id, dali_state);
+        // CRITICAL: Always include a delay to prevent watchdog timer resets
+        vTaskDelay(pdMS_TO_TICKS(500)); 
+
+        if(cct++ > 10){
+            cct = 0;
+            l_task_handle = dali_group_worker_task_handle;
+            dali_group_worker_task_handle = NULL; // Reset handle pointer immediately
+            vTaskDelete(l_task_handle);
+        }
+
+    }
+}
+
+void dali_state_worker_task(void *pvParameters) {
+    bool dali_state = false;
+    // If you need to pass variables like dali_id, handle them here
+    uint8_t target_id = (uint32_t)pvParameters; 
+
+    printf("DALI Worker Task Started for ID: %d\n", target_id);
+    uint8_t cct = 0;
+    TaskHandle_t l_task_handle;
+    while (1) {
+        // Place your continuous DALI execution code here
+        // Example: query gear status, cycle colors, or dimming loops
+        dali_state = !dali_state;
+
+        nuos_dali_set_state(target_id, dali_state);
+        // CRITICAL: Always include a delay to prevent watchdog timer resets
+        vTaskDelay(pdMS_TO_TICKS(500)); 
+
+        if(cct++ > 10){
+            cct = 0;
+            l_task_handle = dali_worker_task_handle;
+            dali_worker_task_handle = NULL; // Reset handle pointer immediately
+            vTaskDelete(l_task_handle);
+        }
+    }
+}
 
 void parse_json(const char *json_string) {
     // Parse JSON string
@@ -113,18 +173,22 @@ void parse_json(const char *json_string) {
     wifi_webserver_active_counts = 0;
     // Extract values from JSON object
     cJSON *fxn = cJSON_GetObjectItem(root, "fxn");
-    if (fxn == NULL){  printf("------------ERROR returning back----------\n");  cJSON_Delete(root); return;}
-
+    if (fxn == NULL){  
+        // printf("------------ERROR returning back----------\n");  
+        cJSON_Delete(root); 
+        return;
+    }
     recheckTimer();  
 
-    int fxnInt = 0;//atoi( fxn->valuestring);
+    int fxnInt = 0;
     if(cJSON_IsNumber(fxn)){
         fxnInt = fxn->valueint;    
     }else if(cJSON_IsString(fxn)) {
-        if( fxn->valuestring != NULL )
-            fxnInt = atoi( fxn->valuestring);
+        if( fxn->valuestring != NULL){
+            fxnInt = atoi(fxn->valuestring);
+        }
     }
-    printf("Function: %d\n", fxnInt);
+    //printf("Function: %d\n", fxnInt);
     switch(fxnInt){ 
         case 13:
         case 4:  //cancel
@@ -581,16 +645,32 @@ void parse_json(const char *json_string) {
                 
                 nuos_store_dali_data_to_nvs(index);
                 break;
-
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
             case 304:  //Toggle DALI ID
+            // Track the active worker task instance
+                uint8_t dali_id = 0xff;
+                uint8_t group_id = 0xff;
                 cJSON* sdali_id= cJSON_GetObjectItem(root, "dali_id");
                 if (sdali_id == NULL) {
-                    printf("Missing JSON keys sdali_id\n");
-                    cJSON_Delete(root);
-                    return;
-                }     
-                uint8_t dali_id = sdali_id->valueint;
+                    printf("Missing JSON keys dali_id\n");
+                }   else{
+                    dali_id = sdali_id->valueint;
+                }
+
+                cJSON* sgrp_id= cJSON_GetObjectItem(root, "group_id");
+                if (sgrp_id == NULL) {
+                    printf("Missing JSON keys group_id\n");
+                    //cJSON_Delete(root);
+                    //return;
+                    
+                }else{
+                    group_id = sgrp_id->valueint;
+                }
+                
+                
                 printf("dali_id: %d\n", dali_id);
+                printf("group_id: %d\n", group_id);
+
                 cJSON*  sdali_state= cJSON_GetObjectItem(root, "state");
                 if (sdali_state == NULL) {
                     printf("Missing JSON keys sdali_state\n");
@@ -599,10 +679,133 @@ void parse_json(const char *json_string) {
                 }     
                 uint8_t dali_state = sdali_state->valueint;
                 printf("dali_state: %d\n", dali_state);
-                nuos_dali_set_state(dali_id, dali_state);
-    
+                if (dali_state == 1) {
+                    // Only create the task if it isn't already running
+                    
+                    if(dali_id != 0xff){
+                        if (dali_worker_task_handle == NULL) {
+                            BaseType_t ret = xTaskCreate(
+                                dali_state_worker_task,     // Task function
+                                "dali_worker",             // Text name for debugging
+                                4096,                      // Stack size in words
+                                (void*)(uint32_t)dali_id,   // Pass dali_id as parameter
+                                15,                         // Task priority
+                                &dali_worker_task_handle   // Save the handle
+                            );
+                            
+                            if (ret == pdPASS) {
+                                printf("Successfully created DALI worker task.\n");
+                            } else {
+                                printf("Failed to create DALI worker task (Out of memory).\n");
+                            }
+                        }else{
+                            printf("DALI worker task is already running.\n");
+                            vTaskDelete(dali_group_worker_task_handle);
+                            dali_group_worker_task_handle = NULL; // Reset handle pointer immediately
+                        }
+                    }else{
+                        if(dali_group_worker_task_handle == NULL){
+                            BaseType_t ret2 = xTaskCreate(
+                                dali_group_state_worker_task,     // Task function
+                                "dali_worker_g",             // Text name for debugging
+                                4096,                      // Stack size in words
+                                (void*)(uint32_t)group_id,   // Pass dali_id as parameter
+                                15,                         // Task priority
+                                &dali_group_worker_task_handle   // Save the handle
+                            );
+                            
+                            if (ret2 == pdPASS) {
+                                printf("Successfully created DALI worker task.\n");
+                            } else {
+                                printf("Failed to create DALI worker task (Out of memory).\n");
+                            }
+                        }else{
+                            printf("DALI worker task is already running.\n");
+                            vTaskDelete(dali_worker_task_handle);
+                            dali_worker_task_handle = NULL; // Reset handle pointer immediately
+                        } 
+                    } 
+                } 
+                else if (dali_state == 0) {
+                    
+                    // If the task exists, kill it cleanly
+                    if (dali_worker_task_handle != NULL) {
+                        vTaskDelete(dali_worker_task_handle);
+                        dali_worker_task_handle = NULL; // Reset handle pointer immediately
+                        
+                        printf("DALI worker task deleted successfully.\n");
+
+                        nuos_dali_set_state(dali_id, false);
+                    }else if (dali_group_worker_task_handle != NULL) {
+                        vTaskDelete(dali_group_worker_task_handle);
+                        dali_group_worker_task_handle = NULL; // Reset handle pointer immediately
+                        
+                        printf("DALI group worker task deleted successfully.\n");
+                        nuos_dali_set_state_group(group_id, false);
+                    } else {
+                        printf("Delete requested, but no active DALI task was running.\n");
+                    }
+                    
+                }
                 break;
 
+            case 305:  //Color Mode
+                sdali_id= cJSON_GetObjectItem(root, "dali_id");
+                if (sdali_id == NULL) {
+                    printf("Missing JSON keys sdali_id\n");
+                    cJSON_Delete(root);
+                    return;
+                }     
+                dali_id = sdali_id->valueint;
+                printf("dali_id: %d\n", dali_id);
+
+                cJSON* smode = cJSON_GetObjectItem(root, "mode");
+                if (smode == NULL) {
+                    printf("Missing JSON keys mode\n");
+                    cJSON_Delete(root);
+                    return;
+                }     
+                printf("smode: %d\n", smode->valueint);
+                uint8_t mode = smode->valueint;
+                uint16_t val = 0;
+                uint8_t r = 0,g = 0,b = 0;
+                cJSON* sval = cJSON_GetObjectItem(root, "val");
+                if (sval == NULL) {
+                    //printf("Missing JSON keys val\n");
+                    //cJSON_Delete(root);
+                    cJSON* sR = cJSON_GetObjectItem(root, "r");
+                    if (sR == NULL) {
+                        cJSON_Delete(root);
+                        return;
+                    }
+                    cJSON* sG = cJSON_GetObjectItem(root, "g");
+                    if (sG == NULL) {
+                        cJSON_Delete(root);
+                        return;
+                    }
+                    cJSON* sB = cJSON_GetObjectItem(root, "b");
+                    if (sB == NULL) {
+                        cJSON_Delete(root);
+                        return;
+                    }
+                    r = sR->valueint;
+                    g = sG->valueint;
+                    b = sB->valueint;
+
+                }else{
+                    printf("sval: %d\n", sval->valueint);
+                    val = sval->valueint;
+                }     
+
+
+                nuos_prepare_color_mode(mode);
+                if(mode == 0) 
+                    nuos_dali_set_cct_color(dali_id, val);
+                else if(mode == 1) {
+                    nuos_dali_set_rgb_color(dali_id, r,g,b, true);
+                }
+                break;
+            #endif
             case 11:  //Toggle DALI Group
                 sindex = cJSON_GetObjectItem(root, "index");
                 if (sindex == NULL) {
@@ -802,21 +1005,22 @@ void parse_json(const char *json_string) {
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             case 12:  //Set Intensity of DALI Group
                 //{fxn: 12, start_addr: 0, max_addr: 15}
+                int max_address = 0;
                 sindex = cJSON_GetObjectItem(root, "max_addr");
                 if (sindex == NULL) {
                     printf("Missing JSON keys max_addr\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-
-                int max_address = sindex->valueint;
+                    //cJSON_Delete(root);
+                    //return;
+                } else{ 
+                    max_address = sindex->valueint;
+                }
                 int start_address = 0;
 
                 cJSON *sstartAddr = cJSON_GetObjectItem(root, "start_addr");
                 if (sstartAddr == NULL) {
                     printf("Missing JSON keys start_addr\n");
-                    cJSON_Delete(root);
-                    start_address = 20;
+                    //cJSON_Delete(root);
+                    start_address = 0;
                 }else{
                     start_address = sstartAddr->valueint;
                 }
@@ -829,6 +1033,8 @@ void parse_json(const char *json_string) {
                 setNVSDaliNodesCommissioningCounts(max_address);
                 
                 start_dali_addressing(start_address, max_address);
+
+                
                 break; 
         #endif
         
@@ -884,7 +1090,7 @@ case 40:
             
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH )
             int index33 = sindex6->valueint;
-            if(scene_group_switch_info.control_type == 2){
+            if(scene_group_switch_info.control_type == 1){
                 process_dali_tasks(index33, false, false);
             }else{
                 process_dali_tasks(index33, true, false);
@@ -1128,7 +1334,7 @@ case 40:
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
 
             #else
-            if(scene_group_switch_info.control_type == 1 ){
+            if(scene_group_switch_info.control_type == 0){
             
                 printf("Removed from group: %d the ids: ", scene_group_switch_info.group_id[index22]);
                 for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
@@ -1190,7 +1396,7 @@ case 40:
 
                     #else
                     printf("Added to group: %d the id: %d ctrl_type: %d\n", scene_group_switch_info.group_id[index22], scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.control_type);
-                    if(scene_group_switch_info.control_type == 1 ){
+                    if(scene_group_switch_info.control_type == 0 ){
                     #endif
                         nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                         vTaskDelay(80 / portTICK_PERIOD_MS);
@@ -1271,11 +1477,14 @@ case 40:
             if (g_id) {
                 int group = g_id ? g_id->valueint : 0;
                 printf("Immediate toggle state:%d group:%d\n", state, group);
-                nuos_dali_set_state_group(group, state);
-                if(state) {
-                    uint8_t val = map(value, 0, 100, 0, 255);
-                    nuos_dali_set_group_brightness(group, 0, val);
-                }
+                //nuos_dali_set_state_group(group, state);
+                if(state) nuos_dali_set_group_brightness(group, 0, 254);
+                else nuos_dali_set_state_group(group, false);
+
+                // if(state) {
+                //     uint8_t val = map(value, 0, 100, 0, 255);
+                //     nuos_dali_set_group_brightness(group, 0, val);
+                // }
             }else{
                 if (dali_id) {
                     
@@ -1306,7 +1515,7 @@ case 40:
                     uint8_t val = map(level, 0, 100, 0, 255);
                     printf("Immediate toggle level:%d did:%d\n", val, did);
                     nuos_dali_set_brightness(did, val);
-                }                
+                }              
             }
         }
         break;
@@ -1364,7 +1573,7 @@ case 40:
                 }else{
                     if (dali_id) {
                         int did = dali_id ? dali_id->valueint : 0;
-                        nuos_dali_set_rgb_color(did, r, g, b);
+                        nuos_dali_set_rgb_color(did, r, g, b, true);
                     } 
                 }                
             }
@@ -1487,7 +1696,6 @@ case 40:
                 break;
             }
 
-
             int gid = 0;
             if (group && cJSON_IsString(group)) {
                 gid = atoi(group->valuestring);
@@ -1540,118 +1748,7 @@ case 40:
         }
         break;
 
-        // case 202: // Scene add/remove via fxn in POST body
-        // {
-        // // Expected JSON: { "fxn":202, "action":"add"|"remove", "group_id": <0..15>, "scenes": [0,1,2,...] }
-        // // Attempt to parse new device-array format first
-        //     cJSON *devices = cJSON_GetObjectItem(root, "devices");
-        //     cJSON *action = cJSON_GetObjectItem(root, "action");      // must be "add" or "remove"
-        //     cJSON *scene_id = cJSON_GetObjectItem(root, "scene_id");
-        //     int sid = (scene_id && cJSON_IsNumber(scene_id)) ? scene_id->valueint : 0;
-        //     uint8_t scene_index = 0xff;
-        //     for(int k=0;k<4;k++){
-        //         if(sid == scene_group_switch_info.scene_ids[k]){
-        //             scene_index = k;
-        //             break;
-        //         } 
-        //     }
-
-        //     if (devices && cJSON_IsArray(devices)) {
-        //         // Validate action string
-        //         const char *act = NULL;
-        //         if (action && cJSON_IsString(action)) {
-        //             act = action->valuestring;
-        //         } else {
-        //             ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'action' (expected 'add' or 'remove')");
-        //             // You can choose to return/break here; currently we will skip processing
-        //             break;
-        //         }
-
-        //         bool is_add = (strcmp(act, "add") == 0);
-        //         bool is_remove = (strcmp(act, "remove") == 0);
-        //         if (!is_add && !is_remove) {
-        //             ESP_LOGW(TAG, "fxn202(devices): unknown action '%s' (expected 'add' or 'remove')", act);
-        //             break;
-        //         }
-
-        //         ESP_LOGI(TAG, "fxn202: received devices payload (scene_id=%d, action=%s)", sid, act);
-
-        //         cJSON *dev = NULL;
-        //         int processed = 0;
-        //         cJSON_ArrayForEach(dev, devices) {
-        //             if (!cJSON_IsObject(dev)) {
-        //                 ESP_LOGW(TAG, "fxn202(devices): skipping non-object array entry");
-        //                 continue;
-        //             }
-
-        //             cJSON *j_dali       = cJSON_GetObjectItem(dev, "dali_id");
-        //             cJSON *j_power      = cJSON_GetObjectItem(dev, "power");
-        //             cJSON *j_brightness = cJSON_GetObjectItem(dev, "brightness");
-        //             cJSON *j_cct        = cJSON_GetObjectItem(dev, "cct");
-
-        //             if (!j_dali || !cJSON_IsNumber(j_dali)) {
-        //                 ESP_LOGW(TAG, "fxn202(devices): missing or invalid 'dali_id' - skipping entry");
-        //                 continue;
-        //             }
-
-        //             int did = j_dali->valueint;
-        //             if (did < 0 || did >= 64) {
-        //                 ESP_LOGW(TAG, "fxn202(devices): dali_id out of range %d - skipping", did);
-        //                 continue;
-        //             }
-
-        //             int power = (j_power && cJSON_IsNumber(j_power)) ? j_power->valueint : 0;
-        //             int brightness = (j_brightness && cJSON_IsNumber(j_brightness)) ? j_brightness->valueint : 0;
-        //             uint8_t brightness_1 = map(brightness, 0, 100, 0, 255);
-        //             int cct = (j_cct && cJSON_IsNumber(j_cct)) ? j_cct->valueint : 0;
-        //             printf("==>CCT Value: %d", cct);
-        //             if (is_add) {
-        //                 ESP_LOGI(TAG, "fxn202(devices): ADD device %d to scene %d (p=%d, br=%d, cct=%d)", did, sid, power, brightness_1, cct);
        
-        //                     if(power==0) brightness_1 = 0; //this is cruicial
-        //                     scene_group_switch_info.device_ids[scene_index][processed] = did;
-        //                     nuos_dali_add_device_to_scene((uint8_t)did, (uint8_t)sid, brightness_1, cct); 
-        //             } else { // remove
-        //                 ESP_LOGI(TAG, "fxn202(devices): REMOVE device %d from scene %d", did, sid);
-        //                 nuos_dali_remove_device_from_scene((uint8_t)did, (uint8_t)sid);
-        //             }
-        //             vTaskDelay(pdMS_TO_TICKS(20));
-        //             processed++;
-        //         } // end foreach device
-
-        //         ESP_LOGI(TAG, "fxn202(devices): processed %d device entries (action=%s)", processed, act);
-        //         if (is_add) {
-        //             if(scene_index != 0xff){ 
-        //                 if(scene_index < 16){
-        //                     scene_group_switch_info.total_ids[scene_index] = processed;
-        //                     nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
-        //                 }
-        //             }
-        //         }
-                
-        //         esp_err_t perr = persist_devices_from_cjson_array(devices, sid, act);
-        //         if (perr != ESP_OK) {
-        //             ESP_LOGW(TAG, "persist_devices_from_cjson_array failed: %s", esp_err_to_name(perr));
-        //         } else {
-        //             ESP_LOGI(TAG, "persist_devices_from_cjson_array success");
-        //             // update in-memory global store too:
-        //             if (g_device_scene_store) free(g_device_scene_store);
-        //             g_device_scene_store = NULL;
-        //             g_device_scene_count = 0;
-        //             device_scene_t *tmp = NULL;
-        //             size_t tmp_count = 0;
-        //             if (load_device_scene_store(&tmp, &tmp_count) == ESP_OK && tmp_count > 0) {
-        //                 g_device_scene_store = tmp;
-        //                 g_device_scene_count = tmp_count;
-        //             }
-        //         }               
-        //         break; // handled devices case; skip legacy group handler
-        //     }
-        //     // after processing devices loop:
-        //     /********************* */
-
-        // }//munish
-        // break;
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         case 202:
         {
@@ -1751,6 +1848,8 @@ case 40:
                                                         (uint8_t)sid,
                                                         brightness_1,
                                                         cct);
+                            vTaskDelay(pdMS_TO_TICKS(50));    
+
                         }
                     } else {
                         if (is_remove) {
@@ -1792,16 +1891,122 @@ case 40:
         break;  
         #endif      
         #endif
-        
+       
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        #ifdef USE_C3_ADAPTER_UART_HW
+        case 410: //{"fxn":410,"query":"fxn=15"}
+            cJSON *squery = cJSON_GetObjectItem(root, "query");
+            if (!cJSON_IsString(squery) || squery->valuestring == NULL)
+            {
+                cJSON_Delete(root);
+                return;
+            }
+
+            const char * query1 = squery->valuestring;
+            //printf(query1);
+            const char* response1 = parse_query(query1);
+            printf("%s\n", response1);
+            free((void*)response1);
+             
+        break;
+
+        case 420: //{"fxn":420,"query":"init=0"}
+            squery  = cJSON_GetObjectItem(root, "query");
+            if (!squery) { cJSON_Delete(root); return; }
+            const char *query2 = squery->valuestring;
+            const char* response2 = parse_query_2(query2); 
+            printf("%s\n", response2);
+            free((void*)response2);
+        break;
+
+        case 430: //{"fxn":430,"query":"{"dali_id":1,"power_on_value":0,"fade_rate":12,"fade_time":2,"group":0}"}
+
+            squery  = cJSON_GetObjectItem(root, "query");
+            if (!squery) { cJSON_Delete(root); return; }
+            const char *query3 = squery->valuestring;
+            //printf("%s\n", query3);
+            parse_json_3(query3);
+            
+        break;
+        #endif
+        #endif       
         default: break;
     }
     // Clean up cJSON object
     cJSON_Delete(root);
 }
 
+
+
+void parse_json_3(const char *json_str)
+{
+        // Parse the received JSON string
+        cJSON *root = cJSON_Parse(json_str);
+        if (root == NULL) {
+            ESP_LOGE(TAG, "Malformed JSON received");
+           // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+            return;// ESP_FAIL;
+        }
+
+        // Retrieve fields securely
+        cJSON *dali_id_json       = cJSON_GetObjectItem(root, "dali_id");
+        cJSON *power_on_value_json = cJSON_GetObjectItem(root, "power_on_value");
+        cJSON *fade_rate_json     = cJSON_GetObjectItem(root, "fade_rate");
+        cJSON *fade_time_json     = cJSON_GetObjectItem(root, "fade_time");
+        cJSON *group_json         = cJSON_GetObjectItem(root, "group");
+        // cJSON *scene_json         = cJSON_GetObjectItem(root, "scene");
+
+        if (dali_id_json && power_on_value_json && fade_rate_json && fade_time_json && group_json) {
+            int dali_id        = dali_id_json->valueint;
+            int power_on_value = power_on_value_json->valueint;
+            int fade_rate      = fade_rate_json->valueint;
+            int fade_time      = fade_time_json->valueint;
+            int group          = group_json->valueint;
+            // int scene          = scene_json->valueint;
+
+            // Server-side validation check
+            if (power_on_value >= 0 && power_on_value <= 255 &&
+                fade_rate >= 0 && fade_rate <= 100 &&
+                fade_time >= 0 && fade_time <= 12 &&
+                group >= 0 && group <= 65535) {
+
+                ESP_LOGI(TAG, "Updating ID %d: Power=%d, Rate=%d, Time=%d, Gp=%d", 
+                        dali_id, power_on_value, fade_rate, fade_time, group);
+
+                /* 
+                TODO: Save these variables into your local storage arrays, 
+                        NVS Flash, or deploy directly to your physical DALI bus layout.
+                */
+                nuos_dali_set_power_on_level(dali_id, power_on_value);
+                nuos_dali_set_fade_time_fade_rate(dali_id, fade_time, fade_rate);
+
+                for (int i = 0; i < 16; i++) {
+                    // Check if the bit at position i is 1
+                    if ((group >> i) & 1) {
+                        //group is i
+                        nuos_dali_add_light_to_group(dali_id, i);
+                    }else{
+                        nuos_dali_remove_light_from_group(dali_id, i);
+                    }
+                    vTaskDelay(50 / portTICK_PERIOD_MS);
+                }
+            
+                // Additional storage logic here...
+                //httpd_resp_sendstr(req, "{\"status\":\"success\"}");
+            } else {
+                ESP_LOGE(TAG, "Values dropped: Parameters are out of range bounds");
+                //httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Parameter values out of limits");
+            }
+        } else {
+            ESP_LOGE(TAG, "Missing required JSON fields");
+           // httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing required JSON fields");
+        }
+
+    cJSON_Delete(root);
+}
+
 void query_all_groups_task(void* args) {
     uint16_t group_id = *((uint16_t *)args);
-    //printf("group_id:%d", group_id);
     nuos_zigbee_group_query_all_groups(group_id);
     vTaskDelete(NULL); // Delete the task after executing
 }
@@ -1856,9 +2061,6 @@ void query_all_groups_task(void* args) {
     }
 #endif
 
-
-
-
 char* replaceSubstring(const char* original, const char* toReplace, const char* replaceWith) {
     char* result;
     char* insertPoint;
@@ -1894,9 +2096,6 @@ char* replaceSubstring(const char* original, const char* toReplace, const char* 
     return result;
 }
 
-
-json_msg_t msg;
-
 void json_worker_task(void *arg) {
     
     while (1) {
@@ -1916,11 +2115,11 @@ void json_worker_task(void *arg) {
 }
 
 esp_err_t submit_post_handler(httpd_req_t *req) {
- char content[MAX_HTTP_RECV_BUFFER];
+    char content[MAX_HTTP_RECV_BUFFER];
     int total_len = req->content_len;
     int received = 0;
     int ret;
-    printf("total_len:%d\n", total_len);
+    //printf("total_len:%d\n", total_len);
     if (total_len >= MAX_HTTP_RECV_BUFFER) {
         // Content too large
         httpd_resp_send_500(req);
@@ -1970,23 +2169,11 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
-    // #if( USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-    // httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
-    // #else
-    // // Wait for worker to complete (timeout 5 seconds)
-    // if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000)) == 1) {
-    //     httpd_resp_send(req, resp1, HTTPD_RESP_USE_STRLEN);
-    // } else {
-    //     ESP_LOGE("HTTP", "Worker timeout");
-    //     httpd_resp_send_500(req);
-    // }
-    // #endif
+
     cb_requests_counts = 0;
     cb_response_counts = 0;
     return ESP_OK;
 }
-
-
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
@@ -1995,14 +2182,14 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
         for(int node_index=0; node_index<node_counts; node_index++){
             for(int ep_index=0; ep_index<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){   
                 //if(existing_nodes_info[i].src_endpoint[j] == ENDPOINTS_LIST[index])  {
-                    webpageItem[total_item].short_ = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                    webpageItem[total_item].dst =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                    webpageItem[total_item].src =  existing_nodes_info[index].scene_switch_info.src_ep;
-                    webpageItem[total_item].bind = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind;
-                    webpageItem[total_item].state = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state;
-                    webpageItem[total_item].level = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
-                    webpageItem[total_item].value = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
-                    webpageItem[total_item].check = 0;
+                    webpageItem[total_item].short_  = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+                    webpageItem[total_item].dst     =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+                    webpageItem[total_item].src     =  existing_nodes_info[index].scene_switch_info.src_ep;
+                    webpageItem[total_item].bind    = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind;
+                    webpageItem[total_item].state   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state;
+                    webpageItem[total_item].level   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
+                    webpageItem[total_item].value   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
+                    webpageItem[total_item].check   = 0;
                     strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].ep_name);
                     strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
                     total_item++;             
@@ -2032,7 +2219,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
         cJSON_Delete(json);
         return response;
     }
-    extern SemaphoreHandle_t recordsSemaphore;
+    
 
     char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data){
         char *response  = "[]";
@@ -2195,9 +2382,9 @@ esp_err_t http_set_config_handler(httpd_req_t *req) {
         if (power_on_value >= 0 && power_on_value <= 255 &&
             fade_rate >= 0 && fade_rate <= 100 &&
             fade_time >= 0 && fade_time <= 12 &&
-            group >= 0 && group <= 15) {
+            group >= 0 && group <= 65535) {
 
-            ESP_LOGI(TAG, "Updating ID %d: Power=%d, Rate=%d, Time=%d, Gp=%d, Sc=%d", 
+            ESP_LOGI(TAG, "Updating ID %d: Power=%d, Rate=%d, Time=%d, Gp=%d", 
                      dali_id, power_on_value, fade_rate, fade_time, group);
 
             /* 
@@ -2206,6 +2393,18 @@ esp_err_t http_set_config_handler(httpd_req_t *req) {
             */
             nuos_dali_set_power_on_level(dali_id, power_on_value);
             nuos_dali_set_fade_time_fade_rate(dali_id, fade_time, fade_rate);
+
+            for (int i = 0; i < 16; i++) {
+                // Check if the bit at position i is 1
+                if ((group >> i) & 1) {
+                    //group is i
+                    nuos_dali_add_light_to_group(dali_id, i);
+                }else{
+                    nuos_dali_remove_light_from_group(dali_id, i);
+                }
+                vTaskDelay(200 / portTICK_PERIOD_MS);
+            }
+           
             // Additional storage logic here...
             httpd_resp_sendstr(req, "{\"status\":\"success\"}");
         } else {
@@ -2224,212 +2423,284 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
     char query[128];
     char value_fxn[32];
 
-    
-    cJSON *root = cJSON_CreateArray();
-    if (root == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate memory for JSON Array");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON creation failed");
-        return ESP_FAIL;
+    char *response = "[]"; // Default response if no valid query is found
+
+    // cJSON *root = cJSON_CreateArray();
+    // if (root == NULL) {
+    //     ESP_LOGE(TAG, "Failed to allocate memory for JSON Array");
+    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON creation failed");
+    //     return ESP_FAIL;
+    // }
+
+    // // Prepare storage variable
+    // dali_nvs_storage_t my_dali_system;
+
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+        ESP_LOGI(TAG, "Found URL query => %s", query);
+        response = parse_query_2(query); 
     }
+
+    httpd_resp_set_type(req, "application/json");
+
+    // Enable CORS header if your frontend is hosted on a different port/device during development
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    free((void*)response);
+
+
+    // label0:
+    // DaliNodeList nodes = read_dali_addressed_nodes();
+    // my_dali_system.total_nodes = nodes.total;
+    // printf("Total Drivers = %d\n", nodes.total);
+
+    // if(nodes.total >= 64){
+    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "DALI Bus Error!!");
+    //     return ESP_FAIL;
+    // }
+    // for (int i = 0; i < nodes.total; i++)
+    // {
+    //     printf("Address[%d] = %d\n", i, nodes.addresses[i]);
+
+    // // 2. Loop through your configuration items and add them to the array
+    // // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
+    //     cJSON *item = cJSON_CreateObject();
+    //     if (item == NULL) {
+    //         ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+    //         cJSON_Delete(root);
+    //         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+    //         return ESP_FAIL;
+    //     }
+
+    //     // Match the exact keys expected by your JavaScript frontend
+    //     cJSON_AddNumberToObject(item, "dali_id", nodes.addresses[i]);
+
+    //     uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(nodes.addresses[i]) & 0xff);
+    //     printf("DALI ID: %d, Power On Value: %d\n", nodes.addresses[i], powerOnValue);
+    //     cJSON_AddNumberToObject(item, "power_on_value", powerOnValue);
+    //     vTaskDelay(100 / portTICK_PERIOD_MS);
+    //     uint16_t rawResponse = daliQueryFadeTimeFadeRate(nodes.addresses[i]);
+    //     vTaskDelay(100 / portTICK_PERIOD_MS);
+    //     // Isolate the upper 4 bits (High Nibble) by shifting right by 4
+    //     uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
+    //     // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
+    //     uint8_t fadeRateRaw = rawResponse & 0x0F;
+    //     cJSON_AddNumberToObject(item, "fade_rate", fadeRateRaw);
+    //     cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
+    //     printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", nodes.addresses[i], fadeRateRaw, fadeTimeRaw);
+
+    //      int32_t deviceType = 0;//daliQueryDeviceType(nodes.addresses[i]);
+    //     // int32_t nextDeviceType6 = 0;
+    //     // int32_t nextDeviceType8 = 0;
+    //     // if(deviceType == 0xff){
+    //     //     nextDeviceType6 = daliQueryNextDeviceType(nodes.addresses[i]);
+    //     //     if(nextDeviceType6 == 0x0){
+    //     //         nextDeviceType8 = daliQueryNextDeviceType(nodes.addresses[i]);
+    //     //     }
+    //     // }
+        
+    //     int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
+    //     //printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type6: 0x%lx, Next Device Type8: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType6, nextDeviceType8, query_gear);
+    //     // if(nextDeviceType6 == 0){
+    //     //     cJSON_AddStringToObject(item, "driver_type", "DT6");
+    //     // }
+    //     // if(nextDeviceType8 == 8){
+    //         cJSON_AddStringToObject(item, "driver_type", "DT8");
+    //     // }
+
+    //     int32_t deviceGroupA = daliQueryDeviceInGroupA(nodes.addresses[i]);
+    //     int32_t deviceGroupB = daliQueryDeviceInGroupB(nodes.addresses[i]);
+
+    //     uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
+
+        
+    //     //printf("DALI ID: %d, Device Type: 0x%lx, Group A: 0x%lx, Group B: 0x%lx\n", nodes.addresses[i], deviceType, deviceGroupA, deviceGroupB);
+    //     cJSON_AddNumberToObject(item, "group", groups_bitmask);
+
+    //     // Append the item object to our root array
+    //     cJSON_AddItemToArray(root, item);
+
+
+    //     my_dali_system.nodes[i].dali_id = nodes.addresses[i];
+    //     my_dali_system.nodes[i].power_on_value = powerOnValue;
+    //     my_dali_system.nodes[i].fade_rate = fadeRateRaw;
+    //     my_dali_system.nodes[i].fade_time = fadeTimeRaw;
+    //     my_dali_system.nodes[i].group = groups_bitmask;
+    //     my_dali_system.nodes[i].device_type = deviceType;
+    //     save_dali_config_to_nvs(&my_dali_system); 
+    // }
+
+    
+    // label1:
+    // // 3. Print JSON to a raw string buffer
+    // char *response = cJSON_PrintUnformatted(root);
+
+    // printf("JSON Response: %s\n", response); // Log the JSON response for debugging
+    // if (response == NULL) {
+    //     ESP_LOGE(TAG, "Failed to print JSON");
+    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
+    //     return ESP_FAIL;
+    // }
+
+
+    return ESP_OK;
+
+}
+
+char * parse_query_2(const char *req_query) {
+
+    char value_fxn[32];
+    char value_data[32];
+    uint8_t scene_id = 0xff;
+    int erase_data = 0;
+
+    char *response  = "[]";
 
     // Prepare storage variable
     dali_nvs_storage_t my_dali_system;
-
-
-
-    if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
-
-        ESP_LOGI(TAG, "Found URL query => %s", query);
-        // Retrieve specific query parameter value
-        if (httpd_query_key_value(query, "dali_id", value_fxn, sizeof(value_fxn)) == ESP_OK) {
-            ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
-
-            // 3. Attempt to load existing configurations
-            esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
-            if (err == ESP_ERR_NVS_NOT_FOUND) {
-                // First boot! Setup default dummy configurations
-            } else if (err == ESP_OK) {
-                // Successfully loaded from flash memory
-                // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
-                //         my_dali_system.nodes[0].dali_id, 
-                //         my_dali_system.nodes[0].power_on_value);      
-            }
-
-
-            int dali_id = atoi(value_fxn);  
-            int k_index = 255;
-            for(int k=0; k<my_dali_system.total_nodes; k++){
-                if(my_dali_system.nodes[k].dali_id == dali_id){
-                    ESP_LOGI(TAG, "Driver %d Config -> ID: %d, PowerOn: %d", 
-                        k, 
-                        my_dali_system.nodes[k].dali_id, 
-                        my_dali_system.nodes[k].power_on_value);  
-                        k_index = k;
-                }
-            }
-            // 1. Create a single root JSON object
-            cJSON *root_o = cJSON_CreateObject();
-            if (root_o == NULL) {
-                ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
-                return ESP_FAIL;
-            }
-
-            // 2. Add the properties directly to root_o
-            cJSON_AddNumberToObject(root_o, "dali_id", dali_id);
-
-            uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(dali_id) & 0xff);
-            printf("DALI ID: %d, Power On Value: %d\n", dali_id, powerOnValue);
-            cJSON_AddNumberToObject(root_o, "power_on_value", powerOnValue);
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-
-            uint16_t rawResponse = daliQueryFadeTimeFadeRate(dali_id);
-            vTaskDelay(100 / portTICK_PERIOD_MS);
-
-            // Isolate the upper 4 bits (High Nibble) by shifting right by 4
-            uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
-            // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
-            uint8_t fadeRateRaw = rawResponse & 0x0F;
-            cJSON_AddNumberToObject(root_o, "fade_rate", fadeRateRaw);
-            cJSON_AddNumberToObject(root_o, "fade_time", fadeTimeRaw);
-            printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", dali_id, fadeRateRaw, fadeTimeRaw);
-
-            int32_t deviceType = daliQueryDeviceType(dali_id);
-            int32_t nextDeviceType = 0;
-            if(deviceType == 0xff){
-                nextDeviceType = daliQueryNextDeviceType(dali_id);
-
-            }
-            int32_t query_gear = daliQueryGearFeatures(dali_id);
-            printf("DALI ID: %d, deviceType:%ld, nextDeviceType:%ld, Gear Features Query Result: %ld\n", dali_id, deviceType, nextDeviceType, query_gear);
-            if(nextDeviceType == 0){
-                cJSON_AddStringToObject(root_o, "driver_type", "DT8");
-                //QUERY GEAR FEATURES 247
-                //deviceType = 0; // Default to 0 if the query fails
-            }else{
-                cJSON_AddStringToObject(root_o, "driver_type", "DT6");
-            }
-            
-
-            int32_t deviceGroupA = daliQueryDeviceInGroupA(dali_id);
-            int32_t deviceGroupB = daliQueryDeviceInGroupB(dali_id);
-
-            uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
-
-            cJSON_AddNumberToObject(root_o, "group", groups_bitmask);
-
-            // No nesting or adding items to objects is needed anymore!
-
-            char *response_o = cJSON_PrintUnformatted(root_o);
-            cJSON_Delete(root_o); // Free the JSON structures now that we have the string representation
-
-            printf("JSON Response_o: %s\n", response_o); // Log the JSON response for debugging
-            if (response_o == NULL) {
-                ESP_LOGE(TAG, "Failed to print JSON");
-                httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
-                return ESP_FAIL;
-            }
-
-            if(k_index != 255){
-                my_dali_system.nodes[k_index].power_on_value = powerOnValue;
-                my_dali_system.nodes[k_index].fade_rate = fadeRateRaw;
-                my_dali_system.nodes[k_index].fade_time = fadeTimeRaw;
-                my_dali_system.nodes[k_index].group = groups_bitmask;
-                my_dali_system.nodes[k_index].device_type = deviceType;
-                save_dali_config_to_nvs(&my_dali_system); 
-            }
-
-            // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
-            httpd_resp_set_type(req, "application/json");
-
-            // Enable CORS header if your frontend is hosted on a different port/device during development
-            httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
-            // 5. Send response
-            httpd_resp_send(req, response_o, HTTPD_RESP_USE_STRLEN);
-
-            // Free the printed string string to avoid a memory leak
-            free(response_o);
-
-            return ESP_OK;
-
-        }else if (httpd_query_key_value(query, "init", value_fxn, sizeof(value_fxn)) == ESP_OK) {
-            // ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
-            // Attempt to load existing configurations
-
-            int load_from_nvs = atoi(value_fxn);  
-
-            if(load_from_nvs == 0) goto label0; // Skip loading from NVS and proceed to read DALI nodes
-
-            esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
-            if (err == ESP_ERR_NVS_NOT_FOUND) {
-                // First boot! Setup default dummy configurations
-            } else if (err == ESP_OK) {
-                // Successfully loaded from flash memory
-                // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
-                //         my_dali_system.nodes[0].dali_id, 
-                //         my_dali_system.nodes[0].power_on_value);     
-                        
-                
-                        for(int m=0; m<my_dali_system.total_nodes; m++){
-                                printf("Address[%d] = %d\n", m, my_dali_system.nodes[m].dali_id);
-
-                                //  Loop through your configuration items and add them to the array
-                                // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
-                                cJSON *item = cJSON_CreateObject();
-                                if (item == NULL) {
-                                    ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
-                                    cJSON_Delete(root);
-                                    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
-                                    return ESP_FAIL;
-                                }
-
-                                // Match the exact keys expected by your JavaScript frontend
-                                cJSON_AddNumberToObject(item, "dali_id", my_dali_system.nodes[m].dali_id);
-                                cJSON_AddNumberToObject(item, "power_on_value", my_dali_system.nodes[m].power_on_value);
-
-                                cJSON_AddNumberToObject(item, "fade_rate", my_dali_system.nodes[m].fade_rate);
-                                cJSON_AddNumberToObject(item, "fade_time", my_dali_system.nodes[m].fade_time);
-            
-                                if(my_dali_system.nodes[m].device_type == 0){
-                                    cJSON_AddStringToObject(item, "driver_type", "DT8");
-                                }else{
-                                    cJSON_AddStringToObject(item, "driver_type", "DT6");
-                                }
-                                cJSON_AddNumberToObject(item, "group", my_dali_system.nodes[m].group);
-
-                                // Append the item object to our root array
-                                cJSON_AddItemToArray(root, item);
-
-                                goto label1;
- 
-                        }
-            }
-
-        }else{
-            return ESP_OK;
-        }
+    cJSON *root = cJSON_CreateArray();
+    if (root == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for JSON Array");
+        //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON creation failed");
+        //return ESP_FAIL;
+        response = "{\"error\":\"JSON creation failed!!\"}";
+        cJSON_Delete(root); 
+        return response;
     }
+    // Retrieve specific query parameter value
+    if (httpd_query_key_value(req_query, "dali_id", value_fxn, sizeof(value_fxn)) == ESP_OK) {
+       // ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
+
+        // 3. Attempt to load existing configurations
+        esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
+            // First boot! Setup default dummy configurations
+        } else if (err == ESP_OK) {
+            // Successfully loaded from flash memory
+            // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
+            //         my_dali_system.nodes[0].dali_id, 
+            //         my_dali_system.nodes[0].power_on_value);      
+        }
 
 
+        int dali_id = atoi(value_fxn);  
+        int k_index = 255;
+        bool dali_id_found_flag = false;
+        for(int k=0; k<my_dali_system.total_nodes; k++){
+            if(my_dali_system.nodes[k].dali_id == dali_id){
+                dali_id_found_flag = true;
+                
+            }
+        }
+        
+        if(!dali_id_found_flag) return response;
+        //printf("Dali ID found!!\n");
 
-    label0:
+        cJSON *item = cJSON_CreateObject();
+        
+        // 1. Create a single root JSON object
+        if (item == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+           // return ESP_FAIL;
+            cJSON_Delete(root); 
+            response = "{\"error\":\"JSON memory allocation failed!!\"}";
+            return response;
+        }
+        //printf("next_1\n");
+        // 2. Add the properties directly to root_o
+        cJSON_AddNumberToObject(item, "dali_id", dali_id);
+
+        uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(dali_id) & 0xff);
+        //printf("DALI ID: %d, Power On Value: %d\n", dali_id, powerOnValue);
+        cJSON_AddNumberToObject(item, "power_on_value", powerOnValue);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+        uint16_t rawResponse = daliQueryFadeTimeFadeRate(dali_id);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+        // Isolate the upper 4 bits (High Nibble) by shifting right by 4
+        uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
+        // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
+        uint8_t fadeRateRaw = rawResponse & 0x0F;
+        cJSON_AddNumberToObject(item, "fade_rate", fadeRateRaw);
+        cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
+        //printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", dali_id, fadeRateRaw, fadeTimeRaw);
+
+        int32_t deviceType = daliQueryDeviceType(dali_id);
+        int32_t nextDeviceType = 0;
+        if(deviceType == 0xff){
+            nextDeviceType = daliQueryNextDeviceType(dali_id);
+
+        }
+        int32_t query_gear = daliQueryGearFeatures(dali_id);
+        printf("DALI ID: %d, deviceType:%ld, nextDeviceType:%ld, Gear Features Query Result: %ld\n", dali_id, deviceType, nextDeviceType, query_gear);
+        if(nextDeviceType == 0){
+            cJSON_AddStringToObject(item, "driver_type", "DT8");
+            //QUERY GEAR FEATURES 247
+            //deviceType = 0; // Default to 0 if the query fails
+        }else{
+            cJSON_AddStringToObject(item, "driver_type", "DT6");
+        }
+        
+
+        int32_t deviceGroupA = daliQueryDeviceInGroupA(dali_id);
+        int32_t deviceGroupB = daliQueryDeviceInGroupB(dali_id);
+
+        uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
+
+        cJSON_AddNumberToObject(item, "group", groups_bitmask);
+
+        cJSON_AddItemToArray(root, item);
+
+
+        // No nesting or adding items to objects is needed anymore!
+
+        char *response_o = cJSON_PrintUnformatted(root);
+        cJSON_Delete(root); // Free the JSON structures now that we have the string representation
+        //printf("next_2\n");
+        //printf("%s\n", response_o); // Log the JSON response for debugging
+        if (response_o == NULL) {
+            ESP_LOGE(TAG, "Failed to print JSON");
+            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
+            //return ESP_FAIL;
+            cJSON_Delete(root); 
+            response_o = "{\"error\":\"JSON printing failed\"}";
+            return response_o;
+        }
+        //printf("next_3\n");
+        if(k_index != 255){
+            my_dali_system.nodes[k_index].power_on_value = powerOnValue;
+            my_dali_system.nodes[k_index].fade_rate = fadeRateRaw;
+            my_dali_system.nodes[k_index].fade_time = fadeTimeRaw;
+            my_dali_system.nodes[k_index].group = groups_bitmask;
+            my_dali_system.nodes[k_index].device_type = deviceType;
+            save_dali_config_to_nvs(&my_dali_system); 
+        }
+        //printf("response_o: %s\n", response_o);
+        return response_o;
+label0:
     DaliNodeList nodes = read_dali_addressed_nodes();
     my_dali_system.total_nodes = nodes.total;
     printf("Total Drivers = %d\n", nodes.total);
 
+    if(nodes.total >= 64){
+        // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "DALI Bus Error!!");
+        // return ESP_FAIL;
+        response = "{\"error\":\"DALI Bus Error!!\"}";
+        return response;
+    }
     for (int i = 0; i < nodes.total; i++)
     {
-        printf("Address[%d] = %d\n", i, nodes.addresses[i]);
-
-    // 2. Loop through your configuration items and add them to the array
-    // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
+        // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
         cJSON *item = cJSON_CreateObject();
         if (item == NULL) {
             ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
             cJSON_Delete(root);
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
-            return ESP_FAIL;
+            response = "{\"error\":\"JSON memory allocation failed\"}";
+            return response;
+            //httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+            //return ESP_FAIL;
         }
 
         // Match the exact keys expected by your JavaScript frontend
@@ -2449,33 +2720,31 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
         cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
         printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", nodes.addresses[i], fadeRateRaw, fadeTimeRaw);
 
-        int32_t deviceType = daliQueryDeviceType(nodes.addresses[i]);
-        int32_t nextDeviceType = 0;
-        if(deviceType == 0xff){
-            nextDeviceType = daliQueryNextDeviceType(nodes.addresses[i]);
-
-        }
+        int32_t deviceType = 0;//daliQueryDeviceType(nodes.addresses[i]);
+        // int32_t nextDeviceType6 = 0;
+        // int32_t nextDeviceType8 = 0;
+        // if(deviceType == 0xff){
+        //     nextDeviceType6 = daliQueryNextDeviceType(nodes.addresses[i]);
+        //     if(nextDeviceType6 == 0x0){
+        //         nextDeviceType8 = daliQueryNextDeviceType(nodes.addresses[i]);
+        //     }
+        // }
         
         int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
-        printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType, query_gear);
-        if(nextDeviceType == 0){
+        //printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type6: 0x%lx, Next Device Type8: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType6, nextDeviceType8, query_gear);
+        // if(nextDeviceType6 == 0){
+        //     cJSON_AddStringToObject(item, "driver_type", "DT6");
+        // }
+        // if(nextDeviceType8 == 8){
             cJSON_AddStringToObject(item, "driver_type", "DT8");
-        }else{
-            cJSON_AddStringToObject(item, "driver_type", "DT6");
-        }
-
+        // }
         int32_t deviceGroupA = daliQueryDeviceInGroupA(nodes.addresses[i]);
         int32_t deviceGroupB = daliQueryDeviceInGroupB(nodes.addresses[i]);
-
         uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
-
-        
-        printf("DALI ID: %d, Device Type: 0x%lx, Group A: 0x%lx, Group B: 0x%lx\n", nodes.addresses[i], deviceType, deviceGroupA, deviceGroupB);
+        //printf("DALI ID: %d, Device Type: 0x%lx, Group A: 0x%lx, Group B: 0x%lx\n", nodes.addresses[i], deviceType, deviceGroupA, deviceGroupB);
         cJSON_AddNumberToObject(item, "group", groups_bitmask);
-
         // Append the item object to our root array
         cJSON_AddItemToArray(root, item);
-
 
         my_dali_system.nodes[i].dali_id = nodes.addresses[i];
         my_dali_system.nodes[i].power_on_value = powerOnValue;
@@ -2491,35 +2760,373 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
     // 3. Print JSON to a raw string buffer
     char *response = cJSON_PrintUnformatted(root);
 
-    printf("JSON Response: %s\n", response); // Log the JSON response for debugging
+    //printf("JSON Response: %s\n", response); // Log the JSON response for debugging
     if (response == NULL) {
         ESP_LOGE(TAG, "Failed to print JSON");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
-        return ESP_FAIL;
+        // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
+        // return ESP_FAIL;
+        response = "{\"error\":\"JSON printing failed\"}";
+    }
+    return response;
+
+    }else if (httpd_query_key_value(req_query, "init", value_fxn, sizeof(value_fxn)) == ESP_OK) {
+        // ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
+        // Attempt to load existing configurations
+
+        int load_from_nvs = atoi(value_fxn);  
+
+        if(load_from_nvs == 0) goto label0; // Skip loading from NVS and proceed to read DALI nodes
+
+        esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
+            // First boot! Setup default dummy configurations
+        } else if (err == ESP_OK) {
+            // Successfully loaded from flash memory
+            // ESP_LOGI(TAG_NVS, "Driver 0 Config -> ID: %d, PowerOn: %d", 
+            //         my_dali_system.nodes[0].dali_id, 
+            //         my_dali_system.nodes[0].power_on_value);     
+                    
+            
+                    for(int m=0; m<my_dali_system.total_nodes; m++){
+                            //printf("Address[%d] = %d\n", m, my_dali_system.nodes[m].dali_id);
+
+                            //  Loop through your configuration items and add them to the array
+                            // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
+                            cJSON *item = cJSON_CreateObject();
+                            if (item == NULL) {
+                                ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+                                cJSON_Delete(root);
+                                // httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
+                                //return ESP_FAIL;
+                                return response;
+                            }
+
+                            // Match the exact keys expected by your JavaScript frontend
+                            cJSON_AddNumberToObject(item, "dali_id", my_dali_system.nodes[m].dali_id);
+                            cJSON_AddNumberToObject(item, "power_on_value", my_dali_system.nodes[m].power_on_value);
+
+                            cJSON_AddNumberToObject(item, "fade_rate", my_dali_system.nodes[m].fade_rate);
+                            cJSON_AddNumberToObject(item, "fade_time", my_dali_system.nodes[m].fade_time);
+        
+
+                            cJSON_AddStringToObject(item, "driver_type", "DT8");
+                     
+                            cJSON_AddNumberToObject(item, "group", my_dali_system.nodes[m].group);
+
+                            // Append the item object to our root array
+                            cJSON_AddItemToArray(root, item);
+
+                            goto label1;
+
+                    }
+        }
     }
 
-     // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
-    httpd_resp_set_type(req, "application/json");
+    return response;
+}
 
-    // Enable CORS header if your frontend is hosted on a different port/device during development
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+char * parse_query(const char *req_query) {
 
-    // 5. Send response
-    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+    char value_fxn[64];
+    char value_data[64];
+    uint8_t scene_id = 0xff;
+    int erase_data = 0;
 
-    free(response);
+    char *response  = "[]";
 
-    return ESP_OK;
+    if (httpd_query_key_value(req_query, "fxn", value_fxn, sizeof(value_fxn)) == ESP_OK) {
+        ESP_LOGI(TAG, "Found URL query parameter => fxn=%s", value_fxn);
+
+        int fxn = atoi(value_fxn);  
+        if(fxn == 0){
+
+        }else if(fxn == 1){
+            if (httpd_query_key_value(req_query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
+                ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
+                uint8_t index = atoi(value_data);
+                scene_id = index+1; 
+                if (httpd_query_key_value(req_query, "erase_data", value_data, sizeof(value_data)) == ESP_OK) { 
+                    erase_data = atoi(value_data);
+                    response = nuos_do_task(index, scene_id, erase_data);
+                }  
+                
+            }                
+        }else if(fxn == 2){
+            // if (httpd_query_key_value(req_query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
+            //     ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
+            //     index = atoi(value_data);
+            //     node_counts = existing_nodes_info[index].scene_switch_info.total_records;
+            //     ESP_LOGI(TAG, "total_records=%d", node_counts);
+
+            //     response = prepare_json(index);
+
+            //     for(int i=0; i<existing_nodes_info[index].scene_switch_info.total_records; i++){
+            //         printf("----------------NODE_ADDRESS:0x%x---------------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].short_addr);
+            //         printf("endpoint_counts:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts);
+            //         printf("node_name:%s\n" , existing_nodes_info[index].scene_switch_info.dst_node_info[i].node_name);
+                    
+            //         for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts; j++){
+            //             for(uint8_t k=0; k<existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].clusters_count; k++){                                
+            //                 printf("cluster_id:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k]);
+            //                 printf("........ATTRIBUTE VALUES........\n");  
+            //                 printf("dst_ep:%d  state:%d  level:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].dst_ep,
+            //                 existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.state,
+            //                 existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.level);
+            //             }
+            //         }
+            //         printf("................................\n");
+            //     }                        
+            // } 
+        } else if(fxn == 10){  //read already saved dali addresses
+            cJSON *json = cJSON_CreateArray();
+            for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
+                // Start creating a cJSON object
+                //if(dali_nvs_stt[0].device_ids[i] != DALI_INVALID_ADDRESS){
+                    cJSON *item_json = cJSON_CreateObject();
+                    // Add fields to the cJSON object
+                    cJSON_AddNumberToObject(item_json, "Id", dali_nvs_stt[0].device_ids[i]);
+                    cJSON_AddNumberToObject(item_json, "state", dali_nvs_stt[0].state);
+                    cJSON_AddNumberToObject(item_json, "toggle", dali_nvs_stt[0].state);
+                    cJSON_AddItemToArray(json, item_json);
+                //}
+            }                                             
+            response = cJSON_Print(json);
+            cJSON_Delete(json);
+        }else if(fxn == 12){  // read new dali addresses
+                // uint8_t foundAddresses[MAX_DALI_DEVICES_IN_SCENES];
+                // dali_nvs_stt[0].total_ids = get_all_dali_addresses(foundAddresses);
+
+                // cJSON *json = cJSON_CreateArray();
+                // for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
+                //     // Start creating a cJSON object
+                //     cJSON *item_json = cJSON_CreateObject();
+                //     // Add fields to the cJSON object
+                //     cJSON_AddNumberToObject(item_json, "Id", foundAddresses[i]>>1);
+                //     cJSON_AddNumberToObject(item_json, "state", 0);
+                //     cJSON_AddNumberToObject(item_json, "toggle", 0);
+                //     cJSON_AddItemToArray(json, item_json);
+                // }
+                                        
+                // for (int p = 0; p < dali_nvs_stt[0].total_ids; p++) {
+                //     dali_nvs_stt[0].device_ids[p] = foundAddresses[p]>>1;
+                // }       
+
+                // for (int p = dali_nvs_stt[0].total_ids; p < MAX_DALI_ADDRESSES; p++) {
+                //     dali_nvs_stt[0].device_ids[p] = DALI_INVALID_ADDRESS;
+                // }  
+                // nuos_store_dali_data_to_nvs(index); 
+            
+                // response = cJSON_Print(json);
+                // cJSON_Delete(json);
+
+        }else if(fxn == 11){
+            if (httpd_query_key_value(req_query, "id", value_data, sizeof(value_data)) == ESP_OK) {
+                int id = atoi(value_data);
+                if (httpd_query_key_value(req_query, "state", value_data, sizeof(value_data)) == ESP_OK) {
+                    int state = atoi(value_data);
+                    printf("id:%d  state:%d\n", id, state);
+                    nuos_dali_set_state(id, state);
+                }
+            }
+        }else if(fxn == 15){
+            cJSON *item_json = cJSON_CreateObject();
+            // Add fields to the cJSON object
+            // cJSON_AddNumberToObject(item_json, "group_id", scene_group_switch_info.group_id[0]);
+            // cJSON_AddNumberToObject(item_json, "group_id_2", scene_group_switch_info.group_id[1]);
+            int group_ids[2]; //3 5 10,  6 9 11
+            group_ids[0] = scene_group_switch_info.group_id[0];
+            group_ids[1] = scene_group_switch_info.group_id[1];
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 1);
+            #else
+            cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 2);
+            #endif
+            /* corrected: create int array and use cJSON_CreateIntArray */
+            int scene_ids[4];
+            scene_ids[0] = scene_group_switch_info.scene_ids[0];
+            scene_ids[1] = scene_group_switch_info.scene_ids[1];
+            scene_ids[2] = scene_group_switch_info.scene_ids[2];
+            scene_ids[3] = scene_group_switch_info.scene_ids[3];
+
+            cJSON *scene_ids_array = cJSON_CreateIntArray(scene_ids, 4);
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+                if(scene_group_switch_info.control_type > 1){
+                scene_group_switch_info.control_type = 0; 
+                }
+                if(scene_group_switch_info.scn_ctrl_type > 1){
+                scene_group_switch_info.scn_ctrl_type = 0; 
+                }  
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                if(scene_group_switch_info.control_type > 1){
+                    scene_group_switch_info.control_type = 0; 
+                }
+                if(scene_group_switch_info.scn_ctrl_type > 1){
+                    scene_group_switch_info.scn_ctrl_type = 0; 
+                } 
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+
+                if(scene_group_switch_info.control_type > 1){
+                    scene_group_switch_info.control_type = 0; 
+                }
+                if(scene_group_switch_info.scn_ctrl_type > 1){
+                    scene_group_switch_info.scn_ctrl_type = 0; 
+                } 
+
+            #else
+                if(scene_group_switch_info.control_type > 2){
+                scene_group_switch_info.control_type = 0; 
+                }
+                if(scene_group_switch_info.scn_ctrl_type > 2){
+                scene_group_switch_info.scn_ctrl_type = 0; 
+                }                     
+            #endif
+            cJSON_AddItemToObject(item_json, "group_id", group_ids_array);
+            cJSON_AddItemToObject(item_json, "scene_ids", scene_ids_array);
+            cJSON_AddStringToObject(item_json, "control_type", switch_ctrl_type[scene_group_switch_info.control_type]);
+            cJSON_AddStringToObject(item_json, "scn_ctrl_type", scene_ctrl_type[scene_group_switch_info.scn_ctrl_type]);
+                                        
+            response = cJSON_Print(item_json);
+            //printf("%s\n", response);
+            cJSON_Delete(item_json);
+        }else if(fxn == 16){
+            cJSON *item_json = cJSON_CreateArray();
+            for (int i = 0; i < 4; i++) {
+                cJSON *arr = cJSON_CreateArray();
+                for (int j = 0; j < scene_group_switch_info.total_ids[i]; j++) {
+                    //if (scene_group_switch_info.device_ids[i][j]) {
+                        cJSON_AddItemToArray(arr, cJSON_CreateNumber(scene_group_switch_info.device_ids[i][j])); // 1-based button IDs
+                    //}
+                }
+                cJSON_AddItemToArray(item_json, arr);
+            }
+            response = cJSON_Print(item_json);
+            //printf("%s\n", response);
+            cJSON_Delete(item_json);
+            // if (!response) {
+            //     httpd_resp_send_500(req);
+            //     return response;//ESP_FAIL;
+            // }                    
+        }else if (fxn == 20) {
+            // Return saved Tab2 selection
+            cJSON *obj = cJSON_CreateObject();
+
+            
+            //int saved_addr = nuos_read_selected_dali_address_from_nvs(); // implement
+            int saved_addr = getNVSDaliNodesCommissioningCounts(); // implement
+            cJSON_AddNumberToObject(obj, "selected_address", saved_addr);
+
+            int _dali_min_offset = getNVSDaliMinDimOffset(); // implement
+            cJSON_AddNumberToObject(obj, "dali_min_offset", _dali_min_offset);
+
+            int _fade_time = getNVSDaliFadeTime(); // implement
+            cJSON_AddNumberToObject(obj, "fade_time", _fade_time);
+
+            int _fade_rate = getNVSDaliFadeRate(); // implement
+            cJSON_AddNumberToObject(obj, "fade_rate", _fade_rate);
+
+            response = cJSON_Print(obj);
+            cJSON_Delete(obj);
+            //httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+            //free((void*)response);
+            
+
+        } else if (fxn == 21) {
+            // Return saved group membership for given group_id (or default group if not provided)
+            // client calls: /items?fxn=21&group_id=3
+            char value_group[32];
+            int group_id = 0;
+            if (httpd_query_key_value(req_query, "group_id", value_group, sizeof(value_group)) == ESP_OK) {
+                group_id = atoi(value_group);
+            }
+            if (group_id < 0) group_id = 0;
+            if (group_id >= GROUP_COUNT) group_id = 0;
+
+            // Try to use high-level helper if available; otherwise read raw blob
+            int ids[DALI_ADDR_COUNT];
+            int ids_count = 0;
+            memset(ids, 0, sizeof(ids));
+
+            // If you have a helper: nuos_read_group_membership_from_nvs(group_id, ids, &ids_count);
+            // If not, use read_group_blob(..) to read the bitmap and compute ids
+            uint8_t blob[DALI_ADDR_COUNT] = {0};
+            if (read_group_blob(group_id, blob) == ESP_OK) {
+                printf("---> READ NVS OK\n");
+                for (int i = 0; i < DALI_ADDR_COUNT; ++i) {
+                    if (blob[i]) {
+                        printf("---> i:%d\n", i);
+                        ids[ids_count++] = i;
+                    }
+                }
+            } else {
+                printf("---> fallback: attempt to call wrapper and set ids_count appropriately\n");
+                // fallback: attempt to call wrapper and set ids_count appropriately
+                // nuos_read_group_membership_from_nvs(group_id, ids, &ids_count);
+            }
+
+            cJSON *obj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(obj, "group_id", group_id);
+            cJSON *arr = cJSON_CreateIntArray(ids, ids_count);
+            cJSON_AddItemToObject(obj, "selected_ids", arr);
+            response = cJSON_Print(obj);
+            cJSON_Delete(obj);
+            //printf("%s\n", response);
+            //httpd_resp_set_type(req, "application/json");
+           // httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+            //free((void*)response);
+
+        } else if (fxn == 22) {
+            // Return saved scenes for a given group
+            // client calls: /items?fxn=22&group_id=3
+            char value_group2[32];
+            int group_id2 = 0;
+            if (httpd_query_key_value(req_query, "group_id", value_group2, sizeof(value_group2)) == ESP_OK) {
+                group_id2 = atoi(value_group2);
+            }
+            if (group_id2 < 0) group_id2 = 0;
+            if (group_id2 >= GROUP_COUNT) group_id2 = 0;
+
+            // Read scene blob for this group (SCENE_COUNT slots)
+            uint8_t scene_blob[SCENE_COUNT] = {0};
+            int scene_ids[SCENE_COUNT];
+            int scene_count = 0;
+            memset(scene_ids, 0, sizeof(scene_ids));
+
+            if (read_scene_blob(group_id2, scene_blob) == ESP_OK) {
+                for (int i = 0; i < SCENE_COUNT; ++i) {
+                    if (scene_blob[i]) {
+                        scene_ids[scene_count++] = i;
+                    }
+                }
+            } else {
+                // fallback: try wrapper if present
+                // nuos_read_scene_membership_from_nvs(group_id2, scene_ids, &scene_count);
+            }
+
+            cJSON *obj2 = cJSON_CreateObject();
+            cJSON_AddNumberToObject(obj2, "group_id", group_id2);
+            cJSON *sarr = cJSON_CreateIntArray(scene_ids, scene_count);
+            cJSON_AddItemToObject(obj2, "selected_scenes", sarr);
+            response = cJSON_Print(obj2);
+            cJSON_Delete(obj2);
+
+            //free((void*)response);
+        }
+                        
+    } else {
+        //ESP_LOGW(TAG, "URL query parameter %s not found", key);
+       // return ESP_FAIL;
+    }
+    return response;
 
 }
 
     esp_err_t http_get_items_handler(httpd_req_t *req) {
 
         char query[128];
-        char value_fxn[32];
-        char value_data[32];
-        uint8_t scene_id = 0xff;
-        int erase_data = 0;
+        // char value_fxn[32];
+        // char value_data[32];
+        // uint8_t scene_id = 0xff;
+        // int erase_data = 0;
 
         char *response  = "[]";
         int index = 0;
@@ -2527,292 +3134,16 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
         if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
             ESP_LOGI(TAG, "Found URL query => %s", query);
             // Retrieve specific query parameter value
-            if (httpd_query_key_value(query, "fxn", value_fxn, sizeof(value_fxn)) == ESP_OK) {
-                ESP_LOGI(TAG, "Found URL query parameter => fxn=%s", value_fxn);
-
-
-                int fxn = atoi(value_fxn);  
-                if(fxn == 0){
-
-                }else if(fxn == 1){
-                    if (httpd_query_key_value(query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
-                        ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
-                        index = atoi(value_data);
-                        scene_id = index+1; 
-                        if (httpd_query_key_value(query, "erase_data", value_data, sizeof(value_data)) == ESP_OK) { 
-                            erase_data = atoi(value_data);
-                            response = nuos_do_task(index, scene_id, erase_data);
-                        }  
-                        
-                    }                
-                }else if(fxn == 2){
-                    if (httpd_query_key_value(query, "scene_id", value_data, sizeof(value_data)) == ESP_OK) {
-                        ESP_LOGI(TAG, "Found URL query parameter => scene_id=%s", value_data);
-                        index = atoi(value_data);
-                        node_counts = existing_nodes_info[index].scene_switch_info.total_records;
-                        ESP_LOGI(TAG, "total_records=%d", node_counts);
-
-                        response = prepare_json(index);
-
-                        for(int i=0; i<existing_nodes_info[index].scene_switch_info.total_records; i++){
-                            printf("----------------NODE_ADDRESS:0x%x---------------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].short_addr);
-                            printf("endpoint_counts:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts);
-                            printf("node_name:%s\n" , existing_nodes_info[index].scene_switch_info.dst_node_info[i].node_name);
-                            
-                            for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts; j++){
-                                for(uint8_t k=0; k<existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].clusters_count; k++){                                
-                                    printf("cluster_id:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k]);
-                                    printf("........ATTRIBUTE VALUES........\n");  
-                                    printf("dst_ep:%d  state:%d  level:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].dst_ep,
-                                    existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.state,
-                                    existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.level);
-                                }
-                            }
-                            printf("................................\n");
-                        }                        
-                    } 
-                } else if(fxn == 10){  //read already saved dali addresses
-                    cJSON *json = cJSON_CreateArray();
-                    for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
-                        // Start creating a cJSON object
-                        //if(dali_nvs_stt[0].device_ids[i] != DALI_INVALID_ADDRESS){
-                            cJSON *item_json = cJSON_CreateObject();
-                            // Add fields to the cJSON object
-                            cJSON_AddNumberToObject(item_json, "Id", dali_nvs_stt[0].device_ids[i]);
-                            cJSON_AddNumberToObject(item_json, "state", dali_nvs_stt[0].state);
-                            cJSON_AddNumberToObject(item_json, "toggle", dali_nvs_stt[0].state);
-                            cJSON_AddItemToArray(json, item_json);
-                        //}
-                    }                                             
-                    response = cJSON_Print(json);
-                    cJSON_Delete(json);
-                }else if(fxn == 12){  // read new dali addresses
-                        // uint8_t foundAddresses[MAX_DALI_DEVICES_IN_SCENES];
-                        // dali_nvs_stt[0].total_ids = get_all_dali_addresses(foundAddresses);
-
-                        // cJSON *json = cJSON_CreateArray();
-                        // for (size_t i = 0; i < dali_nvs_stt[0].total_ids; i++) {
-                        //     // Start creating a cJSON object
-                        //     cJSON *item_json = cJSON_CreateObject();
-                        //     // Add fields to the cJSON object
-                        //     cJSON_AddNumberToObject(item_json, "Id", foundAddresses[i]>>1);
-                        //     cJSON_AddNumberToObject(item_json, "state", 0);
-                        //     cJSON_AddNumberToObject(item_json, "toggle", 0);
-                        //     cJSON_AddItemToArray(json, item_json);
-                        // }
-                                                
-                        // for (int p = 0; p < dali_nvs_stt[0].total_ids; p++) {
-                        //     dali_nvs_stt[0].device_ids[p] = foundAddresses[p]>>1;
-                        // }       
-
-                        // for (int p = dali_nvs_stt[0].total_ids; p < MAX_DALI_ADDRESSES; p++) {
-                        //     dali_nvs_stt[0].device_ids[p] = DALI_INVALID_ADDRESS;
-                        // }  
-                        // nuos_store_dali_data_to_nvs(index); 
-                   
-                        // response = cJSON_Print(json);
-                        // cJSON_Delete(json);
-
-                }else if(fxn == 11){
-                    if (httpd_query_key_value(query, "id", value_data, sizeof(value_data)) == ESP_OK) {
-                        int id = atoi(value_data);
-                        if (httpd_query_key_value(query, "state", value_data, sizeof(value_data)) == ESP_OK) {
-                            int state = atoi(value_data);
-                            printf("id:%d  state:%d\n", id, state);
-                            nuos_dali_set_state(id, state);
-                        }
-                    }
-                }else if(fxn == 15){
-                    cJSON *item_json = cJSON_CreateObject();
-                    // Add fields to the cJSON object
-                    // cJSON_AddNumberToObject(item_json, "group_id", scene_group_switch_info.group_id[0]);
-                    // cJSON_AddNumberToObject(item_json, "group_id_2", scene_group_switch_info.group_id[1]);
-                    int group_ids[2]; //3 5 10,  6 9 11
-                    group_ids[0] = scene_group_switch_info.group_id[0];
-                    group_ids[1] = scene_group_switch_info.group_id[1];
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                    cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 1);
-                    #else
-                    cJSON *group_ids_array = cJSON_CreateIntArray(group_ids, 2);
-                    #endif
-                    /* corrected: create int array and use cJSON_CreateIntArray */
-                    int scene_ids[4];
-                    scene_ids[0] = scene_group_switch_info.scene_ids[0];
-                    scene_ids[1] = scene_group_switch_info.scene_ids[1];
-                    scene_ids[2] = scene_group_switch_info.scene_ids[2];
-                    scene_ids[3] = scene_group_switch_info.scene_ids[3];
-
-                    cJSON *scene_ids_array = cJSON_CreateIntArray(scene_ids, 4);
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                        if(scene_group_switch_info.control_type > 1){
-                        scene_group_switch_info.control_type = 0; 
-                        }
-                        if(scene_group_switch_info.scn_ctrl_type > 1){
-                        scene_group_switch_info.scn_ctrl_type = 0; 
-                        }  
-                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
-                        if(scene_group_switch_info.control_type > 1){
-                            scene_group_switch_info.control_type = 0; 
-                        }
-                        if(scene_group_switch_info.scn_ctrl_type > 1){
-                            scene_group_switch_info.scn_ctrl_type = 0; 
-                        } 
-                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-
-                        if(scene_group_switch_info.control_type > 2){
-                            scene_group_switch_info.control_type = 0; 
-                        }
-                        if(scene_group_switch_info.scn_ctrl_type > 2){
-                            scene_group_switch_info.scn_ctrl_type = 0; 
-                        } 
-
-                    #else
-                        if(scene_group_switch_info.control_type > 2){
-                        scene_group_switch_info.control_type = 0; 
-                        }
-                        if(scene_group_switch_info.scn_ctrl_type > 2){
-                        scene_group_switch_info.scn_ctrl_type = 0; 
-                        }                     
-                    #endif
-                    cJSON_AddItemToObject(item_json, "group_id", group_ids_array);
-                    cJSON_AddItemToObject(item_json, "scene_ids", scene_ids_array);
-                    cJSON_AddStringToObject(item_json, "control_type", switch_ctrl_type[scene_group_switch_info.control_type]);
-                    cJSON_AddStringToObject(item_json, "scn_ctrl_type", scene_ctrl_type[scene_group_switch_info.scn_ctrl_type]);
-                                              
-                    response = cJSON_Print(item_json);
-                    printf("%s\n", response);
-                    cJSON_Delete(item_json);
-                }else if(fxn == 16){
-                    cJSON *item_json = cJSON_CreateArray();
-                    for (int i = 0; i < 4; i++) {
-                        cJSON *arr = cJSON_CreateArray();
-                        for (int j = 0; j < scene_group_switch_info.total_ids[i]; j++) {
-                            //if (scene_group_switch_info.device_ids[i][j]) {
-                                cJSON_AddItemToArray(arr, cJSON_CreateNumber(scene_group_switch_info.device_ids[i][j])); // 1-based button IDs
-                            //}
-                        }
-                        cJSON_AddItemToArray(item_json, arr);
-                    }
-                    response = cJSON_Print(item_json);
-                    printf("%s\n", response);
-                    cJSON_Delete(item_json);
-                    if (!response) {
-                        httpd_resp_send_500(req);
-                        return ESP_FAIL;
-                    }                    
-                }else if (fxn == 20) {
-                    // Return saved Tab2 selection
-                    cJSON *obj = cJSON_CreateObject();
-
-                    
-                    //int saved_addr = nuos_read_selected_dali_address_from_nvs(); // implement
-                    int saved_addr = getNVSDaliNodesCommissioningCounts(); // implement
-                    cJSON_AddNumberToObject(obj, "selected_address", saved_addr);
-
-                    int _dali_min_offset = getNVSDaliMinDimOffset(); // implement
-                    cJSON_AddNumberToObject(obj, "dali_min_offset", _dali_min_offset);
-
-                    int _fade_time = getNVSDaliFadeTime(); // implement
-                    cJSON_AddNumberToObject(obj, "fade_time", _fade_time);
-
-                    int _fade_rate = getNVSDaliFadeRate(); // implement
-                    cJSON_AddNumberToObject(obj, "fade_rate", _fade_rate);
-
-                    const char *resp = cJSON_Print(obj);
-                    cJSON_Delete(obj);
-                    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
-                    free((void*)resp);
-                    return ESP_OK;
-
-                } else if (fxn == 21) {
-                    // Return saved group membership for given group_id (or default group if not provided)
-                    // client calls: /items?fxn=21&group_id=3
-                    char value_group[32];
-                    int group_id = 0;
-                    if (httpd_query_key_value(query, "group_id", value_group, sizeof(value_group)) == ESP_OK) {
-                        group_id = atoi(value_group);
-                    }
-                    if (group_id < 0) group_id = 0;
-                    if (group_id >= GROUP_COUNT) group_id = 0;
-
-                    // Try to use high-level helper if available; otherwise read raw blob
-                    int ids[DALI_ADDR_COUNT];
-                    int ids_count = 0;
-                    memset(ids, 0, sizeof(ids));
-
-                    // If you have a helper: nuos_read_group_membership_from_nvs(group_id, ids, &ids_count);
-                    // If not, use read_group_blob(..) to read the bitmap and compute ids
-                    uint8_t blob[DALI_ADDR_COUNT] = {0};
-                    if (read_group_blob(group_id, blob) == ESP_OK) {
-                        printf("---> READ NVS OK\n");
-                        for (int i = 0; i < DALI_ADDR_COUNT; ++i) {
-                            if (blob[i]) {
-                                printf("---> i:%d\n", i);
-                                ids[ids_count++] = i;
-                            }
-                        }
-                    } else {
-                        printf("---> fallback: attempt to call wrapper and set ids_count appropriately\n");
-                        // fallback: attempt to call wrapper and set ids_count appropriately
-                        // nuos_read_group_membership_from_nvs(group_id, ids, &ids_count);
-                    }
-
-                    cJSON *obj = cJSON_CreateObject();
-                    cJSON_AddNumberToObject(obj, "group_id", group_id);
-                    cJSON *arr = cJSON_CreateIntArray(ids, ids_count);
-                    cJSON_AddItemToObject(obj, "selected_ids", arr);
-                    const char *resp = cJSON_Print(obj);
-                    cJSON_Delete(obj);
-                    printf("%s\n", resp);
-                    httpd_resp_set_type(req, "application/json");
-                    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
-                    free((void*)resp);
-                    return ESP_OK;
-
-                } else if (fxn == 22) {
-                    // Return saved scenes for a given group
-                    // client calls: /items?fxn=22&group_id=3
-                    char value_group2[32];
-                    int group_id2 = 0;
-                    if (httpd_query_key_value(query, "group_id", value_group2, sizeof(value_group2)) == ESP_OK) {
-                        group_id2 = atoi(value_group2);
-                    }
-                    if (group_id2 < 0) group_id2 = 0;
-                    if (group_id2 >= GROUP_COUNT) group_id2 = 0;
-
-                    // Read scene blob for this group (SCENE_COUNT slots)
-                    uint8_t scene_blob[SCENE_COUNT] = {0};
-                    int scene_ids[SCENE_COUNT];
-                    int scene_count = 0;
-                    memset(scene_ids, 0, sizeof(scene_ids));
-
-                    if (read_scene_blob(group_id2, scene_blob) == ESP_OK) {
-                        for (int i = 0; i < SCENE_COUNT; ++i) {
-                            if (scene_blob[i]) {
-                                scene_ids[scene_count++] = i;
-                            }
-                        }
-                    } else {
-                        // fallback: try wrapper if present
-                        // nuos_read_scene_membership_from_nvs(group_id2, scene_ids, &scene_count);
-                    }
-
-                    cJSON *obj2 = cJSON_CreateObject();
-                    cJSON_AddNumberToObject(obj2, "group_id", group_id2);
-                    cJSON *sarr = cJSON_CreateIntArray(scene_ids, scene_count);
-                    cJSON_AddItemToObject(obj2, "selected_scenes", sarr);
-                    const char *resp2 = cJSON_Print(obj2);
-                    cJSON_Delete(obj2);
-
-                    httpd_resp_set_type(req, "application/json");
-                    httpd_resp_send(req, resp2, HTTPD_RESP_USE_STRLEN);
-                    free((void*)resp2);
-                    return ESP_OK;
-                }                
-            }
+            response = parse_query(query);
         }
-        
+        // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
+        httpd_resp_set_type(req, "application/json");
+
+        // Enable CORS header if your frontend is hosted on a different port/device during development
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
         httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+        free((void*)response);
         return ESP_OK;
     }
 #endif
@@ -2851,8 +3182,8 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     size_t html_size = index_html_end - index_html_start;
     
     // Set proper UTF-8 headers
-    httpd_resp_set_type(req, "text/html; charset=utf-8");
-    httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
+    //httpd_resp_set_type(req, "text/html; charset=utf-8");
+    // httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
     return httpd_resp_send(req,  (const char*)index_html_start, html_size);
 }
 

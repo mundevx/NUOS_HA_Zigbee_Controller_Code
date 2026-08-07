@@ -97,6 +97,7 @@ public:
     void dali_rx_intr_enabled(bool enabled);
     // Color control functions
     bool set_color_temp(uint8_t addr, uint16_t kelvin);
+    bool set_color_temp_normal(uint8_t addr, uint16_t kelvin);
     void set_color_temperature(uint8_t addr, uint16_t temp);
     void set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);
     void set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag);

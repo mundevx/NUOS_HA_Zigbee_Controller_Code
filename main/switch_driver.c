@@ -1118,7 +1118,7 @@ void switch_driver_gpios_intr_enabled(bool enabled)
 
 
 static void esp_zb_callback(uint8_t param) {
-    printf("param:%d\n", param);
+    //printf("param:%d\n", param);
 
 }
 
@@ -1135,7 +1135,7 @@ void button_click_handler(TimerHandle_t xTimer)
          USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
         // No triple click action for these devices.
     #else
-        printf("click_count:%d\n", local_clicks);
+        //printf("click_count:%d\n", local_clicks);
         if (local_clicks == MAX_COUNTS_FOR_TRIPLE_CLICK) {
             // Check if all presses were on the same button
             
@@ -1280,7 +1280,7 @@ void button_click_handler(TimerHandle_t xTimer)
             #endif
 
             if (is_122112 || is_211221) {
-                printf("Detected sequence: %s\n", is_122112 ? "1,2,2,1,1,2" : "2,1,1,2,2,1");
+                //printf("Detected sequence: %s\n", is_122112 ? "1,2,2,1,1,2" : "2,1,1,2,2,1");
     
                 if(ready_commisioning_flag){
                     for(int i=0; i<50; i++) {
@@ -1291,10 +1291,10 @@ void button_click_handler(TimerHandle_t xTimer)
                     setNVSCommissioningFlag(1);
                     setNVSPanicAttack(0);
                     if (esp_zb_bdb_dev_joined()) {
-                         printf("ready_commisioning_flag: 2\n");
+                         //printf("ready_commisioning_flag: 2\n");
                         esp_zb_bdb_reset_via_local_action();
                     }
-                    printf("ready_commisioning_flag: 3\n");
+                    // printf("ready_commisioning_flag: 3\n");
                     vTaskDelay(pdMS_TO_TICKS(100));
                     esp_zb_factory_reset();
                 }else{
@@ -1316,14 +1316,17 @@ void button_click_handler(TimerHandle_t xTimer)
                 } else {
 
                     #ifdef USE_WIFI_WEBSERVER
-                        // if(wifi_webserver_active_flag){
-                        //    wifi_webserver_active_flag = false;
-                        // }else{
-                             wifi_webserver_active_flag = true;  
-                        // }
+
+                    
+                        wifi_webserver_active_flag = true;
+                        
+                        #ifdef USE_C3_ADAPTER_UART_HW
+                        printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+                        #else
                         setNVSCommissioningFlag(0);
                         setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
-                        esp_restart();			
+                        esp_restart();	
+                        #endif
                     #endif
                    
                 }             
@@ -1675,7 +1678,7 @@ static void switch_driver_button_detected(void *arg) {
     for (;;) {
         switch_func_pair_t button_func_pair;
         if (xQueueReceive(gpio_evt_queue, &button_func_pair, portMAX_DELAY)) {
-            printf("Button ISR received for pin %ld\n", button_func_pair.pin);
+            //printf("Button ISR received for pin %ld\n", button_func_pair.pin);
             switch_driver_gpios_intr_enabled(false);
             recheckTimer();
             io_num = button_func_pair.pin;
@@ -1759,7 +1762,11 @@ static void switch_driver_button_detected(void *arg) {
                                         if (switch_pressed_cnts >= 2) {
                                             two_switch_pressed_flag = true;
                                             nuos_set_rgb_led_commissioning_functionality();
+                                            #ifdef USE_C3_ADAPTER_UART_HW
+                                            //printf("\"time\":%ld\n", switch_pressed_cnts);
+                                            #else
                                             printf("2 switch pressed!!\n");
+                                            #endif
                                         }
                                     #endif
                                 }
@@ -1768,7 +1775,11 @@ static void switch_driver_button_detected(void *arg) {
                                     double_release_time = current_time;
                                     longpress_detected = true;
                                     total_press_in_secs++;
-                                    ESP_LOGI(TAG, "total_press_in_secs_1:%d\n", total_press_in_secs);
+                                    #ifdef USE_C3_ADAPTER_UART_HW
+                                        printf("{\"time\":%d}\n", total_press_in_secs);
+                                    #else        
+                                        ESP_LOGI(TAG, "total_press_in_secs_1:%d\n", total_press_in_secs);
+                                    #endif
                                     check_long_press_tasks(switch_pressed_cnts, SETUP_LONG_PRESS_TIME_IN_SECS);
                                 }
                             }
@@ -1778,7 +1789,11 @@ static void switch_driver_button_detected(void *arg) {
                         if (IdentifyTwoSwitchPressed() >= 2) {
                             instant_two_switch_pressed_flag = true;
                             
-                            printf("2 switch pressed!!\n");
+                            #ifdef USE_C3_ADAPTER_UART_HW
+                     
+                            #else
+                                printf("2 switch pressed!!\n");
+                            #endif
                         }
                         #endif
                     }
@@ -1820,7 +1835,7 @@ static void switch_driver_button_detected(void *arg) {
                             }
                         } else {
                             // Saturated — ignore further clicks until handler runs
-                            ESP_LOGW(TAG, "click_count saturated, ignoring additional clicks");
+                            //ESP_LOGW(TAG, "click_count saturated, ignoring additional clicks");
                         }
 
                         if (click_timer != NULL) {
@@ -1829,7 +1844,7 @@ static void switch_driver_button_detected(void *arg) {
                             }
                             xTimerStart(click_timer, 0);
                         } else {
-                            ESP_LOGW(TAG, "click_timer is NULL when trying to start it");
+                            //ESP_LOGW(TAG, "click_timer is NULL when trying to start it");
                         }
                     #endif
                     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
@@ -1850,7 +1865,7 @@ static void switch_driver_button_detected(void *arg) {
 
                         if (press_sec > 20) {
                             // Ignore: do not send any event
-                            ESP_LOGW(TAG, "Long press >20s (%d s) – ignored", press_sec);
+                            //ESP_LOGW(TAG, "Long press >20s (%d s) – ignored", press_sec);
                             button_func_pair.func = SWITCH_NOTHING_CONTROL;
                             // Also prevent any later single/double click
                             longpress_detected = false;
@@ -1860,7 +1875,7 @@ static void switch_driver_button_detected(void *arg) {
                         else if (press_sec > 10 && press_sec < 20) {
                             // Enter setting mode
                             ready_commisioning_flag = true;
-                            ESP_LOGI(TAG, "Long press %d s -> ready_commisioning_flag = true", press_sec);
+                            //ESP_LOGI(TAG, "Long press %d s -> ready_commisioning_flag = true", press_sec);
 
                             // Start a 30s timer to auto‑clear the flag
                             // if (ready_commissioning_timer == NULL) {
@@ -1932,7 +1947,7 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
     /* create a queue to handle gpio event from isr */
     gpio_evt_queue = xQueueCreate(20, sizeof(switch_func_pair_t));
     if ( gpio_evt_queue == 0) {
-        ESP_LOGE(TAG, "Queue was not created and must not be used");
+        //ESP_LOGE(TAG, "Queue was not created and must not be used");
         return false;
     }
     //zb_event_queue = xQueueCreate(10, sizeof(zb_button_event_t));

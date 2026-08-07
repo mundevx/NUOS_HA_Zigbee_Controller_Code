@@ -527,7 +527,6 @@
         
     #elif(CHIP_INFO == USE_ESP32C6_MINI1_V5)  ////15 oct month, GPIO9 as O/P is replaced by NC
         #define LOAD_1_PIN                                                  GPIO_NUM_2
-        //#define LOAD_2_PIN                                                  GPIO_NUM_15 //short R13, open R14 route to PIN20
         #define LOAD_2_PIN                                                  GPIO_NUM_12 //short R14, open R14 route to PIN17
         #define LOAD_3_PIN                                                  GPIO_NUM_20
         #define LOAD_4_PIN                                                  GPIO_NUM_7
@@ -539,7 +538,6 @@
             #else  
             #define LOAD_5_PIN                                              GPIO_NUM_3
             #endif
-
         #endif
         #define LOAD_6_PIN                                                  GPIO_NUM_19
 

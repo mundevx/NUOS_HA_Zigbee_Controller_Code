@@ -15,7 +15,7 @@
     #endif
     extern void nuos_set_zigbee_attribute(uint8_t index);
     extern esp_err_t nuos_set_thermostat_temp_attribute(uint8_t index);
-    
+    void nuos_prepare_color_mode(uint8_t mode);
     void nuos_set_privilege_command_attribute(const esp_zb_zcl_privilege_command_message_t *message);
     esp_err_t nuos_set_color_temp_level_attribute(uint8_t index);
     esp_err_t nuos_set_level_attribute(uint8_t index);

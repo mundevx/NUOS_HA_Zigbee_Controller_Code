@@ -304,7 +304,7 @@
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" };
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-            const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control"};
+            const char* switch_ctrl_type[2] = { "Group Control", "Scene Control"};
         #else
             const char* switch_ctrl_type[3] = { "Individual Control", "Group Control", "Scene Control" };
         #endif
@@ -1461,9 +1461,9 @@
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         extern const char* switch_ctrl_type[2]; 
         #else
-        extern const char* switch_ctrl_type[4];             
+        extern const char* switch_ctrl_type[2];             
         #endif
-        extern const char* scene_ctrl_type[3];
+        extern const char* scene_ctrl_type[2];
 
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
             #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
@@ -1560,7 +1560,7 @@
 extern "C" {
 #endif
     DaliNodeList read_dali_addressed_nodes();
-    int32_t daliQueryPowerOnLevel(uint8_t addr);
+    int32_t daliQueryPowerOnLevel(const uint8_t addr);
     int32_t daliQueryFadeTimeFadeRate(uint8_t addr);
     int32_t daliQueryDeviceType(uint8_t addr);
     int32_t daliQueryNextDeviceType(uint8_t addr);
@@ -1626,7 +1626,7 @@ extern "C" {
     extern void nuos_dali_set_state(uint8_t dali_id, uint8_t state);
     extern void nuos_dali_set_brightness(uint8_t dali_id, uint8_t level);
     extern void nuos_dali_set_cct_color(uint8_t did, uint16_t value);
-    extern void nuos_dali_set_rgb_color(uint8_t did, uint8_t r, uint8_t g, uint8_t b);
+    extern void nuos_dali_set_rgb_color(uint8_t did, uint8_t r, uint8_t g, uint8_t b, bool mode_change_flag);
     extern void start_dali_led_blink_task();
  
     extern void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp);

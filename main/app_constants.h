@@ -644,7 +644,7 @@
             #define TOTAL_LEDS                                          4
         #endif
 
-        // #define USE_C3_ADAPTER_UART_HW
+        #define USE_C3_ADAPTER_UART_HW
         
         #define TOTAL_LOADS                                             2  //dali pins Tx, Rx 
         #define USE_RGB_LED

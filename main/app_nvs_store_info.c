@@ -395,20 +395,20 @@ void store_color_mode_value(uint8_t mode) {
 
 
 uint8_t read_color_mode_value() {
-    uint8_t mode = 1;
+    int32_t mode = 0;
     // Open
 	esp_err_t err;
     #ifdef USE_NVS_INIT
     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
 	if (err == ESP_OK) {
-        #endif
-		err = ESP_OK;//nvs_get_i32(my_handle, nvram_mode_keys, &mode);
-        #ifdef USE_NVS_INIT
+    #endif
+		err = nvs_get_i32(my_handle, nvram_mode_keys, &mode);
+    #ifdef USE_NVS_INIT
 		// Close
 		nvs_close(my_handle);
 	}
     #endif
-    return mode;
+    return (uint8_t)mode;
 }
 
 
@@ -1273,8 +1273,6 @@ void nuos_get_data_from_nvs() {
                 printf("dev_id3:%d\n", dali_nvs_stt[index].device_ids[3]);
 
                 printf("-----------------------------------\n");
-                // dali_nvs_stt[index].device_ids[0] =index+1;
-                // dali_nvs_stt[index].device_ids[1] =index+2;
                 if(dali_nvs_stt[index].brightness > 254){
                     dali_nvs_stt[index].brightness = 25 /*MIN_DIM_LEVEL_VALUE*/;
                 }

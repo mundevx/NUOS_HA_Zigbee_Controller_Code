@@ -370,7 +370,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                         change_cw_ww_color_flag = true;
                     }  
                     if(device_info[3].device_state){
-                        printf("color device_val:%d level:%d\n", device_info[3].device_val, device_info[3].device_level);
+                        //printf("color device_val:%d level:%d\n", device_info[3].device_val, device_info[3].device_level);
                         dali.set_group_color_cct(scene_group_switch_info.group_id[0], device_info[3].device_val);
                         nuos_dali_set_group_brightness(scene_group_switch_info.group_id[0], 0, device_info[3].device_level); 
                     }
@@ -451,7 +451,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                     //hsv2.v = device_info[4].device_level; // Store brightness level for later use in brightness control 
                     //     hsv2.s = device_info[4].light_color_y;
                     // }
-                    printf("========================>hsv2.v:%d\n", hsv2.v);                               
+                    //printf("========================>hsv2.v:%d\n", hsv2.v);                               
                     nuos_set_color_xy_attribute(4, &hsv2);   
                 //}
             }
@@ -494,43 +494,7 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
 
 uint8_t dali_rx_selected_color_mode = 1; // 0 for CCT, 1 for RGB
 
-
-// static uint8_t count_bits16(uint16_t v)
-// {
-//     uint8_t c = 0;
-//     while (v) {
-//         c += (v & 1U);
-//         v >>= 1;
-//     }
-//     return c;
-// }
-
-// static void rx_group_idle_timeout_cb(void *arg)
-// {
-//     if (rx_group_data_pending) {
-//         total_rx_group_rcvd = count_bits16(rx_group_mask);
-//         printf("Unique group IDs received: %u\r\n", total_rx_group_rcvd);
-//     }
-
-//     rx_group_mask = 0;
-//     rx_group_data_pending = false;
-// }
-
-// void dali_rx_group_timer_init(void)
-// {
-//     const esp_timer_create_args_t t_args = {
-//         .callback = rx_group_idle_timeout_cb,
-//         .arg = NULL,
-//         .dispatch_method = ESP_TIMER_TASK,
-//         .name = "dali_grp_idle"
-//     };
-
-//     esp_timer_create(&t_args, &rx_group_idle_timer);
-// }
-
-
 static esp_timer_handle_t rgb_send_timer = NULL;
-// static TaskHandle_t rgb_sender_task_handle = NULL;
 SemaphoreHandle_t dali_sem = NULL;
 
 static void rgb_send_timer_cb(void *arg)
@@ -813,58 +777,13 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     }
 
     // -------------------------------------------------
-    // Standard command frame
-    // -------------------------------------------------
-    // if (is_command) {
-    //     if (is_broadcast) {
-    //         // printf("BROADCAST COMMAND %02X\n", b2);
-    //     } else if (is_group) {
-    //         // printf("GROUP COMMAND G=%u CMD=%02X\n", group, b2);
-    //     } else if (is_short) {
-    //         // printf("SHORT COMMAND A=%u CMD=%02X\n", addr, b2);
-    //     }
-    //     return;
-    // }
-
-    // -------------------------------------------------
     // Collect unique group IDs while data keeps coming.
     // Print only after 1 second of no new group frame.
     // -------------------------------------------------
     if (is_group && group < 16) {
         rx_group_mask |= (1U << group);
         rx_group_data_pending = true;
-
-        // if (esp_timer_is_active(rx_group_idle_timer)) {
-        //     esp_timer_stop(rx_group_idle_timer);
-        // }
-        // esp_timer_start_once(rx_group_idle_timer, 1000000); // 1 second
     }
-    // -------------------------------------------------
-    // Count unique group IDs seen within 1 second
-    // -------------------------------------------------
-    // if (is_group) {
-    //     int64_t now_us = esp_timer_get_time();
-
-    //     if (!group_window_active) {
-    //         group_window_active = true;
-    //         group_window_start_us = now_us;
-    //         group_seen_mask = 0;
-    //     }
-
-    //     // If current window expired, print previous result and start new window
-    //     if ((now_us - group_window_start_us) >= 1000000) {
-    //         uint8_t total_groups = count_set_bits16(group_seen_mask);
-    //         printf("Unique group IDs received in last 1 second: %u\r\n", total_groups);
-
-    //         group_window_start_us = now_us;
-    //         group_seen_mask = 0;
-    //     }
-
-    //     // Store this group ID
-    //     if (group < 16) {
-    //         group_seen_mask |= (1U << group);
-    //     }
-    // }
     // -------------------------------------------------
     // ARC POWER CONTROL (DAPC)
     // -------------------------------------------------
@@ -943,7 +862,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                     if(device_info[index].device_state) device_info[4].device_state = true;
                 #endif
                 if((!device_info[0].device_state && !device_info[1].device_state && !device_info[2].device_state) || !device_info[4].device_state){
-                    printf("ALL RGB OFF\n");
+                    //printf("ALL RGB OFF\n");
                     if(!device_info[4].device_state){
                       device_info[4].device_state = true;  
                     }else{
@@ -953,7 +872,9 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                 }else{
                     device_info[4].device_state = true;
                 }
-            }     
+            } else{
+
+            }    
 
             #if(USE_COLOR_DEVICE == COLOR_RGBW || USE_COLOR_DEVICE == COLOR_RGB_CW_WW)  
             if(!mode_change_flag)
@@ -965,7 +886,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
 
         last_selected_color_mode = selected_color_mode;
         if(is_init_done){ 
-            printf("color_mode:%d\n", selected_color_mode);
+           // printf("color_mode:%d\n", selected_color_mode);
             switch(selected_color_mode){
                 case 0:
                     //printf("state:%d  level:%d\n", device_info[3].device_state, device_info[3].device_level);
@@ -976,6 +897,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                       
                     }else{ //if CCT state TRUE    
                         device_info[4].device_state = true;  // ALL ON     
+                        //printf("========device_info[3].device_level:%d\n", device_info[3].device_level);
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[3], device_info[3].device_level));
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                                   
                     } 
@@ -1058,7 +980,6 @@ void interpret_frame(uint8_t b1, uint8_t b2)
             for(int i=0; i<TOTAL_LEDS; i++){
                 if(device_info[i].device_state){
                     getting_on_state = true;
-                    
                 }
             }
         }

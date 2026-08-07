@@ -254,7 +254,6 @@ bool DALI::sendCommand(uint8_t command, uint8_t data) {
         }
         esp_rom_delay_us(DALI_COMPLETE_FRAME_US);
     }
-    //printf("DALI bus busy, retry limit reached\\n");
     return false;
 }
 bool DALI::sendCommandRetry(uint8_t command, uint8_t data, uint8_t* retryCount) {
@@ -712,6 +711,7 @@ void DALI::enableRxInterrupt() {
 void DALI::query(uint8_t address, uint8_t queryCommand) {
     uint8_t mask        = address & 0x80;
     uint8_t new_address = mask | ((address << 1) + 1);
+    printf("new_addr: 0x%x query:0x%x\n", new_address, queryCommand);
     sendCommandPublic(new_address, queryCommand);
 }
 
@@ -1087,7 +1087,7 @@ int DALI::readExistingDrivers(uint8_t *addressList, int maxDevices)
         // Wait for backward frame
         if (waitForResponse())
         {
-            printf("Device found at Short Address %d\n", shortAddr);
+            //printf("Device found at Short Address %d\n", shortAddr);
 
             if (count < maxDevices)
                 addressList[count] = shortAddr;

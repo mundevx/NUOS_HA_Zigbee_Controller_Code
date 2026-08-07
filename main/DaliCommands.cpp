@@ -216,6 +216,26 @@ void DaliCommands::send_command_special32(uint8_t opcode1, uint8_t address1,
     daliCore.sendCommandPublic32(opcode1, address1, opcode2, address2);   
 }
 
+
+bool DaliCommands::set_color_temp_normal(uint8_t addr, uint16_t kelvin) {
+    if (kelvin == 0) return false;
+ 
+    uint16_t mirek = 1000000 / kelvin;
+    uint8_t dtr0 = (uint8_t)(mirek & 0x00FF);
+    uint8_t dtr1 = (uint8_t)((mirek >> 8) & 0x00FF);
+
+    send_command_special_normal(SET_DTR0, dtr0);      
+    send_command_special_normal(SET_DTR1, dtr1);         
+
+    send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);
+    send_command_standard_normal(SET_COLOR_TEMP, addr);        // FIX #2 via send_command_standard
+   
+    // send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);    
+    // send_command_standard_normal(COLOR_ACTIVATE, addr);     // FIX #2 via send_command_standard
+
+    return true;
+}
+
 bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
     if (kelvin == 0) return false;
  
@@ -502,7 +522,6 @@ void DaliCommands::set_cct_dimming(uint8_t addr, uint8_t dim) {
 
 void DaliCommands::set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
-
     for(int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++)
     {
         if(set_rgb_3(addr, r, g, b, dim, mode_change_flag))
@@ -533,7 +552,6 @@ void DaliCommands::set_color_rgb_WAF(uint8_t addr, uint8_t dim) {
     // Enable device type 8
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
-   //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, COLOR_ACTIVATE, addr); 
 }
 
 void DaliCommands::set_color_cct_waf_dim(uint8_t addr, uint8_t dim) {
@@ -816,8 +834,9 @@ void DaliCommands::set_level_scene(uint8_t addr, uint8_t scene , uint8_t scene_l
 
 void DaliCommands::set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp)
 {
-    set_color_temp(addr, temp);    
+    set_color_temp_normal(addr, temp);    
     daliCore.sendCommandPublic(SET_DTR0, scene_level);
+    //set_dim_value(addr, scene_level);
     // Store what is in the temperorary color as scene color and also scene level to DTR0
     send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
     send_command_standard(STORE_DTR_AS_SCENE + scene, addr);

@@ -220,9 +220,9 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 {
     if (!button_func_pair) return;
 
-    ESP_LOGI("APP",
-             "button id=%d pin=%d key=%d func=0x%02X",
-             button_func_pair->id, button_func_pair->pin, button_func_pair->keypressed, button_func_pair->func);
+    // ESP_LOGI("APP",
+    //          "button id=%d pin=%d key=%d func=0x%02X",
+    //          button_func_pair->id, button_func_pair->pin, button_func_pair->keypressed, button_func_pair->func);
 
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
         gpio_num_t pin = button_func_pair->pin;
