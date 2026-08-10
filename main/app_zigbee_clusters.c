@@ -2192,7 +2192,7 @@ void nuos_set_zigbee_attribute(uint8_t index){
                 //     nuos_set_level_attribute(index);
                 // }  
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-            if(scene_group_switch_info.control_type == 2) { //scene control
+            if(scene_group_switch_info.control_type == 1) { //scene control
                 for(int i=0; i<TOTAL_ENDPOINTS; i++) {
                     if(i == index) {
                         device_info[i].device_state = true;
@@ -2452,11 +2452,11 @@ esp_err_t nuos_driver_init(void)
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)    
         init_dali_hw();
         printf("Scene Control Type: %d Selected ID: %d\n", scene_group_switch_info.control_type, scene_group_switch_info.selected_id);
-        if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){ //individual or group ctrl
+        if(scene_group_switch_info.control_type == 0){ //individual or group ctrl
             for(int i=0; i<TOTAL_ENDPOINTS; i++){
                 nuos_zb_set_hardware(i, false);  
             }
-        }else if(scene_group_switch_info.control_type == 2) { //scene ctrl
+        }else if(scene_group_switch_info.control_type == 1) { //scene ctrl
             nuos_zb_set_hardware(scene_group_switch_info.selected_id, false);  
         }
     #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)    
@@ -2911,7 +2911,7 @@ static void bind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                     
                 #else 
                     #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                        if(scene_group_switch_info.control_type == 2) {
+                        if(scene_group_switch_info.control_type == 1) {
                             if(endpoint_counts == scene_group_switch_info.selected_id) {
                                 nuos_set_state_attribute(endpoint_counts); 
                             }

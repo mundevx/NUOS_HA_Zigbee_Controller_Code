@@ -488,7 +488,7 @@ int DALI::commissionNewNodes()
     uint32_t searchLower, searchUpper, searchCurrent;
     int assigned = 0;
 
-    ESP_LOGI(TAG, "Starting DALI Addressing Sequence (Unaddressed Gear Only)...");
+    //ESP_LOGI(TAG, "Starting DALI Addressing Sequence (Unaddressed Gear Only)...");
 
     // Protect the entire loop execution from interleaved commands
     if (xSemaphoreTake(dali_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {

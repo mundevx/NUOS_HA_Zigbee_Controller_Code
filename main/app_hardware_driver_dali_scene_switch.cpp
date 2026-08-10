@@ -28,7 +28,7 @@
     extern "C" void nuos_set_state_touch_leds(bool state);
     extern "C" bool nuos_check_state_touch_leds();
     // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_);
-    void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
+    int start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
 
     #define LEDC_TIMER              		                    LEDC_TIMER_0
     #define LEDC_MODE               		                    LEDC_LOW_SPEED_MODE
@@ -828,6 +828,7 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
         return -1; // Return -1 strictly for "Hardware Timeout / No Device Present"
     }    
 }
+    int total_nodes_assigned = 0;
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;
         
@@ -867,7 +868,7 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
 
         //   // dali.clearShortAddress(addresses[i]);
         // }
-        dali.commissionNewNodes();   
+        total_nodes_assigned = dali.commissionNewNodes();   
         // int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
 
         // printf("Found nodes: %d\n", totalfoundnodes);
@@ -890,12 +891,13 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
         vTaskDelete(NULL);
     }
 
-    extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
+    extern "C" int start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {  
+        total_nodes_assigned = 0;          
         recordsSemaphore = xSemaphoreCreateBinary();
         if (recordsSemaphore == NULL) {
             // Handle semaphore creation failure
             //printf("Failed to create semaphore!\n");
-            return;
+           return 0;
         }    
         uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
         xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 11, NULL);
@@ -926,6 +928,7 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
                 nuos_zb_set_hardware(i, false);
             }
         }
+        return total_nodes_assigned;
     }  //end extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses)
 
     extern "C" void nuos_dali_set_color_temperate(uint8_t index) {

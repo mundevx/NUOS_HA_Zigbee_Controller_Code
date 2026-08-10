@@ -1594,7 +1594,7 @@ extern "C" {
     extern void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_remove_light_from_group(uint8_t addr, uint8_t group_id);
     extern void nuos_dali_toggle_group(uint8_t group_id, uint8_t index, bool toggle_state, uint8_t brightness);
-    extern void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
+    extern int start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
     extern void nuos_dali_set_color_temperate(uint8_t index);
     extern void nuos_dali_set_group_color_temperature(uint8_t group_id, uint8_t index, uint16_t value);
     extern void nuos_dali_set_group_rgb_temperature(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b);

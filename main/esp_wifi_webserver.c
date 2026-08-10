@@ -1025,16 +1025,27 @@ void parse_json(const char *json_string) {
                     start_address = sstartAddr->valueint;
                 }
 
-                printf("start_address:%d, max_addr: %d\n", start_address, max_address);
-
                 esp_stop_timer();
                 
-                //setNVSDaliNodesStartAddrCounts(start_address);
                 setNVSDaliNodesCommissioningCounts(max_address);
                 
-                start_dali_addressing(start_address, max_address);
+                int total_commissioned = start_dali_addressing(start_address, max_address);
 
-                
+                cJSON *root_o = cJSON_CreateArray();
+                cJSON *item = cJSON_CreateObject();
+                if (item == NULL) {
+                    ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
+                    //cJSON_Delete(root); 
+                    // response = "[{\"error\":\"JSON memory allocation failed!!\"}]";
+                    // return response;
+                }
+                cJSON_AddNumberToObject(item, "total", total_commissioned);
+
+                cJSON_AddItemToArray(root_o, item);
+
+                const char* response = cJSON_PrintUnformatted(root_o);
+                printf("%s\n", response);
+                cJSON_Delete(root_o); 
                 break; 
         #endif
         
@@ -1949,20 +1960,36 @@ void parse_json_3(const char *json_str)
         }
 
         // Retrieve fields securely
-        cJSON *dali_id_json       = cJSON_GetObjectItem(root, "dali_id");
-        cJSON *power_on_value_json = cJSON_GetObjectItem(root, "power_on_value");
-        cJSON *fade_rate_json     = cJSON_GetObjectItem(root, "fade_rate");
-        cJSON *fade_time_json     = cJSON_GetObjectItem(root, "fade_time");
-        cJSON *group_json         = cJSON_GetObjectItem(root, "group");
+        cJSON *dali_id_json             = cJSON_GetObjectItem(root, "dali_id");
+        cJSON *dev_name_json            = cJSON_GetObjectItem(root, "device_name");
+        cJSON *power_on_value_json      = cJSON_GetObjectItem(root, "power_on_value");
+        cJSON *fade_rate_json           = cJSON_GetObjectItem(root, "fade_rate");
+        cJSON *fade_time_json           = cJSON_GetObjectItem(root, "fade_time");
+        cJSON *group_json               = cJSON_GetObjectItem(root, "group");
+        
         // cJSON *scene_json         = cJSON_GetObjectItem(root, "scene");
+        dali_nvs_storage_t storage_data;
+        // Zero-out the entire structure array on system boot
+        memset(&storage_data, 0, sizeof(storage_data));
+        load_dali_config_from_nvs(&storage_data); 
+
 
         if (dali_id_json && power_on_value_json && fade_rate_json && fade_time_json && group_json) {
             int dali_id        = dali_id_json->valueint;
             int power_on_value = power_on_value_json->valueint;
             int fade_rate      = fade_rate_json->valueint;
             int fade_time      = fade_time_json->valueint;
-            int group          = group_json->valueint;
-            // int scene          = scene_json->valueint;
+            uint16_t group     = (uint16_t)group_json->valueint;
+            
+            //int nvs_index = 255;
+            for(int i=0; i<storage_data.total_nodes; i++){
+                if(storage_data.nodes[i].dali_id == dali_id){
+                    //nvs_index = i;
+                    strcpy(storage_data.nodes[i].device_name, dev_name_json->valuestring);
+                    save_dali_config_to_nvs(&storage_data); 
+                    break;
+                }
+            }
 
             // Server-side validation check
             if (power_on_value >= 0 && power_on_value <= 255 &&
@@ -1981,6 +2008,7 @@ void parse_json_3(const char *json_str)
                 nuos_dali_set_fade_time_fade_rate(dali_id, fade_time, fade_rate);
 
                 for (int i = 0; i < 16; i++) {
+                    vTaskDelay(200 / portTICK_PERIOD_MS);
                     // Check if the bit at position i is 1
                     if ((group >> i) & 1) {
                         //group is i
@@ -1988,7 +2016,7 @@ void parse_json_3(const char *json_str)
                     }else{
                         nuos_dali_remove_light_from_group(dali_id, i);
                     }
-                    vTaskDelay(50 / portTICK_PERIOD_MS);
+                    
                 }
             
                 // Additional storage logic here...
@@ -2425,15 +2453,6 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
 
     char *response = "[]"; // Default response if no valid query is found
 
-    // cJSON *root = cJSON_CreateArray();
-    // if (root == NULL) {
-    //     ESP_LOGE(TAG, "Failed to allocate memory for JSON Array");
-    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON creation failed");
-    //     return ESP_FAIL;
-    // }
-
-    // // Prepare storage variable
-    // dali_nvs_storage_t my_dali_system;
 
     if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
         ESP_LOGI(TAG, "Found URL query => %s", query);
@@ -2447,101 +2466,6 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
 
     httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
     free((void*)response);
-
-
-    // label0:
-    // DaliNodeList nodes = read_dali_addressed_nodes();
-    // my_dali_system.total_nodes = nodes.total;
-    // printf("Total Drivers = %d\n", nodes.total);
-
-    // if(nodes.total >= 64){
-    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "DALI Bus Error!!");
-    //     return ESP_FAIL;
-    // }
-    // for (int i = 0; i < nodes.total; i++)
-    // {
-    //     printf("Address[%d] = %d\n", i, nodes.addresses[i]);
-
-    // // 2. Loop through your configuration items and add them to the array
-    // // (Adjust this loop to fetch from your database/NVS/SPIFFS as needed)
-    //     cJSON *item = cJSON_CreateObject();
-    //     if (item == NULL) {
-    //         ESP_LOGE(TAG, "Failed to allocate memory for JSON Object");
-    //         cJSON_Delete(root);
-    //         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON memory allocation failed");
-    //         return ESP_FAIL;
-    //     }
-
-    //     // Match the exact keys expected by your JavaScript frontend
-    //     cJSON_AddNumberToObject(item, "dali_id", nodes.addresses[i]);
-
-    //     uint16_t powerOnValue = (uint8_t)(daliQueryPowerOnLevel(nodes.addresses[i]) & 0xff);
-    //     printf("DALI ID: %d, Power On Value: %d\n", nodes.addresses[i], powerOnValue);
-    //     cJSON_AddNumberToObject(item, "power_on_value", powerOnValue);
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    //     uint16_t rawResponse = daliQueryFadeTimeFadeRate(nodes.addresses[i]);
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    //     // Isolate the upper 4 bits (High Nibble) by shifting right by 4
-    //     uint8_t fadeTimeRaw = (rawResponse >> 4) & 0x0F;
-    //     // Isolate the lower 4 bits (Low Nibble) by applying the 0x0F mask directly
-    //     uint8_t fadeRateRaw = rawResponse & 0x0F;
-    //     cJSON_AddNumberToObject(item, "fade_rate", fadeRateRaw);
-    //     cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
-    //     printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", nodes.addresses[i], fadeRateRaw, fadeTimeRaw);
-
-    //      int32_t deviceType = 0;//daliQueryDeviceType(nodes.addresses[i]);
-    //     // int32_t nextDeviceType6 = 0;
-    //     // int32_t nextDeviceType8 = 0;
-    //     // if(deviceType == 0xff){
-    //     //     nextDeviceType6 = daliQueryNextDeviceType(nodes.addresses[i]);
-    //     //     if(nextDeviceType6 == 0x0){
-    //     //         nextDeviceType8 = daliQueryNextDeviceType(nodes.addresses[i]);
-    //     //     }
-    //     // }
-        
-    //     int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
-    //     //printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type6: 0x%lx, Next Device Type8: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType6, nextDeviceType8, query_gear);
-    //     // if(nextDeviceType6 == 0){
-    //     //     cJSON_AddStringToObject(item, "driver_type", "DT6");
-    //     // }
-    //     // if(nextDeviceType8 == 8){
-    //         cJSON_AddStringToObject(item, "driver_type", "DT8");
-    //     // }
-
-    //     int32_t deviceGroupA = daliQueryDeviceInGroupA(nodes.addresses[i]);
-    //     int32_t deviceGroupB = daliQueryDeviceInGroupB(nodes.addresses[i]);
-
-    //     uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
-
-        
-    //     //printf("DALI ID: %d, Device Type: 0x%lx, Group A: 0x%lx, Group B: 0x%lx\n", nodes.addresses[i], deviceType, deviceGroupA, deviceGroupB);
-    //     cJSON_AddNumberToObject(item, "group", groups_bitmask);
-
-    //     // Append the item object to our root array
-    //     cJSON_AddItemToArray(root, item);
-
-
-    //     my_dali_system.nodes[i].dali_id = nodes.addresses[i];
-    //     my_dali_system.nodes[i].power_on_value = powerOnValue;
-    //     my_dali_system.nodes[i].fade_rate = fadeRateRaw;
-    //     my_dali_system.nodes[i].fade_time = fadeTimeRaw;
-    //     my_dali_system.nodes[i].group = groups_bitmask;
-    //     my_dali_system.nodes[i].device_type = deviceType;
-    //     save_dali_config_to_nvs(&my_dali_system); 
-    // }
-
-    
-    // label1:
-    // // 3. Print JSON to a raw string buffer
-    // char *response = cJSON_PrintUnformatted(root);
-
-    // printf("JSON Response: %s\n", response); // Log the JSON response for debugging
-    // if (response == NULL) {
-    //     ESP_LOGE(TAG, "Failed to print JSON");
-    //     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "JSON printing failed");
-    //     return ESP_FAIL;
-    // }
-
 
     return ESP_OK;
 
@@ -2570,7 +2494,7 @@ char * parse_query_2(const char *req_query) {
     // Retrieve specific query parameter value
     if (httpd_query_key_value(req_query, "dali_id", value_fxn, sizeof(value_fxn)) == ESP_OK) {
        // ESP_LOGI(TAG, "Found URL query parameter => dali_id=%s", value_fxn);
-
+        memset(&my_dali_system, 0, sizeof(my_dali_system));
         // 3. Attempt to load existing configurations
         esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
         if (err == ESP_ERR_NVS_NOT_FOUND) {
@@ -2589,7 +2513,7 @@ char * parse_query_2(const char *req_query) {
         for(int k=0; k<my_dali_system.total_nodes; k++){
             if(my_dali_system.nodes[k].dali_id == dali_id){
                 dali_id_found_flag = true;
-                
+                k_index = k;
             }
         }
         
@@ -2627,21 +2551,36 @@ char * parse_query_2(const char *req_query) {
         cJSON_AddNumberToObject(item, "fade_time", fadeTimeRaw);
         //printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", dali_id, fadeRateRaw, fadeTimeRaw);
 
-        int32_t deviceType = daliQueryDeviceType(dali_id);
-        int32_t nextDeviceType = 0;
-        if(deviceType == 0xff){
-            nextDeviceType = daliQueryNextDeviceType(dali_id);
+        // int32_t deviceType = daliQueryDeviceType(dali_id);
+        // int32_t nextDeviceType = 0;
+        // if(deviceType == 0xff){
+        //     nextDeviceType = daliQueryNextDeviceType(dali_id);
 
+        // }
+        // int32_t query_gear = daliQueryGearFeatures(dali_id);
+        //printf("DALI ID: %d, deviceType:%ld, nextDeviceType:%ld, Gear Features Query Result: %ld\n", dali_id, deviceType, nextDeviceType, query_gear);
+        //if(nextDeviceType == 0){
+
+        char safe_name[32] = {0};
+        // Check if string is unitialized (0xFF in unwritten NVS/Flash), empty, or non-printable
+        unsigned char first_char = (unsigned char)my_dali_system.nodes[k_index].device_name[0];
+
+        if (first_char == 0 || first_char == 0xFF || first_char < 32 || first_char > 126) {
+            // Default fallback name
+            snprintf(safe_name, sizeof(safe_name), "Device %d", my_dali_system.nodes[k_index].dali_id);
+        } else {
+            // Safely copy and guarantee null-termination
+            strncpy(safe_name, (char*)my_dali_system.nodes[k_index].device_name, sizeof(safe_name) - 1);
+            safe_name[sizeof(safe_name) - 1] = '\0';
         }
-        int32_t query_gear = daliQueryGearFeatures(dali_id);
-        printf("DALI ID: %d, deviceType:%ld, nextDeviceType:%ld, Gear Features Query Result: %ld\n", dali_id, deviceType, nextDeviceType, query_gear);
-        if(nextDeviceType == 0){
-            cJSON_AddStringToObject(item, "driver_type", "DT8");
+
+        cJSON_AddStringToObject(item, "device_name", safe_name);
+
             //QUERY GEAR FEATURES 247
             //deviceType = 0; // Default to 0 if the query fails
-        }else{
-            cJSON_AddStringToObject(item, "driver_type", "DT6");
-        }
+        // }else{
+        //     cJSON_AddStringToObject(item, "device_name", "DT6");
+        // }
         
 
         int32_t deviceGroupA = daliQueryDeviceInGroupA(dali_id);
@@ -2674,7 +2613,9 @@ char * parse_query_2(const char *req_query) {
             my_dali_system.nodes[k_index].fade_rate = fadeRateRaw;
             my_dali_system.nodes[k_index].fade_time = fadeTimeRaw;
             my_dali_system.nodes[k_index].group = groups_bitmask;
-            my_dali_system.nodes[k_index].device_type = deviceType;
+            if(my_dali_system.nodes[k_index].device_name[0] == 0)
+            snprintf(my_dali_system.nodes[k_index].device_name, sizeof(my_dali_system.nodes[k_index].device_name), "Light_%d", dali_id);
+     
             save_dali_config_to_nvs(&my_dali_system); 
         }
         //printf("response_o: %s\n", response_o);
@@ -2721,23 +2662,11 @@ label0:
         printf("DALI ID: %d, Fade Rate Value: %d, Fade Time Value: %d\n", nodes.addresses[i], fadeRateRaw, fadeTimeRaw);
 
         int32_t deviceType = 0;//daliQueryDeviceType(nodes.addresses[i]);
-        // int32_t nextDeviceType6 = 0;
-        // int32_t nextDeviceType8 = 0;
-        // if(deviceType == 0xff){
-        //     nextDeviceType6 = daliQueryNextDeviceType(nodes.addresses[i]);
-        //     if(nextDeviceType6 == 0x0){
-        //         nextDeviceType8 = daliQueryNextDeviceType(nodes.addresses[i]);
-        //     }
-        // }
         
-        int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
-        //printf("DALI ID: %d, Device Type: 0x%lx, Next Device Type6: 0x%lx, Next Device Type8: 0x%lx, Gear Features: 0x%lx\n", nodes.addresses[i], deviceType, nextDeviceType6, nextDeviceType8, query_gear);
-        // if(nextDeviceType6 == 0){
-        //     cJSON_AddStringToObject(item, "driver_type", "DT6");
-        // }
-        // if(nextDeviceType8 == 8){
-            cJSON_AddStringToObject(item, "driver_type", "DT8");
-        // }
+        //int32_t query_gear = daliQueryGearFeatures(nodes.addresses[i]);
+
+        cJSON_AddStringToObject(item, "device_name", (char*)my_dali_system.nodes[i].device_name);
+
         int32_t deviceGroupA = daliQueryDeviceInGroupA(nodes.addresses[i]);
         int32_t deviceGroupB = daliQueryDeviceInGroupB(nodes.addresses[i]);
         uint16_t groups_bitmask = deviceGroupB << 8 | deviceGroupA;
@@ -2751,7 +2680,7 @@ label0:
         my_dali_system.nodes[i].fade_rate = fadeRateRaw;
         my_dali_system.nodes[i].fade_time = fadeTimeRaw;
         my_dali_system.nodes[i].group = groups_bitmask;
-        my_dali_system.nodes[i].device_type = deviceType;
+        snprintf(my_dali_system.nodes[i].device_name, sizeof(my_dali_system.nodes[i].device_name), "Light_%d", nodes.addresses[i]);
         save_dali_config_to_nvs(&my_dali_system); 
     }
 
@@ -2776,7 +2705,7 @@ label0:
         int load_from_nvs = atoi(value_fxn);  
 
         if(load_from_nvs == 0) goto label0; // Skip loading from NVS and proceed to read DALI nodes
-
+        memset(&my_dali_system, 0, sizeof(my_dali_system));
         esp_err_t err = load_dali_config_from_nvs(&my_dali_system);
         if (err == ESP_ERR_NVS_NOT_FOUND) {
             // First boot! Setup default dummy configurations

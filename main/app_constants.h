@@ -690,7 +690,7 @@
             #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
 
             #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
-            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        300
             
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             #ifdef DALI_DIRECT_ADDRESSING
