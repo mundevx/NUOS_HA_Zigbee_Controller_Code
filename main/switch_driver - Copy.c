@@ -1,12 +1,13 @@
 #include "app_config.h"
 
+
+
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include "hal/gpio_ll.h"
-#include "soc/gpio_struct.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -26,15 +27,13 @@
 
 #define MAX_BUTTONS                  4
 #define GPIO_EVT_QUEUE_LEN           32
-#define ACTION_QUEUE_LEN             16
 #define TASK_STACK_SIZE_SWITCH       4096
 #define TASK_PRIORITY_SWITCH         10
-#define TASK_PRIORITY_WORKER         14 //5
 
 #define DEBOUNCE_US                  30000
 #define LONG_PRESS_US                700000
-#define LONG_HOLD_REPEAT_US          70000
-#define MULTI_CLICK_GAP_US           500000
+#define LONG_HOLD_REPEAT_US          70000// 150000 //
+#define MULTI_CLICK_GAP_US           500000 //250000//
 #define COMBO_LONG_PRESS_US          800000
 #define COMBO_HOLD_REPEAT_US         1000000
 
@@ -44,9 +43,6 @@
 
 #define PATTERN_LEN                  6
 #define PATTERN_GAP_TIMEOUT_US       2000000
-
-extern bool isr_service_installed;
-extern bool ready_commisioning_flag;
 
 typedef enum {
     SWITCH_EVENT_SINGLE_CLICK = 1,
@@ -60,9 +56,11 @@ typedef enum {
 typedef struct {
     uint8_t button_id;
     gpio_num_t pin;
-    uint8_t keypressed;
-    uint8_t func;
-} switch_action_t;
+    switch_event_t event;
+    uint8_t click_count;
+    uint32_t combo_mask;
+    int64_t timestamp_us;
+} switch_event_info_t;
 
 typedef struct {
     uint8_t button_id;
@@ -90,32 +88,35 @@ typedef struct {
     int64_t isr_time_us;
 } gpio_evt_t;
 
-static QueueHandle_t gpio_evt_queue         = NULL;
-static QueueHandle_t switch_action_queue    = NULL;
+static QueueHandle_t gpio_evt_queue = NULL;
 static switch_func_pair_t *switch_func_pair = NULL;
-static uint8_t switch_num                   = 0;
+static uint8_t switch_num = 0;
+extern bool isr_service_installed;
+static esp_switch_callback_t func_ptr = NULL;
 
 static button_state_t g_btn[MAX_BUTTONS];
-static esp_switch_callback_t func_ptr       = NULL;
-TimerHandle_t ready_commissioning_timer     = NULL;
+static bool g_combo_long_reported = false;
 
-static uint32_t g_active_combo_mask         = 0;
-static int64_t g_combo_last_log_us          = 0;
-static int64_t g_combo_press_start_us       = 0;
+static bool g_combo_active = false;
+static uint32_t g_active_combo_mask = 0;
+static int64_t g_combo_last_log_us = 0;
+static int64_t g_combo_press_start_us = 0;
+static bool g_combo_over_20s_blocked = false;
+static bool g_combo_setting_mode_armed = false;
 
 static uint8_t g_click_pattern[PATTERN_LEN];
-static uint8_t g_click_pattern_count        = 0;
-static int64_t g_click_pattern_last_us      = 0;
-int combo_led_toggle_counts_1               = 0;
-int combo_led_toggle_counts_2               = 0;
+static uint8_t g_click_pattern_count = 0;
+static int64_t g_click_pattern_last_us = 0;
 
-static bool g_combo_over_20s_blocked        = false;
-static bool g_combo_setting_mode_armed      = false;
-static bool g_combo_active                  = false;
-static bool g_combo_long_reported           = false;
-static bool g_combo_led_on                  = false;
-bool combo_led_toggle_1                     = false;
-bool combo_led_toggle_2                     = false;
+static bool g_combo_led_on = false;
+bool combo_led_toggle_1 = false;
+int combo_led_toggle_counts_1 = 0;
+bool combo_led_toggle_2 = false;
+int combo_led_toggle_counts_2 = 0;
+
+
+TimerHandle_t ready_commissioning_timer = NULL;
+extern bool ready_commisioning_flag;
 
 static void clear_ready_commissioning_flag(TimerHandle_t xTimer)
 {
@@ -214,12 +215,17 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         #ifndef USE_COLOR_CONTROL
             #ifdef USE_WIFI_WEBSERVER
             if (ready_commisioning_flag) {
-                wifi_webserver_active_flag = true;  
+                // if(wifi_webserver_active_flag){
+                //     wifi_webserver_active_flag = false;
+                // }else{
+                    wifi_webserver_active_flag = true;  
+                // }
                 setNVSCommissioningFlag(0);
                 setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
                 esp_restart();
             }			
             #endif
+
         #endif
         stop_ready_commissioning_window();
     }
@@ -250,7 +256,11 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         #if(defined(USE_COLOR_CONTROL) || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = true;  
+            // if(wifi_webserver_active_flag){
+            //     wifi_webserver_active_flag = false;
+            // }else{
+                wifi_webserver_active_flag = true;  
+            // }
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -292,7 +302,11 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = !wifi_webserver_active_flag;
+            if(wifi_webserver_active_flag){
+                wifi_webserver_active_flag = false;
+            }else{
+                wifi_webserver_active_flag = true;  
+            }
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -306,7 +320,11 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = !wifi_webserver_active_flag;
+            if(wifi_webserver_active_flag){
+                wifi_webserver_active_flag = false;
+            }else{
+                wifi_webserver_active_flag = true;  
+            }
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -314,11 +332,11 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         #endif
         stop_ready_commissioning_window();        
     }
-    else if (match_6(0,1,1,0,0,1) || match_6(1,0,0,1,1,0)) {
+    else if (match_6(0,1,1,0,0,1)) {
         ESP_LOGI(TAG, "PATTERN DETECTED: 1,3,3,1,1,3");
         reset_click_pattern();
+
         if (ready_commisioning_flag) {
-            esp_zb_lock_acquire(portMAX_DELAY);
             for (int i = 0; i < 50; i++) {
                 esp_err_t status = esp_zb_zcl_scenes_table_clear_by_index(i);
                 if (status != ESP_OK) break;
@@ -326,15 +344,31 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
             setNVSStartCommissioningFlag(1);
             setNVSCommissioningFlag(1);
             setNVSPanicAttack(0);
-
             if (esp_zb_bdb_dev_joined()) {
                 esp_zb_bdb_reset_via_local_action();
             }
-            esp_zb_factory_reset();
-            esp_zb_lock_release();
-
             vTaskDelay(pdMS_TO_TICKS(100));
-            esp_restart();
+            esp_zb_factory_reset();
+        }
+        stop_ready_commissioning_window();
+    }
+    else if (match_6(1,0,0,1,1,0)) {
+        ESP_LOGI(TAG, "PATTERN DETECTED: 3,1,1,3,3,1");
+        reset_click_pattern();
+
+        if (ready_commisioning_flag) {
+            for (int i = 0; i < 50; i++) {
+                esp_err_t status = esp_zb_zcl_scenes_table_clear_by_index(i);
+                if (status != ESP_OK) break;
+            }
+            setNVSStartCommissioningFlag(1);
+            setNVSCommissioningFlag(1);
+            setNVSPanicAttack(0);
+            if (esp_zb_bdb_dev_joined()) {
+                esp_zb_bdb_reset_via_local_action();
+            }
+            vTaskDelay(pdMS_TO_TICKS(100));
+            esp_zb_factory_reset();
         }
         stop_ready_commissioning_window();
     }
@@ -439,24 +473,6 @@ static void log_combo_hold_message(uint32_t combo_mask)
     }
 }
 
-static void switch_worker_task(void *arg)
-{
-    switch_action_t act;
-    while (1) {
-        if (xQueueReceive(switch_action_queue, &act, portMAX_DELAY) == pdTRUE) {
-            switch_func_pair_t out = {
-                .id = act.button_id,
-                .pin = act.pin,
-                .keypressed = act.keypressed,
-                .func = act.func
-            };
-            if (func_ptr != NULL) {
-                func_ptr(&out);
-            }
-        }
-    }
-}
-
 static void emit_event(uint8_t button_id,
                        gpio_num_t pin,
                        switch_event_t event,
@@ -464,21 +480,20 @@ static void emit_event(uint8_t button_id,
                        uint32_t combo_mask,
                        int64_t ts_us)
 {
-    if (!switch_action_queue) return;
+    if (!func_ptr) return;
 
-    switch_action_t act;
-    memset(&act, 0, sizeof(switch_action_t));
-    act.button_id = button_id;
-    act.pin = pin;
-    act.keypressed = 0xFF;
-    act.func = SWITCH_NOTHING_CONTROL;
+    switch_func_pair_t out = {0};
+    out.id = button_id;
+    out.pin = pin;
+    out.keypressed = 0xFF;
+    out.func = SWITCH_NOTHING_CONTROL;
 
     if (event == SWITCH_EVENT_COMBO_LONG_PRESS) {
-        act.keypressed = LONG_PRESS;
-        act.func = get_combo_func_from_mask(combo_mask);
+        out.keypressed = LONG_PRESS;
+        out.func = get_combo_func_from_mask(combo_mask);
 
         ESP_LOGI(TAG, "SWITCH_EVENT_COMBO_LONG_PRESS mask=0x%02" PRIx32 " func=0x%02x",
-                 combo_mask, act.func);
+                 combo_mask, out.func);
 
         if (combo_mask == 0x05 || combo_mask == 0x03) {
             printf("Zigbee Comissioning Buttons Detected!!\n");
@@ -486,8 +501,8 @@ static void emit_event(uint8_t button_id,
             printf("WiFi Webserver Buttons Detected!!\n");
         }
 
-        if (act.func != SWITCH_NOTHING_CONTROL) {
-            xQueueSend(switch_action_queue, &act, 0);
+        if (out.func != SWITCH_NOTHING_CONTROL) {
+            func_ptr(&out);
         } else {
             printf("No function assigned for combo event!!\n");
         }
@@ -502,46 +517,46 @@ static void emit_event(uint8_t button_id,
     switch (event) {
         case SWITCH_EVENT_SINGLE_CLICK:
             ESP_LOGI(TAG, "SWITCH_EVENT_SINGLE_CLICK");
-            act.func = switch_func_pair[idx].single_func;
-            act.keypressed = SINGLE_PRESS;
+            out.func = switch_func_pair[idx].single_func;
+            out.keypressed = SINGLE_PRESS;
             break;
 
         case SWITCH_EVENT_DOUBLE_CLICK:
             ESP_LOGI(TAG, "SWITCH_EVENT_DOUBLE_CLICK");
-            act.func = switch_func_pair[idx].double_func;
-            act.keypressed = DOUBLE_PRESS;
+            out.func = switch_func_pair[idx].double_func;
+            out.keypressed = DOUBLE_PRESS;
             break;
 
         case SWITCH_EVENT_MULTI_CLICK:
             ESP_LOGI(TAG, "SWITCH_EVENT_MULTI_CLICK count=%u", click_count);
-            act.func = switch_func_pair[idx].multi_func;
-            act.keypressed = SINGLE_PRESS;
+            out.func = switch_func_pair[idx].multi_func;
+            out.keypressed = SINGLE_PRESS;
             break;
 
         case SWITCH_EVENT_LONG_PRESS:
             ESP_LOGI(TAG, "SWITCH_EVENT_LONG_PRESS");
-            act.func = switch_func_pair[idx].long_func;
-            act.keypressed = LONG_PRESS;
+            out.func = switch_func_pair[idx].long_func;
+            out.keypressed = LONG_PRESS;
             break;
 
         case SWITCH_EVENT_LONG_HOLD_REPEAT:
             ESP_LOGI(TAG, "SWITCH_EVENT_LONG_HOLD_REPEAT_123");
-            act.func = switch_func_pair[idx].long_func;
-            act.keypressed = LONG_PRESS_INC_DEC_LEVEL;
+            out.func = switch_func_pair[idx].long_func;
+            out.keypressed = LONG_PRESS_INC_DEC_LEVEL;
             break;
 
         default:
             return;
     }
 
-    if (act.func != SWITCH_NOTHING_CONTROL) {
-        xQueueSend(switch_action_queue, &act, 0);
+    if (out.func != SWITCH_NOTHING_CONTROL) {
+        func_ptr(&out);
     } else {
         printf("No function assigned for this event!!\n");
     }
 }
 
-static inline bool IRAM_ATTR is_switch_pin(gpio_num_t pin)
+static inline bool is_switch_pin(gpio_num_t pin)
 {
     for (int i = 0; i < switch_num; i++) {
         if (switch_func_pair[i].pin == pin) {
@@ -559,25 +574,19 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
     }
 
     if (!is_switch_pin(btn->pin)) {
-        return;
+        //printf("Interrupt on non-switch pin %d, ignoring\n", btn->pin);
+        return;   // ignore any non-switch GPIO, e.g. DALI RX pin
     }
-    
-    // Read GPIO directly from hardware registers in IRAM without calling flash functions
-    int pin_level = gpio_ll_get_level(&GPIO, btn->pin);
-
     gpio_evt_t evt = {
         .button_id = btn->id,
         .pin = btn->pin,
-        .level = pin_level,
+        .level = gpio_get_level(btn->pin),
         .isr_time_us = esp_timer_get_time()
     };
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(gpio_evt_queue, &evt, &xHigherPriorityTaskWoken);
-
-    if (xHigherPriorityTaskWoken == pdTRUE) {
-        portYIELD_FROM_ISR();
-    }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 static void handle_confirmed_single_click(uint8_t button_id, gpio_num_t pin, int64_t ts_us)
@@ -779,7 +788,7 @@ static void process_long_press_and_clicks(void)
     for (int i = 0; i < switch_num; i++) {
         button_state_t *b = &g_btn[i];
 
-        if (b->pressed && gpio_get_level(b->pin) == 0) {
+        if (b->pressed) {
             int64_t held_us = now - b->press_start_us;
 
             if (held_us >= SETTING_MODE_MIN_US) {
@@ -849,8 +858,10 @@ static void switch_driver_button_detected(void *arg)
 
     while (1) {
         if (xQueueReceive(gpio_evt_queue, &evt, pdMS_TO_TICKS(10)) == pdTRUE) {
+
             process_edge_event(&evt);
         }
+        // printf("looping in button_detected task...\n");
         process_long_press_and_clicks();
     }
 }
@@ -897,14 +908,6 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
         return false;
     }
 
-    switch_action_queue = xQueueCreate(ACTION_QUEUE_LEN, sizeof(switch_action_t));
-    if (switch_action_queue == NULL) {
-        ESP_LOGE(TAG, "Action queue creation failed");
-        vQueueDelete(gpio_evt_queue);
-        gpio_evt_queue = NULL;
-        return false;
-    }
-
     if (ready_commissioning_timer == NULL) {
         ready_commissioning_timer = xTimerCreate(
             "ready_comm",
@@ -917,9 +920,7 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
         if (ready_commissioning_timer == NULL) {
             ESP_LOGE(TAG, "Timer creation failed");
             vQueueDelete(gpio_evt_queue);
-            vQueueDelete(switch_action_queue);
             gpio_evt_queue = NULL;
-            switch_action_queue = NULL;
             return false;
         }
     }
@@ -935,22 +936,7 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "Task creation failed");
         vQueueDelete(gpio_evt_queue);
-        vQueueDelete(switch_action_queue);
         gpio_evt_queue = NULL;
-        switch_action_queue = NULL;
-        return false;
-    }
-
-    BaseType_t worker_ok = xTaskCreate(
-        switch_worker_task,
-        "sw_worker",
-        TASK_STACK_SIZE_SWITCH,
-        NULL,
-        TASK_PRIORITY_WORKER,
-        NULL
-    );
-    if (worker_ok != pdPASS) {
-        ESP_LOGE(TAG, "Worker task creation failed");
         return false;
     }
 
@@ -981,17 +967,6 @@ void switch_driver_gpios_intr_enabled(bool enabled)
     }
 }
 
-// void switch_driver_gpios_intr_enabled(bool enabled)
-// {
-//     for (int i = 0; i < switch_num; ++i) {
-//         if (enabled) {
-//             gpio_intr_enable(switch_func_pair[i].pin);
-//         } else {
-//             gpio_intr_disable(switch_func_pair[i].pin);
-//         }
-//     }
-// }
-
 bool switch_driver_init(switch_func_pair_t *button_func_pair,
                         uint8_t button_num,
                         esp_switch_callback_t cb)
@@ -1000,9 +975,9 @@ bool switch_driver_init(switch_func_pair_t *button_func_pair,
     return switch_driver_gpio_init(button_func_pair, button_num);
 }
 
+
 #else
 
-// Retain non-DALI switch driver legacy implementation below
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -1016,6 +991,8 @@ bool switch_driver_init(switch_func_pair_t *button_func_pair,
 #include "light_driver.h"
 #include "nvs_flash.h"
 
+
+// Constants
 #if defined(USE_DOUBLE_PRESS)
     #define PIN_READ_TIME_MS                    1
     #define DEBOUNCE_TIME_MS                    10
@@ -1034,25 +1011,33 @@ bool switch_driver_init(switch_func_pair_t *button_func_pair,
 #define MAX_COUNTS_FOR_TRIPLE_CLICK             6
 
 static uint64_t brightness_count                = 0;
+
 volatile uint16_t total_press_in_secs           = 0;
 static uint32_t last_press_time                 = 0;
 static uint32_t press_duration                  = 0;
 static uint32_t last_release_time               = 0;
 static uint32_t double_release_time             = 0;
 static bool double_click_detected               = false;
+// Timer handle
 static TimerHandle_t click_timer                = NULL;
 bool  longpress_detected                        = false;
 static int click_count                          = 0;
 
 #define CLICK_ARRAY_SIZE                        50
 gpio_num_t switch_num_pressed[CLICK_ARRAY_SIZE];
-int press_count_5s[4]                           = {0, 0, 0, 0};
+/// /////////////////////////////////////////
+// Variables to track switch presses in a 5-second window
+int press_count_5s[4]                           = {0, 0, 0, 0}; // Assuming four switches
 static TimerHandle_t press_count_timer_handle   = NULL;
 volatile bool time_5sec_started_flag            = false;
+/// /////////////////////////////////////////
 
 static QueueHandle_t gpio_evt_queue             = NULL;
+/* button function pair, should be defined in switch example source file */
 static switch_func_pair_t *switch_func_pair;
+/* call back function pointer */
 static esp_switch_callback_t func_ptr;
+/* which button is pressed */
 static uint8_t switch_num;
 static const char *TAG                          = "ESP_ZB_SWITCH";
 
@@ -1067,6 +1052,7 @@ bool is_22112211                                = false;
 
 static bool toggle_status_led_long_press        = false;
 
+
 void switch_driver_gpios_intr_enabled(bool enabled);
 extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode);
 #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
@@ -1075,15 +1061,26 @@ extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
 
 extern bool ready_commisioning_flag;
 TimerHandle_t ready_commissioning_timer = NULL;
+// static void clear_ready_commissioning_flag(TimerHandle_t xTimer)
+// {
+//     ready_commisioning_flag = false;
+//     ESP_LOGI(TAG, "ready_commisioning_flag cleared after 30s timeout");
+// }
 
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
+    // Critical section entry
     switch_driver_gpios_intr_enabled(false); 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(gpio_evt_queue, (switch_func_pair_t*)arg, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); 
 }
 
+/**
+ * @brief Enable GPIO (switchs refer to) isr
+ *
+ * @param enabled      enable isr if true.
+ */
 void switch_driver_gpios_intr_enabled(bool enabled)
 {
     for (int i = 0; i < switch_num; ++i) {
@@ -1095,62 +1092,36 @@ void switch_driver_gpios_intr_enabled(bool enabled)
     }
 }
 
+/**
+ * @brief Tasks for checking the button event and debounce the switch state
+ *
+ * @param arg      Unused value.
+ */
+
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-void task_mode_single_click(){
-    if(isSceneRemoteBindingStarted){
-        if(task_sequence_num == TASK_MODE_BLINK_ALL_LEDS){
-            task_sequence_num = TASK_MODE_GO_TO_ACTUAL_TASK;  
-        }else if(task_sequence_num == TASK_MODE_ACTUAL_TASK_BLINK_LEDS){
-            task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
-        }else if(task_sequence_num == TASK_MODE_BLINK_OTHER_LEDS){
-            task_sequence_num = TASK_SEND_IDENTIFY_COMMAND;
-            identify_device_complete_flag = false;
-        }else if(task_sequence_num == TASK_BLINK_SELECTED_LED){
-            task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
-            identify_device_complete_flag = false;
-        }
-    }    
-}
+    void task_mode_single_click(){
+        if(isSceneRemoteBindingStarted){
+            if(task_sequence_num == TASK_MODE_BLINK_ALL_LEDS){
+                task_sequence_num = TASK_MODE_GO_TO_ACTUAL_TASK;  
+            }else if(task_sequence_num == TASK_MODE_ACTUAL_TASK_BLINK_LEDS){
+                task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
+            }else if(task_sequence_num == TASK_MODE_BLINK_OTHER_LEDS){
+                task_sequence_num = TASK_SEND_IDENTIFY_COMMAND;
+                identify_device_complete_flag = false;
+            }else if(task_sequence_num == TASK_BLINK_SELECTED_LED){
+                task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
+                identify_device_complete_flag = false;
+            }
+        }    
+    }
 #endif
 
+
 static void esp_zb_callback(uint8_t param) {
+    //printf("param:%d\n", param);
+
 }
 
-// void button_click_handler(TimerHandle_t xTimer)
-// {
-//     int local_clicks = click_count;
-//     if (local_clicks > CLICK_ARRAY_SIZE) local_clicks = CLICK_ARRAY_SIZE;
-//     click_count = 0;
-
-// #ifdef USE_DOUBLE_PRESS
-//     switch_func_pair_t button_func_pair;
-//     if (xQueueReceive(gpio_evt_queue, &button_func_pair, 0) == pdTRUE) {
-//         button_func_pair.func = SWITCH_ONOFF_TOGGLE_CONTROL;
-//         if (local_clicks == 1) {
-//             if (longpress_detected) {
-//                 button_func_pair.keypressed = LONG_PRESS;
-//             } else {
-//                 button_func_pair.keypressed = SINGLE_PRESS;
-//             }
-//             longpress_detected = false;
-//         } else if (local_clicks == 2) {
-//             if (isSceneRemoteBindingStarted) {
-//                 task_sequence_num = TASK_MODE_EXIT;
-//             }
-//             button_func_pair.keypressed = SINGLE_PRESS;
-//             for (int i = 1; i < local_clicks; i++) {
-//                 if (switch_num_pressed[i] == switch_num_pressed[i - 1]) {
-//                     button_func_pair.keypressed = DOUBLE_PRESS;
-//                     break;
-//                 }
-//             }
-//         }
-//         if (func_ptr != NULL) {
-//             (*func_ptr)(&button_func_pair);
-//         }
-//     }
-// #endif
-// }
 void button_click_handler(TimerHandle_t xTimer)
 {
 
@@ -1514,6 +1485,8 @@ void button_click_handler(TimerHandle_t xTimer)
 #endif // USE_DOUBLE_PRESS
     
 }
+
+
 static void create_timers_at_init(void)
 {
     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
@@ -1541,86 +1514,6 @@ static void create_timers_at_init(void)
     #endif
 }
 
-// static void switch_driver_button_detected(void *arg) {
-//     gpio_num_t io_num = GPIO_NUM_NC;
-//     static bool start_comm_flag = false;
-//     uint32_t reduced_bounce_time = DEBOUNCE_TIME_MS;
-//     static switch_state_t switch_state = SWITCH_IDLE;
-//     bool evt_flag = false;
-//     uint32_t switch_pressed_cnts = 0;
-//     bool two_switch_pressed_flag = false;
-
-//     for (;;) {
-//         switch_func_pair_t button_func_pair;
-//         if (xQueueReceive(gpio_evt_queue, &button_func_pair, portMAX_DELAY)) {
-//             switch_driver_gpios_intr_enabled(false);
-//             recheckTimer();
-//             io_num = button_func_pair.pin;
-//             evt_flag = true;
-//             longpress_detected = false;
-//             total_press_in_secs = 0;
-//             two_switch_pressed_flag = false; 
-//             initTwoSwitchPressedPins();
-            
-//             #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-//                nuos_init_hardware_dimming_up_down(io_num);
-//             #endif
-
-//             #ifndef USE_DOUBLE_PRESS
-//                 button_func_pair.keypressed = SINGLE_PRESS;
-//             #endif
-
-//             brightness_count = 0;
-//             switch_pressed_cnts = 0;
-//             reduced_bounce_time = DEBOUNCE_TIME_MS;
-//         }
-
-//         while (evt_flag) {
-//             bool value = gpio_get_level(io_num);
-//             uint32_t current_time = esp_timer_get_time() / 1000;
-//             global_switch_state = switch_state;
-            
-//             switch (switch_state) {
-//                 case SWITCH_IDLE:
-//                     if (value == GPIO_INPUT_LEVEL_ON) {
-//                         last_press_time = current_time;
-//                         last_release_time = current_time;
-//                         double_release_time = current_time;
-//                         switch_state = SWITCH_PRESS_DETECTED;
-//                     }
-//                     break;
-
-//                 case SWITCH_PRESS_DETECTED:
-//                     switch_state = (value == GPIO_INPUT_LEVEL_ON) ? SWITCH_PRESS_DETECTED : SWITCH_RELEASE_DETECTED;
-//                     press_duration = current_time - last_press_time;
-//                     break;
-
-//                 case SWITCH_RELEASE_DETECTED:
-//                     switch_state = SWITCH_IDLE;
-//                     break;
-
-//                 default:
-//                     switch_state = SWITCH_IDLE;
-//                     switch_driver_gpios_intr_enabled(true);
-//                     break;
-//             }
-
-//             if (switch_state == SWITCH_IDLE) {
-//                 #ifndef USE_DOUBLE_PRESS
-//                     button_func_pair.func = SWITCH_ONOFF_TOGGLE_CONTROL;
-//                     button_func_pair.pin = io_num;
-//                     if (func_ptr != NULL) {
-//                         (*func_ptr)(&button_func_pair);
-//                     }
-//                 #endif
-//                 switch_driver_gpios_intr_enabled(true);
-//                 evt_flag = false;
-//                 break;
-//             }
-//             vTaskDelay(pdMS_TO_TICKS(reduced_bounce_time));
-//         }
-//     }
-// }
 void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_time_in_secs){
     if (sw_pressed_cnts == 2) {   
         if(get_button_pressed_mode() == 1){
@@ -2039,30 +1932,38 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
     switch_num = button_num;
     uint64_t pin_bit_mask = 0;
 
+    /* set up button func pair pin mask */
     for (int i = 0; i < button_num; ++i) {
         pin_bit_mask |= (1ULL << (button_func_pair + i)->pin);
     }
-    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    /* interrupt of falling edge */
+    io_conf.intr_type = GPIO_INTR_NEGEDGE; //GPIO_INTR_LOW_LEVEL; //
     io_conf.pin_bit_mask = pin_bit_mask;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_down_en = 0;
     io_conf.pull_up_en = 1;
+    /* configure GPIO with the given settings */
     gpio_config(&io_conf);
 
+    /* create a queue to handle gpio event from isr */
     gpio_evt_queue = xQueueCreate(20, sizeof(switch_func_pair_t));
-    if (gpio_evt_queue == NULL) {
+    if ( gpio_evt_queue == 0) {
+        //ESP_LOGE(TAG, "Queue was not created and must not be used");
         return false;
     }
-
+    //zb_event_queue = xQueueCreate(10, sizeof(zb_button_event_t));
+   // assert(zb_event_queue);
+    /* start gpio task */
     xTaskCreate(switch_driver_button_detected, "button_detected", TASK_STACK_SIZE_SWITCH, NULL, TASK_PRIORITY_SWITCH, NULL);
 
+    /* install gpio isr service */
     if (!isr_service_installed) {
         ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT));
         isr_service_installed = true;
     }
    
     for (int i = 0; i < button_num; ++i) {
-        gpio_isr_handler_add((button_func_pair + i)->pin, gpio_isr_handler, (void *)(button_func_pair + i));
+        gpio_isr_handler_add((button_func_pair + i)->pin, gpio_isr_handler, (void *) (button_func_pair + i));
     }
     return true;
 }
@@ -2073,7 +1974,7 @@ bool switch_driver_init(switch_func_pair_t *button_func_pair, uint8_t button_num
         return false;
     }
     func_ptr = cb;
-    create_timers_at_init();
+    create_timers_at_init();   // <--- create timers deterministically
     return true;
 }
 

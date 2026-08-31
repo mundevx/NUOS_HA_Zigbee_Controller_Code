@@ -69,7 +69,7 @@
     #define TASK_PRIORITY_RGB                                       18  //dont change it ever
     #define TASK_PRIORITY_PRIVILEGE                                 21  //used in case of RGB
     #define TASK_PRIORITY_IR_BLASTER_SEND                           21
-    #define TASK_PRIORITY_DALI_RX_FRAME                             14   
+    #define TASK_PRIORITY_DALI_RX_FRAME                             12   
     #define TASK_PRIORITY_BOOT_PIN_TOGGLE                           22
     #define TASK_PRIORITY_SCENE_QUEUE_TASK                          15 //not used
     #define TASK_PRIORITY_WEBSERVER                                 16  
@@ -106,6 +106,12 @@
     #define MIREDS_MIN                                              156
     #define MIREDS_MAX                                              500
     
+
+    #define LED_RED_COLOR                                           0x02
+    #define LED_GREEN_COLOR                                         0x02
+    #define LED_BLUE_COLOR                                          0x02
+    #define LED_ORANGE_COLOR                                        0x01
+
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT)
         #define TOTAL_ENDPOINTS                                     4
         #define TOTAL_BUTTONS                                       4

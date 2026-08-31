@@ -114,7 +114,7 @@ select, input[type="number"] {
     .tabs { flex-direction: column; }
 }
 
-.popup {
+/* .popup {
     display: none;
     position: fixed;
     left: 50%; top: 50%;
@@ -126,7 +126,7 @@ select, input[type="number"] {
     max-width: 90vw;
     overflow-y: auto;
     border-radius: 12px;
-}
+} */
 .overlay {
     display: none;
     position: fixed;
@@ -135,10 +135,43 @@ select, input[type="number"] {
     background: rgba(0,0,0,0.4);
     z-index: 99;
 }
-#toggleGrid {
+/* #toggleGrid {
     max-height: 60vh;
     overflow-y: auto;
+} */
+
+.popup {
+    display: none;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border: 1px solid #888;
+    z-index: 100;
+    padding: 16px 20px;
+    width: 90%;
+    max-width: 440px;
+    max-height: 90vh;        /* Keeps entire modal within browser window */
+    overflow-y: auto;        /* Enables scrolling if content exceeds height */
+    box-sizing: border-box;  /* Includes padding in height calculations */
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
+
+#toggleGrid {
+    max-height: 180px;       /* Constrains grid height so bottom buttons fit */
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    margin: 10px 0;
+    padding: 6px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
 .toast {
   visibility: hidden;
   min-width: 300px;
@@ -204,7 +237,18 @@ h3{ color:#2193b0;border-bottom:2px solid #6dd5ed;padding-bottom:8px;margin-top:
     padding-top: 10px;
     background: #eef2f7;
   }
+  .popup {
+    width: 94%;
+    max-height: 88vh;
+    padding: 14px;
+    border-radius: 14px;
+  }
 
+  #toggleGrid {
+    grid-template-columns: repeat(8, 1fr);
+    max-height: 160px;
+    gap: 4px;
+  }
   /* Tabs → pill style */
   .tabs {
     width: 96%;
@@ -699,15 +743,25 @@ fetch('/items?fxn=16')
 
 });
 
+
 // Large popup grid with toggles for each ID
 (function initGrid() {
   let grid = '';
   for (let i = 0; i < 64; i++) {
-    grid += `<button class="toggle-btn" id="btn${i}" onclick="toggleBtn(${i})">${i}</button>`;
-    if (i % 8 === 7) grid += '<br>';
+    grid += `<button type="button" class="toggle-btn" id="btn${i}" onclick="toggleBtn(${i})">${i}</button>`;
   }
   document.getElementById('toggleGrid').innerHTML = grid;
 })();
+
+// // Large popup grid with toggles for each ID
+// (function initGrid() {
+//   let grid = '';
+//   for (let i = 0; i < 64; i++) {
+//     grid += `<button class="toggle-btn" id="btn${i}" onclick="toggleBtn(${i})">${i}</button>`;
+//     if (i % 8 === 7) grid += '<br>';
+//   }
+//   document.getElementById('toggleGrid').innerHTML = grid;
+// })();
 
 // Scene field press/long-press handlers to open the popup
 ['scene1','scene2'].forEach((id, idx) => {

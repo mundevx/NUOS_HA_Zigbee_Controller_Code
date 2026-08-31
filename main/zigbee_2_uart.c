@@ -198,6 +198,7 @@
             }          
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
             #ifdef USE_C3_ADAPTER_UART_HW
+                wifi_webserver_active_counts = 0;
                 parse_json(data);
             #endif    
         #endif

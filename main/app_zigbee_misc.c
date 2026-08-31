@@ -545,13 +545,13 @@ void nuos_zb_reset_nvs_start_commissioning(){
     }
 }
 void nuos_zb_nlme_status_indication(){
-    #ifdef USE_RGB_LED
-        if(light_driver_deinit_flag){
-            light_driver_deinit_flag = false;
-            light_driver_init(LIGHT_DEFAULT_OFF);
-        }
-        //light_driver_set_color_RGB(0xff, 0, 0); //
-    #endif
+    // #ifdef USE_RGB_LED
+    //     if(light_driver_deinit_flag){
+    //         light_driver_deinit_flag = false;
+    //         light_driver_init(LIGHT_DEFAULT_OFF);
+    //     }
+    //     //light_driver_set_color_RGB(0xff, 0, 0); //
+    // #endif
 }
 
 void nuos_zb_indentify_indication(uint16_t cluster_id, uint8_t dst_endpoint, uint8_t effect_id){
@@ -853,12 +853,12 @@ void nuos_blink_rgb_led_init_task() {
 
 void nuos_start_rgb_led_blink_task(uint32_t index){
     if(wifi_webserver_active_flag > 0){
-        light_driver_set_color_RGB(0xff, 0xa5, 0); //orange color for IR STA mode functionality
+        light_driver_set_color_RGB(LED_RED_COLOR, LED_ORANGE_COLOR, 0); //orange color for IR STA mode functionality
     }else{
         if(start_commissioning > 0){
-            light_driver_set_color_RGB(0xff, 0, 0); //red color for commissioning functionality
+            light_driver_set_color_RGB(LED_RED_COLOR, 0, 0); //red color for commissioning functionality
         }else{
-            light_driver_set_color_RGB(0, 0xff, 0); //green color for normal functionality
+            light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0); //green color for normal functionality
         }
     }
     rgb_led_blink_flag = true;
@@ -886,7 +886,7 @@ void nuos_rgb_trigger_blink() {
 void nuos_set_rgb_led_normal_functionality(){ 
     blink_rgb_led_normal_functionality_flag = true;
     #ifdef USE_RGB_LED
-    light_driver_set_color_RGB(0, 0xff, 0);
+    light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0);
     if(rgb_task_handle != NULL) xTaskNotifyGive(rgb_task_handle); // Notify the rgb_task to run 
     #endif   
 }
@@ -897,26 +897,29 @@ void nuos_set_rgb_led_commissioning_functionality(){
     #endif  
 }
 void nuos_init_rgb_led(){
-    light_driver_init(LIGHT_DEFAULT_OFF);
+    if(!light_driver_deinit_flag){
+        light_driver_deinit_flag = true;
+        light_driver_init(LIGHT_DEFAULT_OFF);
+    }
     vTaskDelay(pdMS_TO_TICKS(10));
     #ifdef USE_RGB_LED
        
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
             if(wifi_webserver_active_flag > 0){
-                light_driver_set_color_RGB(0xff, 0xa5, 0); //orange color for IR STA mode functionality
+                light_driver_set_color_RGB(LED_RED_COLOR, LED_ORANGE_COLOR, 0); //orange color for IR STA mode functionality
             }else{
                 if(start_commissioning > 0){
-                    light_driver_set_color_RGB(0xff, 0, 0); //red color for commissioning functionality
+                    light_driver_set_color_RGB(LED_RED_COLOR, 0, 0); //red color for commissioning functionality
                 }else{
-                    light_driver_set_color_RGB(0, 0xff, 0); //green color for normal functionality
+                    light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0); //green color for normal functionality
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(500));
         #else
             if(start_commissioning > 0){
-                light_driver_set_color_RGB(0xff, 0, 0); //red color for zigbee commissioning functionality
+                light_driver_set_color_RGB(LED_RED_COLOR, 0, 0); //red color for zigbee commissioning functionality
             }else{
-                light_driver_set_color_RGB(0, 0xff, 0); //green color for normal functionality
+                light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0); //green color for normal functionality
             }  
         #endif  
         light_driver_set_power(false);
@@ -1036,10 +1039,17 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     set_dali_color_temp(0, false);
                     set_dali_level(3);                
                 #else
-                    set_dali_color_temp(0, false);
+                    
                     if(button_index < 3){
+                        if(device_info[4].device_state){
+                            set_dali_color_temp(0, false);
+                        }   
                         set_state(4);
                     }else{
+                        if(device_info[3].device_state){
+                            set_dali_color_temp(0, false);
+                            
+                        }
                         set_state(3);
                     }
                 #endif                

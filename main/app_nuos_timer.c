@@ -69,8 +69,11 @@ void esp_start_timer(){
 	if(timer_initialized_ok){
 		if(!timer_started_flag){
 			timer_started_flag = true;
-				// Start the timer
+			// Start the timer
 			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, 100000)); // 100 milli second period	
+			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+			printf("{\"fxn\":14}\n");
+			#endif
 		}
 	}
     timer_led_blink_counts = 0;
@@ -85,10 +88,15 @@ void esp_stop_timer(){
 	if(timer_initialized_ok){
 		if(timer_started_flag){
 			timer_started_flag = false;
-			if(my_timer_handle != NULL)
-				esp_timer_stop(my_timer_handle);	
+			if(my_timer_handle != NULL){
+				esp_timer_stop(my_timer_handle);
+			}
+
 		}
 	}
+	// #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+	// printf("{\"mode\":0}\n");
+	// #endif	
 	#endif
 }
 
@@ -144,6 +152,11 @@ void start_wifi_webserver_timer_task(){
 			timer_counts_enable_webserver = 0;
             //save record in nvs
 			setNVSWebServerEnableFlag(wifi_webserver_active_flag);
+
+			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+			printf("{\"mode\":0}\n");
+			#endif
+			vTaskDelay(pdMS_TO_TICKS(200));
 			//restart devices
 			esp_restart();
 		}else{
@@ -174,17 +187,17 @@ void start_zb_commissioning_timer_task(){
 			timer_led_blink_counts = 0;
 			#ifdef USE_RGB_LED
 			    toggle_status_led = !toggle_status_led;
-				if(toggle_status_led) light_driver_set_color_RGB(0xff, 0, 0);  //red
+				if(toggle_status_led) light_driver_set_color_RGB(LED_RED_COLOR, 0, 0);  //red
 				light_driver_set_power(toggle_status_led);
 			#else
 			    nuos_zb_set_hardware_led_for_zb_commissioning(true);
 			#endif
 			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-				if(wifi_webserver_active_flag  == 0){
-					//printf("Commissioning....\n");
-				}else{
-					//printf("Set AC Model....\n");
-				}
+				// if(wifi_webserver_active_flag  == 0){
+				// 	//printf("Commissioning....\n");
+				// }else{
+				// 	//printf("Set AC Model....\n");
+				// }
 			#else
 				printf("Zigbee Commissioning...\n");	
 			#endif
@@ -206,10 +219,11 @@ void start_zb_commissioning_timer_task(){
 
 						setNVSStartCommissioningFlag(1);
 						setNVSCommissioningFlag(0);
-					  
+					    
+
 					#endif
 					#ifdef USE_RGB_LED
-						light_driver_set_color_RGB(0x00, 0xff, 0x00);
+						light_driver_set_color_RGB(0x00, LED_GREEN_COLOR, 0x00);
 						light_driver_set_power(0);
 						//printf("stop_commissioning\n");
 						light_driver_deinit_flag = true;
@@ -394,7 +408,6 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 		   }
         }
 	}
-
 
 	for(int i=0; i<TOTAL_BUTTONS; i++){
         if(button_read_flag[i]){

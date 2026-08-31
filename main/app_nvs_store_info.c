@@ -97,9 +97,12 @@ esp_err_t clear_all_groups_and_scenes_in_nvs(void);
 void nuos_read_dali_scene_switch_data_to_nvs(void* str_data, size_t* length);
 
 void nuos_init_nvs(){
-    esp_err_t err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
-    if (err != ESP_OK) return; 
+    if (nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle) == ESP_OK) {
+       //nvs_erase_key(my_handle, "dali_cfg");
+       //nvs_commit(my_handle);
+    }
 }
+
 void writeKeyValueToNVRAM(const char* key, int32_t value) {
     #ifdef USE_NVS_INIT
     esp_err_t err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
@@ -471,7 +474,9 @@ void setNVSAllLedsOff(uint8_t value){
 esp_err_t save_dali_config_to_nvs(const dali_nvs_storage_t *storage_data) {
 
     esp_err_t err;
-
+    if (storage_data == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
     // 1. Open NVS namespace
     #ifdef USE_NVS_INIT
     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READWRITE, &my_handle);
@@ -485,7 +490,9 @@ esp_err_t save_dali_config_to_nvs(const dali_nvs_storage_t *storage_data) {
     err = nvs_set_blob(my_handle, NVS_KEY_CONFIG, storage_data, required_size);
     if (err != ESP_OK) {
         ESP_LOGE(TAG_NVS, "Failed to write config blob to NVS: %s", esp_err_to_name(err));
+        #ifdef USE_NVS_INIT
         nvs_close(my_handle);
+        #endif
         return err;
     }
 
@@ -508,7 +515,9 @@ esp_err_t save_dali_config_to_nvs(const dali_nvs_storage_t *storage_data) {
 esp_err_t load_dali_config_from_nvs(dali_nvs_storage_t *storage_data) {
 
     esp_err_t err;
-
+    if (storage_data == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
     // 1. Open NVS namespace
     #ifdef USE_NVS_INIT
     err = nvs_open(ZIGBEE_NVS_PARTITION, NVS_READONLY, &my_handle);
@@ -523,14 +532,18 @@ esp_err_t load_dali_config_from_nvs(dali_nvs_storage_t *storage_data) {
     err = nvs_get_blob(my_handle, NVS_KEY_CONFIG, NULL, &required_size);
     if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGE(TAG_NVS, "Failed to get blob size from NVS: %s", esp_err_to_name(err));
+        #ifdef USE_NVS_INIT
         nvs_close(my_handle);
+        #endif
         return err;
     }
 
     // If key doesn't exist
     if (err == ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGW(TAG_NVS, "No previous DALI configuration found in NVS.");
+        #ifdef USE_NVS_INIT
         nvs_close(my_handle);
+        #endif
         return err;
     }
 

@@ -521,11 +521,24 @@ static void user_find_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t 
     }
 }
 
+static bool is_steering_in_progress = false;
+
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
-    ESP_RETURN_ON_FALSE(esp_zb_bdb_start_top_level_commissioning(mode_mask) == ESP_OK, , TAG, "Failed to start Zigbee commissioning");
+    if (mode_mask & ESP_ZB_BDB_MODE_NETWORK_STEERING) {
+        if (is_steering_in_progress) {
+            ESP_LOGW(TAG, "Steering already in progress, skipping duplicate trigger.");
+            return;
+        }
+        is_steering_in_progress = true;
+    }
+    
+    esp_err_t ret = esp_zb_bdb_start_top_level_commissioning(mode_mask);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start Zigbee commissioning (0x%x)", ret);
+        is_steering_in_progress = false;
+    }
 }
-
 
 static void zb_zdo_match_desc_handler(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx)
 {
@@ -555,11 +568,10 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 
     switch (sig_type) {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
-        
         ESP_LOGI(TAG, "Initialize Zigbee stack");
         // stack_initialised = true;
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-        esp_zb_nwk_set_link_status_period(15);  //forcefully 
+        // esp_zb_nwk_set_link_status_period(15);  //forcefully 
         network_steering_mode_flag = false;
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
@@ -612,8 +624,10 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                     }           
                 }else{
                     setNVSPanicAttack(0);
-                    nuos_zb_find_clusters(user_find_cb);
-                    if (!esp_zb_bdb_dev_joined()) {
+                    
+                    if (esp_zb_bdb_dev_joined()) {
+                        nuos_zb_find_clusters(user_find_cb);
+                    }else{   
                         printf("BDB not joined!!.....\n");
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 2000);
                     }
@@ -628,26 +642,52 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                                    ESP_ZB_BDB_MODE_INITIALIZATION, 1000);
         }
         break;       
+    // case ESP_ZB_BDB_SIGNAL_STEERING:
+    //     if (err_status == ESP_OK) {
+    //         esp_zb_ieee_addr_t extended_pan_id;
+    //         esp_zb_get_extended_pan_id(extended_pan_id);
+    //         ESP_LOGI(TAG, "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
+    //                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
+    //                  extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
+    //                  esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
+    //         //esp_zb_zdo_pim_set_long_poll_interval(ED_KEEP_ALIVE);
+    //         //Added by Nuos  
+    //         joining_signal_received = true;
+    //         nuos_zb_find_clusters(user_find_cb);
+    //     } else {
+    //         joining_signal_received = false;
+    //         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
+    //         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
+            
+            
+    //     }
+    //     break;
+
     case ESP_ZB_BDB_SIGNAL_STEERING:
+        is_steering_in_progress = false; // <-- Clear flag here
         if (err_status == ESP_OK) {
-            esp_zb_ieee_addr_t extended_pan_id;
-            esp_zb_get_extended_pan_id(extended_pan_id);
-            ESP_LOGI(TAG, "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
-                     extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
-                     extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
-                     esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
-            //esp_zb_zdo_pim_set_long_poll_interval(ED_KEEP_ALIVE);
-            //Added by Nuos  
             joining_signal_received = true;
             nuos_zb_find_clusters(user_find_cb);
         } else {
             joining_signal_received = false;
-            ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
-            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-            
-            
+            ESP_LOGI(TAG, "Network steering failed (status: %s)", esp_err_to_name(err_status));
+            // Retry with backoff only if not already steering
+            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, 
+                                ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
         }
         break;
+
+    case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
+        ESP_LOGW(TAG, "Gateway / Parent Device Unavailable!");
+        is_some_device_unavailable = true;
+        
+        // Only schedule if not already steering
+        if (!is_steering_in_progress) {
+            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, 
+                                ESP_ZB_BDB_MODE_NETWORK_STEERING, 10000);
+        }
+        break;
+
     case ESP_ZB_ZDO_SIGNAL_DEVICE_ANNCE:
         dev_annce_params = (esp_zb_zdo_signal_device_annce_params_t *)esp_zb_app_signal_get_params(p_sg_p);
         ESP_LOGI(TAG, "New device commissioned or rejoined (short: 0x%04hx)", dev_annce_params->device_short_addr);
@@ -688,14 +728,14 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         } 			
         break;
          
-    case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
-        // store "sig"=sig_type of "err"= "unavailable" here in nvs
-        // Attempt to rejoin the network
-        esp_zb_bdb_commissioning_mode_mask_t mode_unavailable = esp_zb_get_bdb_commissioning_mode();
-        printf("SIGNAL:UNAVAILABLE = %d\n", mode_unavailable);
-        if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-        is_some_device_unavailable = true;        
-        break;
+    // case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
+    //     // store "sig"=sig_type of "err"= "unavailable" here in nvs
+    //     // Attempt to rejoin the network
+    //     esp_zb_bdb_commissioning_mode_mask_t mode_unavailable = esp_zb_get_bdb_commissioning_mode();
+    //     printf("SIGNAL:UNAVAILABLE = %d\n", mode_unavailable);
+    //     if(mode_unavailable == 0) esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+    //     is_some_device_unavailable = true;        
+    //     break;
     default:
          //ZB_NWK_COMMAND_STATUS_NO_ROUTE_AVAILABLE 
         //ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
@@ -2142,10 +2182,115 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_stack_main_loop();   
 }
 
+
+#define SAFE_MODE_HOLD_TIME_MS      3000
+#define SAFE_MODE_HOLD_TIME_MS      10000   // 10 seconds
+#define SAFE_MODE_CHECK_STEP_MS     50      // Polling interval (50ms)
+
+static bool check_startup_dual_key_safe_mode(void)
+{
+    // 1. Verify that the previous reset reason was strictly ESP_RST_PANIC
+    esp_reset_reason_t rst_reason = esp_reset_reason();
+    if (rst_reason != ESP_RST_PANIC) {
+       // ESP_LOGI(TAG_SAFE_MODE, "Reset reason (%d) is not ESP_RST_PANIC. Skipping Safe Mode check.", rst_reason);
+        return false;
+    }
+
+    //ESP_LOGW(TAG_SAFE_MODE, "Device rebooted due to ESP_RST_PANIC! Checking for 10s dual key hold...");
+
+#if (TOTAL_BUTTONS >= 2)
+    // 2. Configure GPIOs for Button 1 and Button 2
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << gpio_touch_btn_pins[0]) | (1ULL << gpio_touch_btn_pins[1]),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
+
+    // 3. Initial check: Are both keys currently held (Active LOW)?
+    if (gpio_get_level(gpio_touch_btn_pins[0]) == 0 && gpio_get_level(gpio_touch_btn_pins[1]) == 0) {
+        //ESP_LOGW(TAG_SAFE_MODE, "Dual keys detected at boot. Keep holding for 10 seconds...");
+        uint32_t elapsed_ms = 0;
+        while (elapsed_ms < SAFE_MODE_HOLD_TIME_MS) {
+            vTaskDelay(pdMS_TO_TICKS(SAFE_MODE_CHECK_STEP_MS));
+            elapsed_ms += SAFE_MODE_CHECK_STEP_MS;
+            // Visual feedback indicator (e.g., blink touch LEDs or RGB LED)
+            #ifdef USE_RGB_LED
+                if ((elapsed_ms % 500) == 0) {
+                    static bool led_toggle = false;
+                    led_toggle = !led_toggle;
+                    light_driver_set_color_RGB(LED_RED_COLOR, 0, 0);
+                    light_driver_set_power(led_toggle);
+                }
+            #endif
+            // If either button is released before 10 seconds, abort Safe Mode
+            if (gpio_get_level(gpio_touch_btn_pins[0]) != 0 || gpio_get_level(gpio_touch_btn_pins[1]) != 0) {
+                //ESP_LOGI(TAG_SAFE_MODE, "Dual key released early (%lu ms). Aborting Safe Mode.", elapsed_ms);
+                #ifdef USE_RGB_LED
+                    light_driver_set_power(false);
+                #endif
+                return false;
+            }
+        }
+
+       // ESP_LOGW(TAG_SAFE_MODE, "Dual keys held for 10s confirmed!");
+        return true;
+    }
+#endif
+    return false;
+}
+
+static void enter_safe_mode_and_factory_reset(void)
+{
+    ESP_LOGE("SAFE_MODE", "==================================================");
+    ESP_LOGE("SAFE_MODE", "   ENTERING SAFE MODE: FACTORY RESETTING ZIGBEE   ");
+    ESP_LOGE("SAFE_MODE", "==================================================");
+
+    // 1. Indicate to User (e.g. Turn RED LED on or blink rapidly)
+    #ifdef USE_RGB_LED
+        if(!light_driver_deinit_flag){
+            light_driver_deinit_flag = true;
+            light_driver_init(LIGHT_DEFAULT_OFF);
+        
+            light_driver_set_color_RGB(LED_RED_COLOR, 0, 0);
+            light_driver_set_power(true);
+        }
+    #endif
+
+    // 2. Erase Entire NVS Flash (removes Zigbee NVRAM network credentials and cluster settings)
+    esp_err_t err = nvs_flash_erase();
+    ESP_LOGI("SAFE_MODE", "NVS Flash Erase status: %s", esp_err_to_name(err));
+
+    // 3. Re-init NVS so clean structures can be initialized
+    ESP_ERROR_CHECK(nvs_flash_init());
+
+    // 4. Force default commissioning flags
+    setNVSCommissioningFlag(1);
+    setNVSStartCommissioningFlag(0);
+    setNVSPanicAttack(0);
+
+    // 5. Visual confirmation delay
+    for (int i = 0; i < 6; i++) {
+        #ifdef USE_RGB_LED
+            light_driver_set_power(i % 2 == 0);
+        #endif
+        vTaskDelay(pdMS_TO_TICKS(150));
+    }
+
+    ESP_LOGW("SAFE_MODE", "Reset complete. Rebooting MCU...");
+    esp_restart();
+}
+
 void app_main(void) {
     //Init GPIOs pin
     nuos_zb_init_hardware();
-
+ // 2. Check Startup Safe Mode Condition before starting Zigbee/Tasks
+    if (check_startup_dual_key_safe_mode()) {
+        enter_safe_mode_and_factory_reset();
+        return; // Will not reach here because of esp_restart()
+    }
     gpio_config_t io_conf = {};
     uint64_t pin_bit_mask = 0;
     /* set up button func pair pin mask */

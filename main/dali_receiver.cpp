@@ -128,36 +128,92 @@ void IRAM_ATTR Receiver::gpio_isr_handler(void* arg) {
     auto* self = static_cast<Receiver*>(arg);
     self->handle_pin_change_isr();
 }
-
-
 void IRAM_ATTR Receiver::timer_callback(void* arg) {
     auto* self = static_cast<Receiver*>(arg);
-    portENTER_CRITICAL_ISR(&self->spinlock_);
+    uint8_t msg_copy[3] = {0};
+    size_t copy_len = 0;
+
+    portENTER_CRITICAL(&self->spinlock_);
+    
     if (self->idle_te_cnt_ < 0xff) {
         self->idle_te_cnt_++;
     }
 
-    // Check for end of message: at least 2 TE idle while in BIT state
     if (self->state_ == RxState::BIT && self->idle_te_cnt_ > 4) {
-        // Convert half‑bits to bytes
-        size_t bits = (self->halfbit_cnt_ + 1) >> 1;   // number of full bits (incl. start)
+        size_t bits = (self->halfbit_cnt_ + 1) >> 1;
         
-        // Auto-detect frame length - accept 8-bit, 16-bit, or 24-bit frames
-        if ((bits & 0x07) == 0) {  // Multiple of 8 bits
-            size_t len = bits >> 3;  // Convert bits to bytes
-            // DALI frames can be: 
-            // - 8 bits (backward frame/response)
-            // - 16 bits (forward frame/command)
-            // - 24 bits (special cases)
+        if ((bits & 0x07) == 0) {
+            size_t len = bits >> 3;
             if (len >= 1 && len <= 3 && self->callback_) {
-                // Callback must be ISR‑safe – it runs in timer ISR context
-                self->callback_(self->msg_, len);
+                memcpy(msg_copy, self->msg_, len);
+                copy_len = len;
             }
         }
         self->state_ = RxState::IDLE;
     }
-    portEXIT_CRITICAL_ISR(&self->spinlock_);
+    
+    portEXIT_CRITICAL(&self->spinlock_);
+
+    // Invoke the callback OUTSIDE the critical section so xQueueSend is safe
+    if (copy_len > 0 && self->callback_) {
+        self->callback_(msg_copy, copy_len);
+    }
 }
+// void IRAM_ATTR Receiver::timer_callback123(void* arg) {
+//     auto* self = static_cast<Receiver*>(arg);
+    
+//     // Change portENTER_CRITICAL_ISR to portENTER_CRITICAL
+//     portENTER_CRITICAL(&self->spinlock_);
+    
+//     if (self->idle_te_cnt_ < 0xff) {
+//         self->idle_te_cnt_++;
+//     }
+
+//     if (self->state_ == RxState::BIT && self->idle_te_cnt_ > 4) {
+//         size_t bits = (self->halfbit_cnt_ + 1) >> 1;
+        
+//         if ((bits & 0x07) == 0) {
+//             size_t len = bits >> 3;
+//             if (len >= 1 && len <= 3 && self->callback_) {
+//                 self->callback_(self->msg_, len);
+//             }
+//         }
+//         self->state_ = RxState::IDLE;
+//     }
+    
+//     // Change portEXIT_CRITICAL_ISR to portEXIT_CRITICAL
+//     portEXIT_CRITICAL(&self->spinlock_);
+// }
+
+//ok
+// void IRAM_ATTR Receiver::timer_callback(void* arg) {
+//     auto* self = static_cast<Receiver*>(arg);
+//     portENTER_CRITICAL_ISR(&self->spinlock_);
+//     if (self->idle_te_cnt_ < 0xff) {
+//         self->idle_te_cnt_++;
+//     }
+
+//     // Check for end of message: at least 2 TE idle while in BIT state
+//     if (self->state_ == RxState::BIT && self->idle_te_cnt_ > 4) {
+//         // Convert half‑bits to bytes
+//         size_t bits = (self->halfbit_cnt_ + 1) >> 1;   // number of full bits (incl. start)
+        
+//         // Auto-detect frame length - accept 8-bit, 16-bit, or 24-bit frames
+//         if ((bits & 0x07) == 0) {  // Multiple of 8 bits
+//             size_t len = bits >> 3;  // Convert bits to bytes
+//             // DALI frames can be: 
+//             // - 8 bits (backward frame/response)
+//             // - 16 bits (forward frame/command)
+//             // - 24 bits (special cases)
+//             if (len >= 1 && len <= 3 && self->callback_) {
+//                 // Callback must be ISR‑safe – it runs in timer ISR context
+//                 self->callback_(self->msg_, len);
+//             }
+//         }
+//         self->state_ = RxState::IDLE;
+//     }
+//     portEXIT_CRITICAL_ISR(&self->spinlock_);
+// }
 // void IRAM_ATTR Receiver::timer_callback(void* arg) {
 //     auto* self = static_cast<Receiver*>(arg);
 //     portENTER_CRITICAL_ISR(&self->spinlock_);

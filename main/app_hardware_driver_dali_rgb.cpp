@@ -250,14 +250,14 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                 nuos_set_state_attribute_rgb(3);
             }else{
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                
+                if(device_info[4].device_level == 0xff) device_info[4].device_level = 0xfe;
                 if(scene_group_switch_info.control_type != 0) { 
                     if(!device_info[4].device_state) dali.send_broadcast(dali.OFF_C);
                     else {
                         dali.set_broadcast_level(device_info[4].device_level);
                     }
                 }else{
-                    printf("group_id:%d level:%d\n", scene_group_switch_info.group_id[0], device_info[4].device_level);
+                    printf("on set_state ==> group_id:%d state:%d level:%d\n", scene_group_switch_info.group_id[0], device_info[4].device_state, device_info[4].device_level);
                     if(!device_info[4].device_state) dali.set_group_off(scene_group_switch_info.group_id[0]);
                     else nuos_dali_set_group_brightness(scene_group_switch_info.group_id[0], 0, device_info[4].device_level);
                 }
@@ -360,7 +360,8 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                         
                     }  
                     if(device_info[3].device_state){
-                        dali.set_color_temperature(dali.BROADCAST_C, device_info[3].device_val);  
+                        dali.set_color_temp_normal(dali.BROADCAST_C, device_info[3].device_val);  
+                        //dali.set_color_temperature(dali.BROADCAST_C, device_info[3].device_val);  
                     }
                 }else{
                     if(mode_change_flag){
@@ -370,7 +371,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                         change_cw_ww_color_flag = true;
                     }  
                     if(device_info[3].device_state){
-                        //printf("color device_val:%d level:%d\n", device_info[3].device_val, device_info[3].device_level);
+                        printf("color group_id: %d device_val:%d level:%d\n", scene_group_switch_info.group_id[0], device_info[3].device_val, device_info[3].device_level);
                         dali.set_group_color_cct(scene_group_switch_info.group_id[0], device_info[3].device_val);
                         nuos_dali_set_group_brightness(scene_group_switch_info.group_id[0], 0, device_info[3].device_level); 
                     }
@@ -406,11 +407,12 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                            // dali.set_color_temperature(dali.BROADCAST_C, 0); 
                             mode_change_flag = false;
                         }  
-                    #endif           
+                    #endif 
+                    printf("set_broadcast_color_rgb\n");          
                     dali.set_broadcast_color_rgb(dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], 
                         dmx_data[dmx_start_address+2], device_info[4].device_level, mode_change_flag); 
                 }else{
-   
+                    printf("set_group_color_rgb_normal\n");
                     dali.set_group_color_rgb_normal(scene_group_switch_info.group_id[0], 
                         dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], 
                         dmx_data[dmx_start_address+2], device_info[4].device_level, mode_change_flag);
@@ -451,7 +453,8 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                     //hsv2.v = device_info[4].device_level; // Store brightness level for later use in brightness control 
                     //     hsv2.s = device_info[4].light_color_y;
                     // }
-                    //printf("========================>hsv2.v:%d\n", hsv2.v);                               
+                    //printf("========================>hsv2.v:%d\n", hsv2.v);      
+                   // printf("nuos_set_color_xy_attribute\n");                         
                     nuos_set_color_xy_attribute(4, &hsv2);   
                 //}
             }
@@ -886,7 +889,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
 
         last_selected_color_mode = selected_color_mode;
         if(is_init_done){ 
-           // printf("color_mode:%d\n", selected_color_mode);
+            printf("color_mode:%d index:%d state3:%d state4:%d\n", selected_color_mode, index, device_info[3].device_state, device_info[4].device_state);
             switch(selected_color_mode){
                 case 0:
                     //printf("state:%d  level:%d\n", device_info[3].device_state, device_info[3].device_level);
@@ -897,6 +900,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                       
                     }else{ //if CCT state TRUE    
                         device_info[4].device_state = true;  // ALL ON     
+                         
                         //printf("========device_info[3].device_level:%d\n", device_info[3].device_level);
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[3], device_info[3].device_level));
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[3]));                                   
@@ -945,18 +949,26 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], 0));
                                 ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));
                             } else { 
+                                device_info[4].device_state = true;
+                                // if(device_info[3].device_state){
+                                //     device_info[3].device_state = false;
+                                //     nuos_store_data_to_nvs(3);
+                                // }
                                 dmx_data[dmx_start_address+i] = device_info[i].device_level;   
                                 //printf("LED%d ON at level %d\n", i, device_info[i].device_level);                           
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[i], dmx_data[dmx_start_address+i]));
                                 ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[i]));                
                             } 
                             nuos_store_data_to_nvs(i);
+                            
                         }                                              
                     }  
-                    if(index == 4) nuos_store_data_to_nvs(4); 
+                     
                     break;
                 default: break;      
             }
+
+            nuos_store_data_to_nvs(index);
         }
     }
 
@@ -1310,6 +1322,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     
     extern "C" void nuos_dali_set_cct_color(uint8_t did, uint16_t value) {
         dali.set_color_temperature(did, value);
+        //dali.set_color_temp_normal(did, value);
     }
 
     extern "C" void nuos_dali_add_light_to_group(uint8_t addr, uint8_t group_id){
@@ -1474,33 +1487,33 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     extern "C" void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id) {
         dali.add_to_scene(device_id, scene_id);
     }
-    extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
-        recordsSemaphore = xSemaphoreCreateBinary();
-        if (recordsSemaphore == NULL) {
-            // Handle semaphore creation failure
-            printf("Failed to create semaphore!\n");
-            return;
-        }    
-        uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
-        start_dali_led_commissioning_task_flag = true;
-        if (recordsSemaphore != NULL) {
-            // Wait for the semaphore to be given by thaddre records task
-            xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
-        }
+    // extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
+    //     recordsSemaphore = xSemaphoreCreateBinary();
+    //     if (recordsSemaphore == NULL) {
+    //         // Handle semaphore creation failure
+    //         printf("Failed to create semaphore!\n");
+    //         return;
+    //     }    
+    //     uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
+    //     xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
+    //     start_dali_led_commissioning_task_flag = true;
+    //     if (recordsSemaphore != NULL) {
+    //         // Wait for the semaphore to be given by thaddre records task
+    //         xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
+    //     }
 
-        start_dali_led_commissioning_task_flag = false;
-        // Restart WiFi
-        #ifdef USE_WIFI_WEBSERVER
-        vTaskDelay(pdMS_TO_TICKS(200));
-        wifi_restart();
-        vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
-        #endif
+    //     start_dali_led_commissioning_task_flag = false;
+    //     // Restart WiFi
+    //     #ifdef USE_WIFI_WEBSERVER
+    //     vTaskDelay(pdMS_TO_TICKS(200));
+    //     wifi_restart();
+    //     vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
+    //     #endif
         
-        for(int i=0; i<TOTAL_ENDPOINTS; i++){
-            nuos_zb_set_hardware(i, false);
-        }
-    }    
+    //     for(int i=0; i<TOTAL_ENDPOINTS; i++){
+    //         nuos_zb_set_hardware(i, false);
+    //     }
+    // }    
 
 #endif
 

@@ -11,7 +11,7 @@
 
 
 #define DELAY_COMMAND_SEND                  50
-#define MAX_RETRIES_CCT_SENDING_FAILED      50
+#define MAX_RETRIES_CCT_SENDING_FAILED      10
 
 //extern void switch_driver_gpios_intr_enabled(bool enabled);
 
@@ -276,12 +276,20 @@ bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
 }
  
 void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {
+    // 1. Guard against 0 or invalid temperature to prevent useless retries
+    if (temp == 0) {
+        ESP_LOGW(TAG, "set_color_temperature: temp is 0, aborting");
+        return;
+    }
+
+    // 2. Reduce retry limit (e.g., 3-5 retries instead of 50)
+
     for (int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++) {
         if (set_color_temp(addr, temp)){
             return;
         } 
         //uint32_t delay_ms = 500 + (esp_random() % 1000);
-        uint32_t delay_ms = 100 + (esp_random() % 500);
+        uint32_t delay_ms = 100 + (esp_random() % 100);
         vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
     ESP_LOGE(TAG, "set_color_temperature: failed after %d retries addr=0x%02X temp=%u",
@@ -294,6 +302,11 @@ void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {
 bool DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
     uint8_t retryCount = 0;
+
+    if(r==0xff) r = 0xfe;
+    if(g==0xff) g = 0xfe;
+    if(b==0xff) b = 0xfe;
+
     if (!send_command_special_ret_retry(SET_DTR0, r, &retryCount))              return false;
     if (!send_command_special_ret_retry(SET_DTR1, g, &retryCount))              return false;
     if(retryCount > 1) {
@@ -331,6 +344,11 @@ bool DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
 
 bool DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     uint8_t retryCount = 0;
+
+    if(r==0xff) r = 0xfe;
+    if(g==0xff) g = 0xfe;
+    if(b==0xff) b = 0xfe;
+
     // Set RGB
     if (!send_command_special_ret_retry(SET_DTR0, r, &retryCount))              return false;
     if (!send_command_special_ret_retry(SET_DTR1, g, &retryCount))              return false;
@@ -385,6 +403,11 @@ bool DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint
 }
 bool DaliCommands::set_rgb_3X(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     uint8_t retryCount = 0;
+
+    if(r==0xff) r = 0xfe;
+    if(g==0xff) g = 0xfe;
+    if(b==0xff) b = 0xfe;
+
     // Set RGB
     send_command_special_normal(SET_DTR0, r);
     send_command_special_normal(SET_DTR1, g);
@@ -666,9 +689,9 @@ bool DaliCommands::add_to_group(uint8_t addr, uint8_t group)
     
     // Send the command to add to group
     send_command_standard(ADD_TO_GROUP + group, addr);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(ADD_TO_GROUP + group, addr);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
     
     return true;
 }
@@ -678,9 +701,9 @@ void DaliCommands::remove_from_group(uint8_t addr, uint8_t group)
     
     // Send the command to remove from group
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    //vTaskDelay(10 / portTICK_PERIOD_MS);
     
 }
 
@@ -741,7 +764,7 @@ void DaliCommands::set_group_level(uint8_t group_id, uint8_t value){
 
 void DaliCommands::set_group_level_normal(uint8_t group_id, uint8_t value){
     daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
-    //daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
+    daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
 }
 
 

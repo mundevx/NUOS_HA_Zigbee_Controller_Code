@@ -169,6 +169,9 @@ rgb_t hsv_to_rgb(hsv_t hsv) {
     rgb.g = (uint8_t)((g_prime + m) * 254);
     rgb.b = (uint8_t)((b_prime + m) * 254);
 
+    // hsv.s = device_info[4].light_color_y;
+    // hsv.v = device_info[4].device_val;
+
     return rgb;
 }
 
@@ -205,6 +208,8 @@ hsv_t rgb_to_hsv(rgb_t rgb) {
         }
         hsv.h = (uint16_t)(h * 0x0168 / 360);
     }
+    hsv.s = device_info[4].light_color_y;
+    hsv.v = device_info[4].device_val;
     return hsv;
 }
 
@@ -618,44 +623,51 @@ esp_err_t nuos_set_scene_button_attribute(uint8_t index){
     #endif
     return ESP_OK;
 }
-
-void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
-    #ifndef DONT_USE_ZIGBEE
-    uint8_t dst_ep = 1;  //gateway endpoint
-    uint8_t addr_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-    // single_endpoint_gateway = true;
-    if(!single_endpoint_gateway){
-        dst_ep = ENDPOINTS_LIST[index];
-    }
-    esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
-        .zcl_basic_cmd = {
-            .dst_addr_u.addr_short = 0x0000,
-            .dst_endpoint = dst_ep,
-            .src_endpoint = ENDPOINTS_LIST[index],
-        },
-        #ifdef NEW_SDK_6
-            .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-        #else
-            .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-        #endif
-        .manuf_specific = 0,
-        .manuf_code = 0,
-        .dis_default_resp = 1,
-        .address_mode = addr_mode,
-        .clusterID = cluster_id,
-        .attributeID = attr_id,
-    };
-
-    esp_zb_lock_acquire(portMAX_DELAY);
-    esp_err_t err = esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
-    if(err != ESP_OK){
-        printf("Report send failed, error code: %d. Retrying...\n", err);
-        esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
-    }
-    esp_zb_lock_release();
-
-    #endif
+static inline bool is_zigbee_ready_for_zcl(void) {
+    return (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag);
 }
+// void send_report(int index, uint16_t cluster_id, uint16_t attr_id){
+//     #ifndef DONT_USE_ZIGBEE
+//     uint8_t dst_ep = 1;  //gateway endpoint
+//     uint8_t addr_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+
+// // Only touch Zigbee stack if device is actually joined to a network
+//     if (!esp_zb_bdb_dev_joined() || wifi_webserver_active_flag) {
+//         return;
+//     }
+//     // single_endpoint_gateway = true;
+//     if(!single_endpoint_gateway){
+//         dst_ep = ENDPOINTS_LIST[index];
+//     }
+//     esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
+//         .zcl_basic_cmd = {
+//             .dst_addr_u.addr_short = 0x0000,
+//             .dst_endpoint = dst_ep,
+//             .src_endpoint = ENDPOINTS_LIST[index],
+//         },
+//         #ifdef NEW_SDK_6
+//             .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+//         #else
+//             .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+//         #endif
+//         .manuf_specific = 0,
+//         .manuf_code = 0,
+//         .dis_default_resp = 1,
+//         .address_mode = addr_mode,
+//         .clusterID = cluster_id,
+//         .attributeID = attr_id,
+//     };
+
+//     //esp_zb_lock_acquire(portMAX_DELAY);
+//     esp_err_t err = esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+//     if(err != ESP_OK){
+//         printf("Report send failed, error code: %d. Retrying...\n", err);
+//         esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+//     }
+//     //esp_zb_lock_release();
+
+//     #endif
+// }
 static uint8_t fan_level_val = 0;
 uint8_t sequence_num2 = 0;
 
@@ -663,26 +675,130 @@ uint8_t map_0_4_to_0_254(uint8_t input) {
     return (input * 254) / 4;
 }
 
-///////////////////////////////////////////////////////////////
-esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_){
-    esp_zb_zcl_status_t status = ESP_OK;
-    if (is_my_device_commissionned && !wifi_webserver_active_flag) {
-        #ifdef USE_COLOR_CONTROL
-            nuos_set_state_command(index_1, state_);
-            return status;
-        #endif
-        status = esp_zb_zcl_set_attribute_val(
-            ENDPOINTS_LIST[index_1],
-            ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
-            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-            ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
-            (uint8_t*)&state_,
-            false
-        );
-        send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
-    }  
-    return status;  
+void send_report(int index, uint16_t cluster_id, uint16_t attr_id) {
+#ifndef DONT_USE_ZIGBEE
+    if (!is_zigbee_ready_for_zcl()) {
+        return;
+    }
+    uint8_t dst_ep = single_endpoint_gateway ? 1 : ENDPOINTS_LIST[index];
+
+    esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
+        .zcl_basic_cmd = {
+            .dst_addr_u.addr_short = 0x0000,
+            .dst_endpoint = dst_ep,
+            .src_endpoint = ENDPOINTS_LIST[index],
+        },
+#ifdef NEW_SDK_6
+        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+#else
+        .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+#endif
+        .manuf_specific = 0,
+        .manuf_code = 0,
+        .dis_default_resp = 1,
+        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+        .clusterID = cluster_id,
+        .attributeID = attr_id,
+    };
+
+    esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
+#endif
 }
+
+/* Callback executed directly inside esp_zb_task */
+static void zb_sync_attributes_alarm_cb(uint8_t index)
+{
+    if (!is_zigbee_ready_for_zcl()) return;
+
+#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+    #ifdef USE_COLOR_CONTROL
+        nuos_set_state_command(index, device_info[index].device_state);
+        if (device_info[index].device_state) {
+            nuos_set_level_command(index, device_info[index].device_level);
+            nuos_set_color_temp_command(index, device_info[index].device_val);
+        }
+    #else
+        nuos_set_state_command(index, device_info[index].device_state);
+        if (device_info[index].device_state) {
+            nuos_set_level_command(index, device_info[index].device_level);
+        }
+    #endif
+#elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
+    nuos_set_state_command(index, device_info[index].device_state);
+#else
+    nuos_set_state_command(index, device_info[index].device_state);
+    if (device_info[index].device_state) {
+        nuos_set_level_command(index, device_info[index].device_level);
+    }
+#endif
+}
+
+esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level) {
+    device_info[index_1].device_level = level;
+    if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+    esp_zb_lock_acquire(portMAX_DELAY);
+    esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index_1, 0);
+    esp_zb_lock_release();
+    return ESP_OK;
+}
+
+// esp_err_t nuos_set_state_attribute(uint8_t index) {
+//     if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+//     esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index, 0);
+//     return ESP_OK;
+// }
+
+// esp_err_t nuos_set_level_attribute(uint8_t index) {
+//     if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+//     esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index, 0);
+//     return ESP_OK;
+// }
+
+// esp_err_t nuos_set_color_temperature_attribute(uint8_t index) {
+//     if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+//     esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index, 0);
+//     return ESP_OK;
+// }
+
+
+
+
+esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_) {
+    device_info[index_1].device_state = state_;
+    if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+    esp_zb_lock_acquire(portMAX_DELAY);
+    esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index_1, 0);
+    esp_zb_lock_release();
+    return ESP_OK;
+}
+
+// esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level) {
+//     device_info[index_1].device_level = level;
+//     if (!is_zigbee_ready_for_zcl()) return ESP_OK;
+//     esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index_1, 0);
+//     return ESP_OK;
+// }
+
+///////////////////////////////////////////////////////////////
+// esp_err_t nuso_set_state_attribute_on_dali_rx(uint8_t index_1, bool state_){
+//     esp_zb_zcl_status_t status = ESP_OK;
+//     if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+//         #ifdef USE_COLOR_CONTROL
+//             nuos_set_state_command(index_1, state_);
+//             return status;
+//         #endif
+//         status = esp_zb_zcl_set_attribute_val(
+//             ENDPOINTS_LIST[index_1],
+//             ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+//             ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+//             ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+//             (uint8_t*)&state_,
+//             false
+//         );
+//         send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+//     }  
+//     return status;  
+// }
 
 
 
@@ -714,7 +830,7 @@ esp_err_t nuos_set_color_temp_level_attribute_on_dali_rx(uint8_t index, uint8_t 
     return status;
 }
 
-esp_err_t nuos_set_level_attribute_on_dali_rx(uint8_t index_1, uint8_t level){
+esp_err_t nuos_set_level_attribute_on_dali_rx1234(uint8_t index_1, uint8_t level){
     /* set attribute value */
     esp_zb_zcl_status_t status = ESP_OK;
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
@@ -747,45 +863,124 @@ uint8_t state_data[7] = {0x0, 0x54, 0x01, 0x01, 0x00, 0x01, 0x0};
 uint8_t level_data[10] = {0x0, 0x5e, 0x02, 0x2, 0x0, 0x4, 0x0, 0x0, 0x3, 0x39};
 uint8_t color_data[10] = {0x0, 0x5f, 0x65, 0x2, 0x0, 0x4, 0x0, 0x0, 0x1, 0x17};
 
-void nuos_set_state_command(uint8_t index, uint8_t state){
-    // // if(index == 0){
-    // //     state_data[2] = 0x65;
-    // // }else if(index == 1){
-    // //     state_data[2] = 0x66;
-    // // }
-    // if(index == 0){
-    //     state_data[2] = 0x1;
-    // }else if(index == 1){
-    //     state_data[2] = 0x7;
-    // }
-    // device_info[index].device_state = (bool)state;
-    // state_data[6] = state;
+// void nuos_set_state_command(uint8_t index, uint8_t state){
+//     // // if(index == 0){
+//     // //     state_data[2] = 0x65;
+//     // // }else if(index == 1){
+//     // //     state_data[2] = 0x66;
+//     // // }
+//     // if(index == 0){
+//     //     state_data[2] = 0x1;
+//     // }else if(index == 1){
+//     //     state_data[2] = 0x7;
+//     // }
+//     // device_info[index].device_state = (bool)state;
+//     // state_data[6] = state;
 
-    // state_data[1] = sequence_num_1;
-    // sequence_num_1++;
+//     // state_data[1] = sequence_num_1;
+//     // sequence_num_1++;
     
-    // //printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
+//     // //printf("Sending index:%d command to dpid:0x%x\n", index, state_data[2]);
     
-    // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-    //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-    //     .cluster_id = 0xef00,
-    //     .custom_cmd_id = 1,
-    //     .data.value = state_data,
-    //     .data.size = 7,
-    //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
-    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-    //     .profile_id = 0x0104,
-    //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-    //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
-    //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
-    //     .dis_default_resp = 1,
-    //     .manuf_code = 0,
-    //     .manuf_specific = 0, 
-    // };
-    // esp_zb_lock_acquire(portMAX_DELAY);
-    // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-    // esp_zb_lock_release();
+//     // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+//     //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+//     //     .cluster_id = 0xef00,
+//     //     .custom_cmd_id = 1,
+//     //     .data.value = state_data,
+//     //     .data.size = 7,
+//     //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_U56,
+//     //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+//     //     .profile_id = 0x0104,
+//     //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+//     //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+//     //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
+//     //     .dis_default_resp = 1,
+//     //     .manuf_code = 0,
+//     //     .manuf_specific = 0, 
+//     // };
+//     // esp_zb_lock_acquire(portMAX_DELAY);
+//     // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
+//     // esp_zb_lock_release();
 
+
+//     esp_zb_zcl_set_attribute_val(
+//         ENDPOINTS_LIST[index],
+//         ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+//         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+//         ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
+//         (uint8_t*)&device_info[index].device_state,
+//         false
+//     );
+//     send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+// }
+// void nuos_set_level_command(uint8_t index, uint8_t level){
+
+//     // // if(index == 0){
+//     // //     level_data[2] = 0x67;
+//     // // }else if(index == 1){
+//     // //     level_data[2] = 0x68;
+//     // // }
+//     // if(index == 0){
+//     //     level_data[2] = 0x2;
+//     // }else if(index == 1){
+//     //     level_data[2] = 0x8;
+//     // }
+//     // uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
+//     // if(mapValue >= 1000) mapValue = 1000; 
+//     // level_data[8] = mapValue >> 8;
+//     // level_data[9] = mapValue & 0xFF;
+
+//     // level_data[1] = sequence_num_1;
+//     // sequence_num_1++;
+
+//     // uint8_t payload[9];
+//     // payload[0] = level_data[1];         // 1 byte sequence number
+//     // payload[1] = level_data[2];            // DP ID (temperature setpoint)
+//     // payload[2] = level_data[3];            // DP type (value)
+//     // payload[3] = level_data[4];            // Function (set/report), often 0x00
+//     // payload[4] = level_data[5];            // Data length (4 bytes)
+//     // payload[5] = level_data[6];            // Value MSB (= 0)
+//     // payload[6] = level_data[7];
+//     // payload[7] = level_data[8];
+//     // payload[8] = level_data[9];            // Value LSB (= 24)
+
+//     // // Create octet string: first byte is length, then payload
+//     // uint8_t octet_string[10];
+//     // octet_string[0] = 9; // length byte
+//     // memcpy(&octet_string[1], payload, 9);
+
+//     // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
+//     //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+//     //     .cluster_id = 0xef00,
+//     //     .custom_cmd_id = 1,
+//     //     .data.value = octet_string,
+//     //     .data.size = 10,
+//     //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING,
+//     //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+//     //     .profile_id = 0x0104,
+//     //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
+//     //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
+//     //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
+//     //     .dis_default_resp = 1,
+//     //     .manuf_code = 0,
+//     //     .manuf_specific = 0, 
+//     // };
+//     // esp_zb_lock_acquire(portMAX_DELAY);
+//     // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
+//     // esp_zb_lock_release();
+
+//     esp_zb_zcl_set_attribute_val(
+//         ENDPOINTS_LIST[index],
+//         ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+//         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+//         ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+//         (uint8_t*)&device_info[index].device_level,
+//         false
+//     );
+//     send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);    
+// }
+void nuos_set_state_command(uint8_t index, uint8_t state) {
+    if (!is_zigbee_ready_for_zcl()) return;
 
     esp_zb_zcl_set_attribute_val(
         ENDPOINTS_LIST[index],
@@ -797,61 +992,9 @@ void nuos_set_state_command(uint8_t index, uint8_t state){
     );
     send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
 }
-void nuos_set_level_command(uint8_t index, uint8_t level){
 
-    // // if(index == 0){
-    // //     level_data[2] = 0x67;
-    // // }else if(index == 1){
-    // //     level_data[2] = 0x68;
-    // // }
-    // if(index == 0){
-    //     level_data[2] = 0x2;
-    // }else if(index == 1){
-    //     level_data[2] = 0x8;
-    // }
-    // uint16_t mapValue = map_1000(level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
-    // if(mapValue >= 1000) mapValue = 1000; 
-    // level_data[8] = mapValue >> 8;
-    // level_data[9] = mapValue & 0xFF;
-
-    // level_data[1] = sequence_num_1;
-    // sequence_num_1++;
-
-    // uint8_t payload[9];
-    // payload[0] = level_data[1];         // 1 byte sequence number
-    // payload[1] = level_data[2];            // DP ID (temperature setpoint)
-    // payload[2] = level_data[3];            // DP type (value)
-    // payload[3] = level_data[4];            // Function (set/report), often 0x00
-    // payload[4] = level_data[5];            // Data length (4 bytes)
-    // payload[5] = level_data[6];            // Value MSB (= 0)
-    // payload[6] = level_data[7];
-    // payload[7] = level_data[8];
-    // payload[8] = level_data[9];            // Value LSB (= 24)
-
-    // // Create octet string: first byte is length, then payload
-    // uint8_t octet_string[10];
-    // octet_string[0] = 9; // length byte
-    // memcpy(&octet_string[1], payload, 9);
-
-    // esp_zb_zcl_custom_cluster_cmd_req_t cmd_req = {
-    //     .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-    //     .cluster_id = 0xef00,
-    //     .custom_cmd_id = 1,
-    //     .data.value = octet_string,
-    //     .data.size = 10,
-    //     .data.type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING,
-    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-    //     .profile_id = 0x0104,
-    //     .zcl_basic_cmd.dst_addr_u.addr_short = 0,
-    //     .zcl_basic_cmd.dst_endpoint = ENDPOINTS_LIST[index],
-    //     .zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[index],
-    //     .dis_default_resp = 1,
-    //     .manuf_code = 0,
-    //     .manuf_specific = 0, 
-    // };
-    // esp_zb_lock_acquire(portMAX_DELAY);
-    // sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-    // esp_zb_lock_release();
+void nuos_set_level_command(uint8_t index, uint8_t level) {
+    if (!is_zigbee_ready_for_zcl()) return;
 
     esp_zb_zcl_set_attribute_val(
         ENDPOINTS_LIST[index],
@@ -864,6 +1007,49 @@ void nuos_set_level_command(uint8_t index, uint8_t level){
     send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);    
 }
 
+void nuos_set_color_temp_command(uint8_t index, uint16_t color) {
+    if (!is_zigbee_ready_for_zcl()) return;
+
+    uint16_t temp_color = map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MIREDS_MIN, MIREDS_MAX);
+
+    esp_zb_zcl_set_attribute_val(
+        ENDPOINTS_LIST[index],
+        ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+        (uint16_t*)&temp_color,
+        false
+    );
+    send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID);
+}
+
+/* Callback executed directly inside esp_zb_task */
+static void zb_sync_attributes_alarm_cb123(uint8_t index)
+{
+    if (!is_zigbee_ready_for_zcl()) return;
+
+#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+    #ifdef USE_COLOR_CONTROL
+        nuos_set_state_command(index, device_info[index].device_state);
+        if (device_info[index].device_state) {
+            nuos_set_level_command(index, device_info[index].device_level);
+            nuos_set_color_temp_command(index, device_info[index].device_val);
+        }
+    #else
+        nuos_set_state_command(index, device_info[index].device_state);
+        if (device_info[index].device_state) {
+            nuos_set_level_command(index, device_info[index].device_level);
+        }
+    #endif
+#elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
+    nuos_set_state_command(index, device_info[index].device_state);
+#else
+    nuos_set_state_command(index, device_info[index].device_state);
+    if (device_info[index].device_state) {
+        nuos_set_level_command(index, device_info[index].device_level);
+    }
+#endif
+}
 void mireds_to_current_xy(uint16_t mireds, uint16_t *current_x, uint16_t *current_y) {
     // 1. 将 mireds 转换为开尔文
     float T = 1000000.0f / mireds;
@@ -1042,7 +1228,7 @@ void send_move_to_color_temp_cmd(uint16_t dst_short_addr,
     esp_zb_zcl_color_move_to_color_temperature_cmd_req(&cmd_req);
 }
 
-void nuos_set_color_temp_command(uint8_t index, uint16_t color){
+void nuos_set_color_temp_command1234(uint8_t index, uint16_t color){
     
     uint16_t mapValue = map_1000(color, 2000, 6500, 10, 1000);
     if(mapValue >= 1000) mapValue = 1000; 
@@ -1092,7 +1278,7 @@ void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     };
     esp_zb_lock_acquire(portMAX_DELAY);
     sequence_num_1 = esp_zb_zcl_custom_cluster_cmd_req(&cmd_req); 
-    esp_zb_lock_release();
+   
   
     uint16_t temp_color = map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MIREDS_MIN, MIREDS_MAX);
     printf("ep:%d  temp_color=%d\n", ENDPOINTS_LIST[index], temp_color);
@@ -1164,7 +1350,7 @@ void nuos_set_color_temp_command(uint8_t index, uint16_t color){
     //                              ENDPOINTS_LIST[index],
     //                              temp_color,
     //                              0);
-
+    esp_zb_lock_release();
 }
 
 
@@ -1230,6 +1416,7 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                 // nuos_set_state_command(index, device_info[index].device_state);
                 // return status;
                 // #endif
+                esp_zb_lock_acquire(portMAX_DELAY);
                 status = esp_zb_zcl_set_attribute_val(
                     ENDPOINTS_LIST[index_1],
                     ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -1238,7 +1425,9 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
                     (uint8_t*)&device_info[index].device_state,
                     false
                 );
+                
                 send_report(index, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+                esp_zb_lock_release();
             #endif
         }    
         is_some_device_unavailable = false;
@@ -1248,7 +1437,32 @@ esp_err_t nuos_set_state_attribute(uint8_t index){
     return status;
 }
 
-esp_err_t nuos_set_level_attribute(uint8_t index){
+esp_err_t nuos_set_level_attribute(uint8_t index) {
+    esp_zb_zcl_status_t status = ESP_OK;
+#ifndef DONT_USE_ZIGBEE
+    uint8_t index_1 = index;
+#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
+    index_1 = 0;   
+#endif
+    is_some_device_unavailable = false;
+    if (is_my_device_commissionned && !wifi_webserver_active_flag && esp_zb_bdb_dev_joined()) { 
+        esp_zb_lock_acquire(portMAX_DELAY);
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[index_1],
+            ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+            (uint8_t*)&device_info[index].device_level,
+            false
+        );
+        send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+        esp_zb_lock_release();
+    }
+#endif
+    return status;
+}
+
+esp_err_t nuos_set_level_attribute123(uint8_t index){
     /* set attribute value */
     esp_zb_zcl_status_t status = ESP_OK;
     #ifndef DONT_USE_ZIGBEE
@@ -1262,6 +1476,7 @@ esp_err_t nuos_set_level_attribute(uint8_t index){
         // nuos_set_level_command(index, device_info[index].device_level);
         // return status;
         // #endif
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index_1],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1270,7 +1485,9 @@ esp_err_t nuos_set_level_attribute(uint8_t index){
             (uint8_t*)&device_info[index].device_level,
             false
         );
+        
         send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+        esp_zb_lock_release();
     }
     
     #endif
@@ -1521,7 +1738,8 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
             // );
             // send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000);
         //map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MIREDS_MIN, MIREDS_MAX);
-            printf("==============>device_val: %d\n", device_info[index].device_val); 
+            //printf("==============>device_val: %d\n", device_info[index].device_val); 
+            esp_zb_lock_acquire(portMAX_DELAY);
             status = esp_zb_zcl_set_attribute_val(
                 ENDPOINTS_LIST[index],
                 ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1530,8 +1748,8 @@ esp_err_t nuos_set_color_temperature_attribute(uint8_t index){
                 (uint16_t*)&device_info[index].device_val,
                 false
             );
-            printf("ZB_STATUS:%d\n", status);
             send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID);
+            esp_zb_lock_release();
         } 
     #else
         uint8_t index_1;
@@ -1561,6 +1779,7 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
     uint16_t val = map_1000(device_info[index].device_level, MIN_DIM_LEVEL_VALUE, MAX_DIM_LEVEL_VALUE, 10, 1000);
     if(val >= 1000) val = 1000;
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1569,7 +1788,8 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
             (uint16_t*)&val,
             false
         );
-        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
+        
+        
 
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
@@ -1579,7 +1799,10 @@ esp_err_t nuos_set_color_temp_level_attribute(uint8_t index){
             (uint16_t*)&device_info[index].device_level,
             false
         );
+        
+        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000); 
         send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+        esp_zb_lock_release();
     }
     #endif
     return status;
@@ -1592,6 +1815,7 @@ esp_err_t nuos_set_color_temp_mode_attribute(uint8_t index){
     /* set attribute value */
     #ifdef USE_TUYA_BRDIGE
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1600,7 +1824,7 @@ esp_err_t nuos_set_color_temp_mode_attribute(uint8_t index){
             (uint8_t*)&val_mode,
             false
         );
-        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF000);
+
 
         val_mode = 2;
         status = esp_zb_zcl_set_attribute_val(
@@ -1611,7 +1835,10 @@ esp_err_t nuos_set_color_temp_mode_attribute(uint8_t index){
             (uint8_t*)&val_mode,
             false
         );
+        
+        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF000);
         send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID);
+        esp_zb_lock_release();
     }
     #endif
     return status;
@@ -1624,7 +1851,8 @@ esp_err_t nuos_set_color_hue_attribute(uint8_t index, uint16_t hue) {
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
         index_1 = 0;   
     #endif    
-    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+    if (is_zigbee_ready_for_zcl()) {
+        esp_zb_lock_acquire(portMAX_DELAY);
         /* set attribute value */
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index_1],
@@ -1634,8 +1862,9 @@ esp_err_t nuos_set_color_hue_attribute(uint8_t index, uint16_t hue) {
             (uint8_t*)&hue,
             false
         );
-
+        
         send_report(index_1, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_HUE_ID);
+        esp_zb_lock_release();
     }
     return status;
 }
@@ -1646,6 +1875,7 @@ esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode){
     esp_zb_zcl_status_t status = ESP_OK;
     #ifdef USE_TUYA_BRDIGE
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[index],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1654,20 +1884,21 @@ esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode){
             (uint8_t*)&val_mode,
             false
         );
-
+        
         send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF000);
 
 
-        status = esp_zb_zcl_set_attribute_val(
-            ENDPOINTS_LIST[index],
-            ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
-            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID,
-            (uint8_t*)&val_mode,
-            false
-        );
+        // status = esp_zb_zcl_set_attribute_val(
+        //     ENDPOINTS_LIST[index],
+        //     ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //     ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID,
+        //     (uint8_t*)&val_mode,
+        //     false
+        // );
 
-        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID);
+        // send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID);
+        esp_zb_lock_release();
     }   
     #endif
     return status;
@@ -1676,7 +1907,8 @@ esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode){
 esp_err_t nuos_set_state_attribute_rgb(uint8_t index){
     /* set attribute value */
     esp_zb_zcl_status_t status = ESP_OK;
-    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag && esp_zb_bdb_dev_joined()) {
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
         ENDPOINTS_LIST[0],
         ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
@@ -1685,8 +1917,9 @@ esp_err_t nuos_set_state_attribute_rgb(uint8_t index){
         (uint8_t*)&device_info[index].device_state,
         false
         );
-
+        
         send_report(0, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+        esp_zb_lock_release();
     }
     return status;
 }
@@ -1694,6 +1927,10 @@ esp_err_t nuos_set_state_attribute_rgb(uint8_t index){
 esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
     uint48_t val = {0};
     esp_zb_zcl_status_t status = ESP_OK;
+
+    if (!esp_zb_bdb_dev_joined() || wifi_webserver_active_flag || !is_my_device_commissionned) {
+        return status;
+    }
     #ifdef USE_TUYA_BRDIGE
     if(hsv != NULL){
         val.bytes[1] = (hsv->h >> 8) & 0xff;
@@ -1722,7 +1959,7 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
         val.bytes[4] = hsv_2.v & 0xff;
     }
     if (is_my_device_commissionned && !wifi_webserver_active_flag){
-
+        esp_zb_lock_acquire(portMAX_DELAY);
         /* set attribute value */
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
@@ -1732,7 +1969,7 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
             (uint48_t*)&val,
             false
         ); 
-
+        
         send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE100);
 
         // esp_zb_zcl_report_attr_cmd_t report_cmd_2 = {
@@ -1750,7 +1987,7 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
         // esp_zb_zcl_report_attr_cmd_req(&report_cmd_2);
         // esp_zb_lock_release();
 
-        nuos_set_color_hue_attribute(0, hsv->h); 
+        //nuos_set_color_hue_attribute(0, hsv->h); 
 
         // uint16_t x, y;
         // rgbToXy(device_info[0].device_level, device_info[1].device_level, device_info[2].device_level, &x, &y);
@@ -1774,6 +2011,7 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
         //     false
         // ); 
         // send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_Y_ID); 
+        esp_zb_lock_release();
     }
     #else
         nuos_set_color_hue_attribute(0, hsv->h);
@@ -1781,12 +2019,76 @@ esp_err_t nuos_set_color_xy_attribute(uint8_t index, hsv_t* hsv){
     return status;
 }
 
-
-esp_err_t nuos_set_color_temp_attribute(uint8_t index){
+esp_err_t nuos_set_color_temp_attribute(uint8_t index) {
     esp_zb_zcl_status_t status = ESP_OK;
+
+    if (device_info[index].device_val < MIN_CCT_VALUE || device_info[index].device_val > MAX_CCT_VALUE) {
+        device_info[index].device_val = MIN_CCT_VALUE;
+    }
+    uint16_t m_level = (device_info[index].device_level * 1000) / 254;
+
+#ifdef USE_TUYA_BRDIGE
+    if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+        uint16_t color_temp = map_1000(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 10, 1000);
+        if (color_temp >= 1000) color_temp = 1000;
+
+        esp_zb_lock_acquire(portMAX_DELAY);
+        esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[0],
+            ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            0xF000,
+            (uint16_t*)&m_level,
+            false
+        );
+        esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[0],
+            ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            0xE000,
+            (uint16_t*)&color_temp,
+            false
+        );
+        
+
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000); 
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);
+        esp_zb_lock_release();  
+    }
+#else
+    uint16_t mapValue = map_1000(device_info[3].device_val, 2000, 6500, MIREDS_MIN, MIREDS_MAX);
+    if (mapValue >= 500) mapValue = 500;
+
+    if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+        esp_zb_lock_acquire(portMAX_DELAY);
+        status = esp_zb_zcl_set_attribute_val(
+            ENDPOINTS_LIST[0],
+            ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+            (uint16_t*)&mapValue,
+            false
+        );
+        esp_zb_lock_release();
+        
+        send_report(0, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
+    }
+#endif 
+    return status;
+}
+esp_err_t nuos_set_color_temp_attribute1223(uint8_t index){
+    esp_zb_zcl_status_t status = ESP_OK;
+
+    // Guard against 0 / uninitialized CCT values
+    if (device_info[index].device_val < MIN_CCT_VALUE || device_info[index].device_val > MAX_CCT_VALUE) {
+        device_info[index].device_val = MIN_CCT_VALUE;
+    }
     uint16_t m_level = (device_info[index].device_level*1000)/254;
+
+    
     #ifdef USE_TUYA_BRDIGE
-    if (is_my_device_commissionned && !wifi_webserver_active_flag){
+    if (is_my_device_commissionned && !wifi_webserver_active_flag) {
+        esp_zb_lock_acquire(portMAX_DELAY);
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
@@ -1795,10 +2097,12 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
             (uint16_t*)&m_level,
             false
         );
-        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
+        
+        
     
         uint16_t color_temp = map_1000(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, 10, 1000);
         if(color_temp >= 1000) color_temp = 1000;
+
         status = esp_zb_zcl_set_attribute_val(
             ENDPOINTS_LIST[0],
             ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
@@ -1807,20 +2111,24 @@ esp_err_t nuos_set_color_temp_attribute(uint8_t index){
             (uint16_t*)&color_temp,
             false
         );
-        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000); 
 
-        printf("==============Setting COLOR TEMP ATTRIBUTE==============>device_val: %d\n", device_info[index].device_val);
-        // nuos_set_color_temp_mode_attribute(3);
-        uint16_t temp_val = map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MIREDS_MIN, MIREDS_MAX);
-        status = esp_zb_zcl_set_attribute_val(
-            ENDPOINTS_LIST[0],
-            ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
-            ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
-            (uint16_t*)&temp_val,
-            false
-        );
-        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
+       // printf("==============Setting COLOR TEMP ATTRIBUTE==============>device_val: %d\n", device_info[index].device_val);
+        // // nuos_set_color_temp_mode_attribute(3);
+        // uint16_t temp_val = map_cct1(device_info[index].device_val, MIN_CCT_VALUE, MAX_CCT_VALUE, MIREDS_MIN, MIREDS_MAX);
+        // esp_zb_lock_acquire(portMAX_DELAY);
+        // status = esp_zb_zcl_set_attribute_val(
+        //     ENDPOINTS_LIST[0],
+        //     ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL,
+        //     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+        //     ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID,
+        //     (uint16_t*)&temp_val,
+        //     false
+        // );
+        // esp_zb_lock_release();
+        //send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID); 
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE000); 
+        send_report(index, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0xF000);  
+        esp_zb_lock_release();
     }
      
     #else
@@ -2081,8 +2389,18 @@ void nuos_report_curtain_blind_state(uint8_t index, uint8_t value){
 
 /* ********************************************************************************** */
 
+// void nuos_set_zigbee_attribute(uint8_t index) {
+//     if (!is_zigbee_ready_for_zcl()) return;
+//     esp_zb_scheduler_alarm((esp_zb_callback_t)zb_sync_attributes_alarm_cb, index, 0);
+// }
+
 void nuos_set_zigbee_attribute(uint8_t index){
-        if(is_my_device_commissionned > 0){  
+
+    // Only touch Zigbee stack if device is actually joined to a network
+    if (!esp_zb_bdb_dev_joined() || wifi_webserver_active_flag) {
+        return;
+    }
+        if (is_my_device_commissionned && esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
                 nuos_set_state_attribute(index);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
@@ -2160,6 +2478,7 @@ void nuos_set_zigbee_attribute(uint8_t index){
                             
                             hsv_t hsv2 = rgb_to_hsv(rgb);
                             device_info[4].device_val = hsv2.v;
+                            device_info[4].light_color_y = hsv2.s;
                             // device_info[4].light_color_x = hsv2.h;
                             // device_info[4].light_color_y = hsv2.s;
                             nuos_set_color_xy_attribute(4, &hsv2);
@@ -2348,7 +2667,8 @@ void nuos_set_zigbee_color_attribute(uint8_t index){
                         rgb_t rgb = {dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]}; // Example RGB values
                         hsv_t hsv2 = rgb_to_hsv(rgb);  
                         nuos_set_state_attribute_rgb(4); 
-                        device_info[4].device_val = hsv2.v;   
+                        device_info[4].device_val = hsv2.v;  
+                        device_info[4].light_color_y = hsv2.s; 
                         // device_info[4].light_color_x = hsv2.h;
                         // device_info[4].light_color_y = hsv2.s;                
                         nuos_set_color_xy_attribute(4, &hsv2);
@@ -2466,6 +2786,7 @@ esp_err_t nuos_driver_init(void)
         }
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX) 
         init_dali_hw(); 
+        printf("selected_color_mode:%d\n", selected_color_mode);
         if(selected_color_mode == 0){
             nuos_zb_set_hardware(3, false);  
             #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
@@ -2659,7 +2980,8 @@ static void bind_color_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
                     if(device_info[4].device_state){  
                         rgb_t rgb = {dmx_data[dmx_start_address], dmx_data[dmx_start_address+1], dmx_data[dmx_start_address+2]}; // Example RGB values
                         hsv_t hsv2 = rgb_to_hsv(rgb);  
-                        device_info[4].device_val = hsv2.v;  
+                        device_info[4].device_val = hsv2.v; 
+                        device_info[4].light_color_y = hsv2.s; 
                         // device_info[4].light_color_x = hsv2.h;
                         // device_info[4].light_color_y = hsv2.s;                                           
                         nuos_set_color_xy_attribute(4, &hsv2);
@@ -4819,7 +5141,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
 
                         if(millis() - prevMillis >= 1000){
                             prevMillis = millis();
-                            printf("millis:%ld\n", prevMillis);
+                            // printf("millis:%ld\n", prevMillis);
                             hsv_t hsv1 = {.h=h1, .s=s1, .v=v1};      // Example HSV values
                             rgb_t rgb1 = hsv_to_rgb(hsv1);
 
@@ -4841,8 +5163,8 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                             else device_info[1].device_state = true;
                             if(device_info[2].device_level == 0) device_info[2].device_state = false;
                             else device_info[2].device_state = true;
-                            if(device_info[3].device_level == 0) device_info[3].device_state = false;
-                            else device_info[3].device_state = true;
+                            // if(device_info[3].device_level == 0) device_info[3].device_state = false;
+                            // else device_info[3].device_state = true;
                             
                             for(int rgb=0; rgb<=3; rgb++){
                                 if(device_info[rgb].device_level <= MIN_DIM_LEVEL_VALUE) {
@@ -4855,9 +5177,12 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                                     device_info[rgb].device_level = 0xfe;
                                 }
                             } 
+                  
                             device_info[3].device_state = false;    
                             nuos_zb_set_hardware(4, false); 
                             nuos_set_color_xy_attribute(4, &hsv1);
+                            // set_state(4);
+                            set_dali_color_temp(4, false);
                         }
                     break;
                     case 0xF1:  //set scene
@@ -4886,8 +5211,7 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
 
                         hsv_t hsvf1 = {.h=h1f1, .s=s1f1, .v=v1f1};      // Example HSV values
                         device_info[4].device_val = v1f1;
-                        // device_info[4].light_color_x = hsvf1.h;
-                        // device_info[4].light_color_y = hsvf1.s;
+                        device_info[4].light_color_y = s1f1;
                         rgb_t rgbf1 = hsv_to_rgb(hsvf1);
 
                         Color startf1 = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
@@ -4955,13 +5279,13 @@ void nuos_set_privilege_command_attribute_in_queue(const esp_zb_zcl_privilege_co
                         device_info[4].device_level = device_info[3].device_level;
                         #else
                         device_info[4].device_val = v;
-                        // device_info[4].light_color_x = h;
-                        // device_info[4].light_color_y = s;
+                        device_info[4].light_color_y = s;
                         device_info[4].device_level = map_1000(v, 10, 1000, 0, 254);
                         if(device_info[4].device_level >= 254) device_info[4].device_level = 254;
                         //printf("LEVELYZ:%d   v:%d\n", device_info[4].device_level, v);
                         #endif  
           
+
                         hsv_t hsv = {.h=h, .s=s, .v=v}; // Example HSV values
                         rgb_t rgb = hsv_to_rgb(hsv);
                         
@@ -5465,7 +5789,7 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 for(int rgb=0; rgb<3; rgb++){
                                     if(device_info[rgb].device_level <= MIN_DIM_LEVEL_VALUE) {
                                         device_info[rgb].device_level = MIN_DIM_LEVEL_VALUE;
-                                        device_info[rgb].device_state = false;
+                                        //device_info[rgb].device_state = false;
                                     }else{
                                         //device_info[rgb].device_state = true;
                                     }
@@ -5674,7 +5998,15 @@ void nuos_set_attribute_cluster_2(const esp_zb_zcl_set_attr_value_message_t *mes
                                 }
                                 #endif  
                             } else{
-                                device_info[4].device_level = val;
+                                if(device_info[4].device_state){
+                                    printf("On Level Attribute state:%d level:%d\n", device_info[4].device_state, val);
+                                    if(val >= 1) {
+                                        device_info[4].device_level = val;
+                                        if(device_info[4].device_level == 0xff){
+                                            device_info[4].device_level = 0xfe;
+                                        }
+                                    }
+                                }
                             }
                     #else
                         //#ifdef USE_HOME_ASSISTANT

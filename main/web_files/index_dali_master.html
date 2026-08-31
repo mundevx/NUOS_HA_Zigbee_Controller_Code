@@ -803,7 +803,21 @@ function showToast(message, type = "info", duration = 3000) {
   toast.classList.add("show");
   setTimeout(() => { toast.classList.remove("show"); }, duration);
 }
-
+// Helper to get only actively discovered DALI IDs on the bus
+function getActiveDaliIds() {
+  if (globalDaliRegistry && globalDaliRegistry.length > 0) {
+    return globalDaliRegistry
+      .map(item => parseInt(item.dali_id, 10))
+      .filter(id => !isNaN(id));
+  }
+  const select = document.getElementById('sceneDeviceSelect');
+  if (select && select.options.length > 0) {
+    return Array.from(select.options)
+      .map(opt => parseInt(opt.value, 10))
+      .filter(id => !isNaN(id));
+  }
+  return [];
+}
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('scene1').value = savedSceneIds[0];
   document.getElementById('scene2').value = savedSceneIds[1];
@@ -1616,37 +1630,295 @@ document.addEventListener('DOMContentLoaded', ()=> {
   }
 
   function applyValuesToAllSelectedDevices() {
-    const syncEnabled = document.getElementById('syncSelectedDevices')?.checked;
-    if (!syncEnabled) return;
+  const syncEnabled = document.getElementById('syncSelectedDevices')?.checked;
+  if (!syncEnabled) return;
 
-    const sid = String(parseInt(sceneSelector.value || 0, 10));
-    const currentDid = String(parseInt(deviceSelector.value || 0, 10));
+  const sid = String(parseInt(sceneSelector.value || 0, 10));
+  const currentDid = String(parseInt(deviceSelector.value || 0, 10));
+  const mode = document.getElementById('colorModeRGB')?.checked ? 'rgb' : 'cct';
 
-    const mode = (document.getElementById('colorModeRGB')?.checked) ? 'rgb' : 'cct';
+  const sharedData = {
+    included: true,
+    power: devicePowerToggle.classList.contains('on') ? 1 : 0,
+    brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+    cct: parseInt(deviceCctSlider?.value || 3500, 10),
+    colorMode: mode,
+    r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
+    g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
+    b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
+  };
 
-    const sharedData = {
-      included: true,
-      power: devicePowerToggle.classList.contains('on') ? 1 : 0,
-      brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
-      cct: parseInt(deviceCctSlider?.value || 3500, 10),
-      colorMode: mode,
-      r: parseInt(document.getElementById('deviceRedSlider')?.value || 0, 10),
-      g: parseInt(document.getElementById('deviceGreenSlider')?.value || 0, 10),
-      b: parseInt(document.getElementById('deviceBlueSlider')?.value || 0, 10)
-    };
-
-    for (let id = 0; id < 64; id++) {
-      const did = String(id);
-      if (did === currentDid) continue;
-      const cache = getCache(sid, did);
-      if (cache && cache.included === true) {
-        setCache(sid, did, {
-          ...cache,
-          ...sharedData
-        });
-      }
+  const activeIds = getActiveDaliIds();
+  activeIds.forEach(id => {
+    const did = String(id);
+    if (did === currentDid) return;
+    const cache = getCache(sid, did);
+    if (cache && cache.included === true) {
+      setCache(sid, did, {
+        ...cache,
+        ...sharedData
+      });
     }
-  }
+  });
+}
+
+if (saveDeviceBtn) {
+  saveDeviceBtn.addEventListener('click', async () => {
+    showLoadingOverlay("Committing Node State Parameters... Please wait.");
+    try {
+      const sid = parseInt(sceneSelector.value || 0, 10);
+      const sidStr = String(sid);
+      const did = parseInt(deviceSelector.value || 0, 10);
+      const mode = sceneModeMap[String(sid)] || 'device';
+
+      if (mode === 'group') {
+        const currentMode = colorModeRGB.checked ? 'rgb' : 'cct';
+        const payload = {
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          action: "add",
+          included: !!(deviceIncluded && deviceIncluded.checked),
+          power: devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0,
+          brightness: parseInt(deviceBrightnessSlider?.value || 50, 10),
+          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+        };
+        if (currentMode === 'rgb') {
+          payload.r = parseInt(redSlider.value || 0, 10);
+          payload.g = parseInt(greenSlider.value || 0, 10);
+          payload.b = parseInt(blueSlider.value || 0, 10);
+        } else {
+          payload.cct = parseInt(deviceCctSlider?.value || 3500, 10);
+        }
+        const rGroup = await fetch('/action', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(payload) 
+        });
+        if (rGroup.ok) alert('Scene saved (group)');
+        else alert('Failed saving scene (group)');
+        return;
+      }
+
+      // Ensure current UI state is written to cache before evaluating
+      cacheCurrentUI();
+
+      const uiIncluded = !!(deviceIncluded && deviceIncluded.checked);
+      const uiPower = devicePowerToggle && devicePowerToggle.classList.contains('on') ? 1 : 0;
+      const uiBrightness = parseInt(deviceBrightnessSlider?.value || 50, 10);
+      const uiCct = parseInt(deviceCctSlider?.value || 3500, 10);
+      const uiColorMode = colorModeRGB.checked ? 'rgb' : 'cct';
+      const uiR = parseInt(redSlider?.value || 255, 10);
+      const uiG = parseInt(greenSlider?.value || 128, 10);
+      const uiB = parseInt(blueSlider?.value || 0, 10);
+
+      const activeIds = getActiveDaliIds();
+      const cachedIncludedDevices = [];
+
+      // Iterate ONLY over actively discovered DALI IDs
+      activeIds.forEach(id => {
+        const c = getCache(sidStr, String(id));
+        if (c && c.included === true) {
+          const power = (typeof c.power !== 'undefined') ? Number(c.power) : uiPower;
+          const brightness = (typeof c.brightness !== 'undefined') ? Number(c.brightness) : uiBrightness;
+          const cct = (typeof c.cct !== 'undefined') ? Number(c.cct) : uiCct;
+          cachedIncludedDevices.push({
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            included: true,
+            power: power,
+            brightness: brightness,
+            cct: cct,
+            colorMode: c.colorMode || 'cct',
+            r: c.r ?? 255,
+            g: c.g ?? 128,
+            b: c.b ?? 0,
+            dali_id: id
+          });
+        }
+      });
+
+      function makeWrappedFromDeviceObjects(arr) {
+        const devices = arr.map(d => {
+          const obj = {
+            power: Number(d.power) || 0,
+            brightness: Number(d.brightness) || 0,
+            dali_id: Number(d.dali_id)
+          };
+          if ((d.colorMode || 'cct') === 'rgb') {
+            obj.r = Number(d.r) || 0;
+            obj.g = Number(d.g) || 0;
+            obj.b = Number(d.b) || 0;
+          } else {
+            obj.cct = Number(d.cct) || 0;
+          }
+          return obj;
+        });
+
+        return {
+          fxn: typeof FXN_SAVE_SCENE !== "undefined" ? FXN_SAVE_SCENE : 202,
+          scene_id: sid,
+          action: "add",
+          devices
+        };
+      }
+
+      if (cachedIncludedDevices.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+        const resp = await fetch('/action', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(wrapped) 
+        });
+        if (resp.ok) {
+          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), {
+            included: d.included,
+            power: d.power,
+            brightness: d.brightness,
+            cct: d.cct,
+            colorMode: d.colorMode || 'cct',
+            r: d.r ?? 255,
+            g: d.g ?? 128,
+            b: d.b ?? 0
+          }));
+          alert(`Saved ${cachedIncludedDevices.length} device(s) to scene`);
+          return;
+        }
+      }
+
+      // Single device fallback
+      const payload = {
+        fxn: FXN_SAVE_SCENE,
+        scene_id: sid,
+        device_id: did,
+        included: uiIncluded,
+        power: uiPower,
+        brightness: uiBrightness
+      };
+      if (uiColorMode === 'rgb') {
+        payload.r = uiR;
+        payload.g = uiG;
+        payload.b = uiB;
+      } else {
+        payload.cct = uiCct;
+      }
+
+      const rSingle = await fetch('/action', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
+      if (rSingle.ok) {
+        setCache(String(sid), String(did), {
+          included: uiIncluded,
+          power: uiPower,
+          brightness: uiBrightness,
+          cct: uiCct,
+          colorMode: uiColorMode,
+          r: uiR,
+          g: uiG,
+          b: uiB
+        });
+        alert('Saved single device to scene');
+      } else {
+        alert('Failed to save');
+      }
+    } catch (err) {
+      console.error('saveDevice error:', err);
+      alert('Error saving devices');
+    } finally {
+      hideLoadingOverlay();
+    }
+  });
+}
+
+if (removeDeviceBtn) {
+  removeDeviceBtn.addEventListener('click', async () => {
+    showLoadingOverlay("Purging Endpoint Context... Please wait.");
+    try {
+      const sid = parseInt(sceneSelector.value || 0, 10);
+      const sidStr = String(sid);
+      const did = parseInt(deviceSelector.value || 0, 10);
+      const mode = sceneModeMap[String(sid)] || 'device';
+
+      if (mode === 'group') {
+        const payload = {
+          fxn: FXN_SAVE_SCENE,
+          scene_id: sid,
+          action: "remove",
+          included: !!(deviceIncluded && deviceIncluded.checked),
+          group_id: parseInt(sceneGroupIdSelect?.value || 0, 10)
+        };
+
+        const rGroup = await fetch('/action', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(payload) 
+        });
+        if (rGroup.ok) alert('Scene cleared (group)');
+        else alert('Failed clearing scene (group)');
+        return;
+      }
+
+      const activeIds = getActiveDaliIds();
+      const cachedIncludedDevices = [];
+
+      activeIds.forEach(id => {
+        const c = getCache(sidStr, String(id));
+        if (c && c.included === true) {
+          cachedIncludedDevices.push({
+            fxn: FXN_SAVE_SCENE,
+            scene_id: sid,
+            included: true,
+            dali_id: id
+          });
+        }
+      });
+
+      function makeWrappedFromDeviceObjects(arr) {
+        const devices = arr.map(d => ({
+          power: Number(d.power) || 0,
+          brightness: Number(d.brightness) || 0,
+          dali_id: Number(d.dali_id)
+        }));
+
+        return {
+          fxn: typeof FXN_SAVE_SCENE !== "undefined" ? FXN_SAVE_SCENE : 202,
+          scene_id: sid,
+          action: "remove",
+          devices
+        };
+      }
+
+      if (cachedIncludedDevices.length > 0) {
+        const wrapped = makeWrappedFromDeviceObjects(cachedIncludedDevices);
+        const resp = await fetch('/action', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(wrapped) 
+        });
+        if (resp.ok) {
+          cachedIncludedDevices.forEach(d => setCache(String(d.scene_id), String(d.dali_id), {
+            included: false,
+            power: d.power,
+            brightness: d.brightness,
+            cct: d.cct,
+            colorMode: d.colorMode || 'cct',
+            r: d.r ?? 255,
+            g: d.g ?? 128,
+            b: d.b ?? 0
+          }));
+          alert('Cleared cached device(s) from scene');
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('removeDevice error:', err);
+      alert('Error removing devices');
+    } finally {
+      hideLoadingOverlay();
+    }
+  });
+}
 
   function cacheCurrentUI(){
     const sid = String(parseInt(sceneSelector.value || 0, 10));

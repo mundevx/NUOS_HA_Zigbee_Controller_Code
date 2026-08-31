@@ -1362,34 +1362,34 @@
     extern "C" void nuos_dali_add_device_state_to_scene(uint8_t device_id, uint8_t scene_id) {
         dali.add_to_scene(device_id, scene_id);
     }
-    extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
-        recordsSemaphore = xSemaphoreCreateBinary();
-        if (recordsSemaphore == NULL) {
-            // Handle semaphore creation failure
-            printf("Failed to create semaphore!\n");
-            return;
-        }    
-        uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
-        start_dali_led_commissioning_task_flag = true;
-        //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
-        if (recordsSemaphore != NULL) {
-            // Wait for the semaphore to be given by thaddre records task
-            xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
-        }
+    // extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses) {            
+    //     recordsSemaphore = xSemaphoreCreateBinary();
+    //     if (recordsSemaphore == NULL) {
+    //         // Handle semaphore creation failure
+    //         printf("Failed to create semaphore!\n");
+    //         return;
+    //     }    
+    //     uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
+    //     xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, TASK_PRIORITY_DALI_TASK, NULL);
+    //     start_dali_led_commissioning_task_flag = true;
+    //     //xTaskCreate(esp_dali_commissioning_led_blink_task, "dali_comm_task", 2048, NULL, 16, &dali_comm_task_handle);
+    //     if (recordsSemaphore != NULL) {
+    //         // Wait for the semaphore to be given by thaddre records task
+    //         xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
+    //     }
 
-        start_dali_led_commissioning_task_flag = false;
-        // Restart WiFi
-        #ifdef USE_WIFI_WEBSERVER
-        vTaskDelay(pdMS_TO_TICKS(200));
-        wifi_restart();
-        vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
-        #endif
+    //     start_dali_led_commissioning_task_flag = false;
+    //     // Restart WiFi
+    //     #ifdef USE_WIFI_WEBSERVER
+    //     vTaskDelay(pdMS_TO_TICKS(200));
+    //     wifi_restart();
+    //     vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
+    //     #endif
         
-        for(int i=0; i<TOTAL_ENDPOINTS; i++){
-            nuos_zb_set_hardware(i, false);
-        }
-    } 
+    //     for(int i=0; i<TOTAL_ENDPOINTS; i++){
+    //         nuos_zb_set_hardware(i, false);
+    //     }
+    // } 
     
     struct DaliMessage {
         uint8_t data[3];

@@ -31,7 +31,7 @@
     // Structure representing a single driver's configuration
     typedef struct {
         uint8_t dali_id;
-        char device_name[50];
+        //char device_name[50];
         uint8_t power_on_value;
         uint8_t fade_rate;
         uint8_t fade_time;
