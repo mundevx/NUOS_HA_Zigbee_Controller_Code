@@ -23,9 +23,7 @@
 #include "app_nuos_timer.h"
 #include "zcl/esp_zigbee_zcl_power_config.h"
 #include "esp_wifi_webserver.h"
-#include "app_zigbee_group_commands.h"
 #include "app_zigbee_scene_commands.h"
-#include "app_zigbee_query_nodes.h"
 #ifdef USE_OTA
 #include "esp_ota_ops.h"
 #include "esp_timer.h"
@@ -278,230 +276,68 @@ static void unbind_cb_2(esp_zb_zdp_status_t zdo_status, void *user_ctx)
 }
 
 
-void nuos_simple_binding_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info){
-
-    memset(bind_req, 0, sizeof(bind_req));  // Clear all elements to zero
-    esp_zb_ieee_addr_t src_ieee_addr;
-    
-    if(dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count > 0 && dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count < 5){
-        for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
-            //query_callback_handle = xTaskGetCurrentTaskHandle();
-          
-            // bind_req[cluster_index].req_dst_addr = dst_node_info->short_addr;
-            // esp_zb_ieee_addr_t ieee_addr;
-    
-            // esp_zb_ieee_address_by_short(dst_node_info->short_addr, ieee_addr);
-    
-            // print_ieee_addr(ieee_addr);
-            // /* populate the src information of the binding */
-            // memcpy(bind_req[cluster_index].src_address, ieee_addr, sizeof(esp_zb_ieee_addr_t));
-            // bind_req[cluster_index].src_endp = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-            // bind_req[cluster_index].cluster_id = dst_node_info->dst_ep_info.cluster_id[cluster_index];
-    
-            // /* populate the dst information of the binding */
-            // bind_req[cluster_index].dst_addr_mode = ESP_ZB_ZDO_BIND_DST_ADDR_MODE_64_BIT_EXTENDED;
-            // esp_zb_get_long_address(bind_req[cluster_index].dst_address_u.addr_long);
-            // bind_req[cluster_index].dst_endp = ENDPOINTS_LIST[btn_index];
-            // ESP_LOGI(TAG, "Request remote device to bind us");
-
-            ///////////////////////////////////////////////////////////////////////////////////            
-            esp_zb_ieee_address_by_short(dst_node_info->short_addr, src_ieee_addr);
-            esp_zb_get_long_address(bind_req[cluster_index].src_address);
-            bind_req[cluster_index].src_endp = ENDPOINTS_LIST[btn_index];
-                    
-            bind_req[cluster_index].dst_addr_mode = ESP_ZB_ZDO_BIND_DST_ADDR_MODE_64_BIT_EXTENDED;
-            memcpy(bind_req[cluster_index].dst_address_u.addr_long, src_ieee_addr, sizeof(esp_zb_ieee_addr_t));
-            bind_req[cluster_index].dst_endp = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-            bind_req[cluster_index].dst_address_u.addr_short = dst_node_info->short_addr;        
-            bind_req[cluster_index].req_dst_addr = esp_zb_get_short_address(); /* TODO: Send bind request to self */            
-            
-            bind_req[cluster_index].cluster_id = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index];
-            dst_node_info->dst_ep_info.ep_data[ep_index].is_bind = false;
-            if(!dst_node_info->dst_ep_info.ep_data[ep_index].is_bind) {                 
-                cb_requests_counts++;
-                ESP_LOGI(TAG, "Try to bind Light\n");
-                bind_retry_counts = 0;
-                esp_zb_zdo_device_bind_req(&bind_req[cluster_index], bind_cb_2, (void *)&bind_req[cluster_index]);               
-            }else{
-                ESP_LOGI(TAG, "Already bind Light\n");
-                printf("========SEND CMD READ ATTR DATA==========\n");
-                printf("src_ep: %u dst_ep: %u\n", bind_req[cluster_index].src_endp, dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep);
-                printf("dst_short_addr: 0x%x cluster_id: %x\n", dst_node_info->short_addr, dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]);
-                printf("==============================\n");
-
-                esp_zb_zcl_read_attr_cmd_t read_req;
-                read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                read_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[btn_index];
-                read_req.zcl_basic_cmd.dst_endpoint = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-                read_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_node_info->short_addr;
-                read_req.clusterID = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]; //dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count
-                read_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                read_req.dis_default_resp = 0;
-                read_req.manuf_code = 0;
-                read_req.manuf_specific = 0;
-                if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
-                    uint16_t attributes1 = ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID;
-                    read_req.attr_number = 1;
-                    read_req.attr_field = &attributes1;  
-                }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
-                    uint16_t attributes2[] = {ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID};
-                    read_req.attr_number = 1;
-                    read_req.attr_field = attributes2;
-                }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
-                    uint16_t attributes3[] = {ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_HUE_ID, ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID};
-                    read_req.attr_number = 2;
-                    read_req.attr_field = attributes3; 
-                }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
-                    uint16_t attributes4[] = {ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID};
-                    read_req.attr_number = 1;
-                    read_req.attr_field = attributes4;     
-                }else if(bind_req[cluster_index].cluster_id == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
-                    uint16_t attributes5[] = {ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID, ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID};
-                    read_req.attr_number = 2;
-                    read_req.attr_field = attributes5;             
-                }
-                // else if(bind_req[cluster_index].cluster_id == 0xEF00){
-                //     uint16_t attributes6[] = {0xE000, 0xE100, 0xF000};
-                //     read_req.attr_number = 3;
-                //     read_req.attr_field = attributes6;             
-                // }
-                cb_requests_counts++;
-                esp_zb_zcl_read_attr_cmd_req(&read_req);
-                vTaskDelay(pdMS_TO_TICKS(20));
-                //send_zb_to_read_basic_attribute_values(ENDPOINTS_LIST[btn_index], dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep, dst_node_info->short_addr);                
-            }  
-        } //for
-    }else{
-        printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
-    }
-}
-
-void nuos_simple_unbinding_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info) {
-    // Clear the entire array
-    memset(bind_req, 0, sizeof(bind_req));  // Clear all elements to zero
-    printf("dst_short_addr: 0x%x,  clusters_count: %d\n", dst_node_info->short_addr, dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
-    esp_zb_ieee_addr_t src_ieee_addr;
-    if(dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count > 0 && dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count < 5){
-        for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
-            // esp_zb_ieee_address_by_short(dst_node_info->short_addr, src_ieee_addr);
-            // esp_zb_get_long_address(bind_req[cluster_index].src_address);
-            // bind_req[cluster_index].src_endp = ENDPOINTS_LIST[btn_index]; //
-                    
-            // bind_req[cluster_index].dst_addr_mode = ESP_ZB_ZDO_BIND_DST_ADDR_MODE_64_BIT_EXTENDED;
-            // memcpy(bind_req[cluster_index].dst_address_u.addr_long, src_ieee_addr, sizeof(esp_zb_ieee_addr_t));
-            // bind_req[cluster_index].dst_endp = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-            // bind_req[cluster_index].dst_address_u.addr_short = dst_node_info->short_addr;        
-            // bind_req[cluster_index].req_dst_addr = esp_zb_get_short_address(); /* TODO: Send bind request to self */            
-            
-            // bind_req[cluster_index].cluster_id = dst_node_info->dst_ep_info.cluster_id[cluster_index];
-
-            bind_req[cluster_index].req_dst_addr = dst_node_info->short_addr;
-            esp_zb_ieee_addr_t ieee_addr;
-    
-            esp_zb_ieee_address_by_short(dst_node_info->short_addr, ieee_addr);
-    
-            print_ieee_addr(ieee_addr);
-            /* populate the src information of the binding */
-            memcpy(bind_req[cluster_index].src_address, ieee_addr, sizeof(esp_zb_ieee_addr_t));
-            bind_req[cluster_index].src_endp = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-            bind_req[cluster_index].cluster_id = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index];
-    
-            /* populate the dst information of the binding */
-            bind_req[cluster_index].dst_addr_mode = ESP_ZB_ZDO_BIND_DST_ADDR_MODE_64_BIT_EXTENDED;
-            esp_zb_get_long_address(bind_req[cluster_index].dst_address_u.addr_long);
-            bind_req[cluster_index].dst_endp = ENDPOINTS_LIST[btn_index];
-            ESP_LOGI(TAG, "Request remote device to bind us");
 
 
-            printf("cluster_id: 0x%x\n", dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]);
-            ESP_LOGI(TAG, "Try to Unbind Light\n");
+// void nuos_attribute_get_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info, uint8_t cl_index){
+//     if(dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count > 0 && dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count < 5){
+//         for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
+//             if(cl_index == cluster_index || cl_index == 0xff){
+//                 if(dst_node_info->dst_ep_info.ep_data[ep_index].is_bind) {                 
+//                     //ESP_LOGI(TAG, "Already bind Light\n");
+//                     printf("========SENDING CMD READ ATTR DATA==========\n");
+//                     esp_zb_zcl_read_attr_cmd_t read_req;
+//                     read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                     read_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[btn_index];
+//                     read_req.zcl_basic_cmd.dst_endpoint = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
+//                     read_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_node_info->short_addr;
+//                     read_req.clusterID = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]; //dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count
+//                     read_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                     read_req.dis_default_resp = 0;
+//                     read_req.manuf_code = 0;
+//                     read_req.manuf_specific = 0;
+//                     if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
+//                         uint16_t attributes1 = ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID;
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = &attributes1;  
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
+//                         uint16_t attributes2[] = {ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID};
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = attributes2;
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
+//                         uint16_t attributes3[] = {
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID, 
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_HUE_ID, 
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID};
+//                         // ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID   //ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID
+//                         read_req.attr_number = 3;
+//                         read_req.attr_field = attributes3; 
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
+//                         uint16_t attributes4[] = {ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID};
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = attributes4;     
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
+//                         uint16_t attributes5[] = {ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID, ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID};
+//                         read_req.attr_number = 2;
+//                         read_req.attr_field = attributes5;             
+//                     }
+//                     cb_requests_counts++;
 
-            cb_requests_counts++;
-            esp_zb_zdo_device_unbind_req(&bind_req[cluster_index], unbind_cb_2, (void *)&bind_req[cluster_index]);
-
-
-        }
-        // uint8_t btn_index = get_button_index(src_endpoint); 
-        if(btn_index != 0xff){
-            uint8_t node_index = get_node_index(btn_index, dst_node_info->short_addr);
-            if(node_index != 0xff){
-                ESP_LOGI(TAG, "clear_remote_scene_devices_attribute_bind_values\n");
-                clear_remote_scene_devices_attribute_bind_values(btn_index, node_index, ep_index, dst_node_info->short_addr);
-            }else{
-                printf("getting node_index:%d\n", node_index);
-            }
-        } else{
-            printf("getting btn_index:%d\n", btn_index);
-        }       
-    }else{
-        printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
-    }
-
-}
-
-
-
-
-void nuos_attribute_get_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info, uint8_t cl_index){
-    if(dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count > 0 && dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count < 5){
-        for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
-            if(cl_index == cluster_index || cl_index == 0xff){
-                if(dst_node_info->dst_ep_info.ep_data[ep_index].is_bind) {                 
-                    //ESP_LOGI(TAG, "Already bind Light\n");
-                    printf("========SENDING CMD READ ATTR DATA==========\n");
-                    esp_zb_zcl_read_attr_cmd_t read_req;
-                    read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
-                    read_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[btn_index];
-                    read_req.zcl_basic_cmd.dst_endpoint = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
-                    read_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_node_info->short_addr;
-                    read_req.clusterID = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]; //dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count
-                    read_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
-                    read_req.dis_default_resp = 0;
-                    read_req.manuf_code = 0;
-                    read_req.manuf_specific = 0;
-                    if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
-                        uint16_t attributes1 = ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID;
-                        read_req.attr_number = 1;
-                        read_req.attr_field = &attributes1;  
-                    }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
-                        uint16_t attributes2[] = {ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID};
-                        read_req.attr_number = 1;
-                        read_req.attr_field = attributes2;
-                    }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
-                        uint16_t attributes3[] = {
-                            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID, 
-                            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_HUE_ID, 
-                            ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID};
-                        // ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID   //ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID
-                        read_req.attr_number = 3;
-                        read_req.attr_field = attributes3; 
-                    }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
-                        uint16_t attributes4[] = {ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID};
-                        read_req.attr_number = 1;
-                        read_req.attr_field = attributes4;     
-                    }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
-                        uint16_t attributes5[] = {ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID, ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID};
-                        read_req.attr_number = 2;
-                        read_req.attr_field = attributes5;             
-                    }
-                    cb_requests_counts++;
-
-                    // query_neighbour_task_handle = xTaskGetCurrentTaskHandle();
-                    esp_zb_zcl_read_attr_cmd_req(&read_req);  
-                    vTaskDelay(pdMS_TO_TICKS(80));
-                    // uint32_t is_notified= ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
-                    // if (is_notified > 0) {
-                    //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified OK!!");
-                    // } else {
-                    //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified Timeout!!");
-                    // } 
-                } 
-            } 
-        } //for
-    }else{
-        printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
-    }
-}
+//                     // query_neighbour_task_handle = xTaskGetCurrentTaskHandle();
+//                     esp_zb_zcl_read_attr_cmd_req(&read_req);  
+//                     vTaskDelay(pdMS_TO_TICKS(80));
+//                     // uint32_t is_notified= ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
+//                     // if (is_notified > 0) {
+//                     //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified OK!!");
+//                     // } else {
+//                     //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified Timeout!!");
+//                     // } 
+//                 } 
+//             } 
+//         } //for
+//     }else{
+//         printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
+//     }
+// }
 
 
 uint8_t nuos_get_button_press_index(uint32_t pin){
@@ -597,35 +433,6 @@ void nuos_zb_indentify_indication(uint16_t cluster_id, uint8_t dst_endpoint, uin
 void identify_cluster_task(void* args) {
     identify_response_commands_t* identify_stt = ((identify_response_commands_t *)args);
     printf("identify_cluster_task-->index:%d  comand:%d", identify_stt->index, identify_stt->command);
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK)
-        gpio_set_direction(BUZZER_PIN, GPIO_MODE_OUTPUT);
-        gpio_set_direction(gpio_touch_led_pins[0], GPIO_MODE_OUTPUT);
-        gpio_set_level(gpio_touch_led_pins[0], 1);
-        gpio_set_direction(gpio_touch_led_pins[1], GPIO_MODE_OUTPUT);
-        gpio_set_level(gpio_touch_led_pins[1], 1);
-        gpio_set_level(BUZZER_PIN, 1);
-        TickType_t xDelay = pdMS_TO_TICKS(10);
-        vTaskDelay(xDelay);
-        gpio_set_direction(BUZZER_PIN, GPIO_MODE_OUTPUT);
-        gpio_set_direction(gpio_touch_led_pins[0], GPIO_MODE_OUTPUT);
-        gpio_set_level(gpio_touch_led_pins[0], 0);
-        gpio_set_direction(gpio_touch_led_pins[1], GPIO_MODE_OUTPUT);
-        gpio_set_level(gpio_touch_led_pins[1], 0);
-        gpio_set_level(BUZZER_PIN, 0);
-        xDelay = pdMS_TO_TICKS(1000);
-        vTaskDelay(xDelay);
-    #else
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_4R_ON_OFF_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2R_ON_OFF_LIGHT)
-            printf("identify_stt->index:%d", identify_stt->index);
-            device_info[identify_stt->index].device_state = true;    
-            nuos_zb_set_hardware(identify_stt->index, false);
-            const TickType_t xDelay = pdMS_TO_TICKS(identify_stt->time_value);
-            vTaskDelay(xDelay);
-            device_info[identify_stt->index].device_state = false;  
-            nuos_zb_set_hardware(identify_stt->index, false);
-            vTaskDelay(xDelay);
-        #endif
-    #endif
     vTaskDelete(NULL); // Delete the task after executing
 }
 
@@ -802,9 +609,6 @@ int task_sequence_num                           = -1;
 uint8_t save_pressed_button_index               = 0;
 uint8_t node_counts_sequence                    = 0;
 uint8_t node_ep_counts_sequence                 = 0;
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
-extern esp_err_t nuos_set_scene_button_attribute(uint8_t index);
-#endif
 uint32_t current_speed_index = 0;
 //static int timer_cnts = 0;
 
@@ -903,25 +707,12 @@ void nuos_init_rgb_led(){
     }
     vTaskDelay(pdMS_TO_TICKS(10));
     #ifdef USE_RGB_LED
-       
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-            if(wifi_webserver_active_flag > 0){
-                light_driver_set_color_RGB(LED_RED_COLOR, LED_ORANGE_COLOR, 0); //orange color for IR STA mode functionality
-            }else{
-                if(start_commissioning > 0){
-                    light_driver_set_color_RGB(LED_RED_COLOR, 0, 0); //red color for commissioning functionality
-                }else{
-                    light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0); //green color for normal functionality
-                }
-            }
-            vTaskDelay(pdMS_TO_TICKS(500));
-        #else
+
             if(start_commissioning > 0){
                 light_driver_set_color_RGB(LED_RED_COLOR, 0, 0); //red color for zigbee commissioning functionality
             }else{
                 light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0); //green color for normal functionality
-            }  
-        #endif  
+            }
         light_driver_set_power(false);
     #else
         // gpio_reset_pin(GPIO_NUM_8);  
@@ -951,19 +742,6 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     }
     #endif
     
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-    if(curtain_cal_mode_active_flag){
-        if(button_index == 0){
-            is_bt_start_pressed = true;
-        }else if(button_index == 1){
-            is_bt_end_pressed = true;
-        } 
-    } else{  
-    #endif    
-    
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
-        nuos_set_scene_button_attribute(button_index);
-    #else
         // Added by Nuos
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 
@@ -999,7 +777,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #endif
             }
         #else
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
                 if(button_index == TOTAL_BUTTONS-1){
                     #if(USE_COLOR_DEVICE == COLOR_RGB_ONLY)
@@ -1047,30 +825,27 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                         set_state(4);
                     }else{
                         if(device_info[3].device_state){
+                            printf("device_info[3].device_state:%d\n", device_info[3].device_state);
                             set_dali_color_temp(0, false);
                             
                         }
+                        printf("set_state(3) button_index:%d\n", button_index);
                         set_state(3);
                     }
-                #endif                
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)    
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-                device_info[0].fan_speed = 0xff;
-                nuos_zb_set_hardware(button_index, true); 
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)    
-                    nuos_zb_set_hardware(button_index, true);   
+                #endif
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
                 if(button_index < 2){ 
+
+                    nuos_zb_set_hardware(button_index, true);
                     #ifdef USE_COLOR_CONTROL
                         set_parameter_ep_index_selected(button_index);
                         sindex = get_parameter_ep_index_selected();
                         set_parameter_ep_index_selected(button_index);
                     #endif
-                    printf("button_index<2: %d\n", button_index);
-                    nuos_zb_set_hardware(button_index, true);
-                    if(device_info[button_index].device_state){
-                        set_dali_level(button_index);  
+                    printf("button_index<2: %d\n", sindex);
+                    if(device_info[sindex].device_state){
+                        set_dali_level(sindex);  
                     }
                 }
                 #ifdef USE_COLOR_CONTROL
@@ -1091,7 +866,9 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                         
                     }
                 }
-                #endif      
+                #endif 
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                nuos_zb_set_hardware(button_index, true);
             #else
                 nuos_zb_set_hardware(button_index, true);
             #endif    
@@ -1099,52 +876,24 @@ void nuos_switch_single_click_task(uint32_t io_num) {
         #ifndef DONT_USE_ZIGBEE 
         if((is_my_device_commissionned == true) && (!wifi_webserver_active_flag)){
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                nuos_set_zigbee_attribute(0); 
-                
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
+                nuos_set_zigbee_attribute(0);
 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-                nuos_set_zigbee_attribute(0); 
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX) 
+               
                 nuos_set_zigbee_attribute(0);
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)   
-            // if(one_time_scan_flag){ if(cccounts++ >= 20) { cccounts = 0; one_time_scan_flag = false; nuos_do_task(button_index, button_index+1, 1);}}
-                nuos_set_zigbee_attribute(button_index);     
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY)                   
-            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2CH_CURTAIN)     
-                if(button_index < 2) 
-                    nuos_set_zigbee_attribute(0);
-                else if(button_index >=2 && button_index <4)
-                    nuos_set_zigbee_attribute(1);                               
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)   
+                nuos_set_zigbee_attribute(button_index); 
             #else
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-                #ifdef TUYA_ATTRIBUTES
-                nuos_set_zigbee_attribute(button_index);
-                #else
-                nuos_set_zigbee_attribute(button_index);
-                #endif
-                #else
                 nuos_set_zigbee_attribute(sindex);
-                #endif
             #endif
         }
         #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-        }
-    #endif
-    #endif
 }
 
 void nuos_switch_double_click_task(uint32_t io_num){
     
     button_index = nuos_get_button_press_index(io_num);
     //printf("DOUBLE CLICK Detected!! button_index:%d\n", button_index);
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH) 
-        nuos_set_scene_button_attribute(button_index);
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH) 
-
-    #else
-         
         #ifdef USE_COLOR_CONTROL
             uint8_t sindex = 0;
             if(button_index > 1) sindex = button_index - 2;
@@ -1164,10 +913,8 @@ void nuos_switch_double_click_task(uint32_t io_num){
             }
         #else
             change_cw_ww_color_flag = !change_cw_ww_color_flag;
-            double_press_click_enable[0] = !double_press_click_enable[0];  
+            double_press_click_enable[0] = !double_press_click_enable[0];
         #endif
-        
-    #endif
 }
 
 
@@ -1175,13 +922,6 @@ void nuos_switch_long_press_task(uint32_t io_num){
     brightness_count = 0;
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
         nuos_init_hardware_dimming_up_down(io_num);
-    #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-        #ifdef TUYA_ATTRIBUTES
-        //pause_curtain_timer();
-        printf("Stop Motor...");
-        nuos_zb_set_hardware(2, false);
-        #endif
     #endif
 }
 
@@ -1209,25 +949,19 @@ void nuos_switch_long_press_brightness_task123(uint32_t io_num){
                     nuos_set_color_temperature_attribute(0); //
                 break;                    
             }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
                 if(last_selected_color_mode != selected_color_mode){
                     last_selected_color_mode = selected_color_mode;
                     mode_change_flag = true;
                     store_color_mode_value(selected_color_mode);
                 }
-                
-            #endif  
 
             nuos_set_zigbee_attribute(0);
             //switch_driver_gpios_intr_enabled(true);
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-            
+
             nuos_set_level_attribute(button_index);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
 
         #else
             nuos_set_level_attribute(button_index);
@@ -1244,12 +978,7 @@ void nuos_switch_long_press_brightness_task123(uint32_t io_num){
 void nuos_switch_long_press_brightness_task(uint32_t io_num){
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
         // Original implementation from user code
-        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
-            if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                is_long_press_brightness = true;
-                nuos_set_hardware_brightness(io_num);
-            }
-        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
                 if(change_cw_ww_color_flag){
                     if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
@@ -1292,17 +1021,6 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                     nuos_set_hardware_brightness(io_num);
                 }
             }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
-                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                    is_long_press_brightness = true;
-                    nuos_set_hardware_brightness(io_num);
-                }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
-            // (optional brightness control)
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-            #ifdef TUYA_ATTRIBUTES
-                // curtain specific
-            #endif
         #else
             if(io_num == gpio_touch_btn_pins[3]){
                 if(selected_color_mode != 0){
@@ -1351,135 +1069,6 @@ void blink_single_ep_led(){
         }
     }  
 }
-
-bool isSceneRemoteBindingStarted = false;
-bool identify_device_complete_flag = false;
-extern uint16_t total_press_in_secs;
-
-void mode_change_task(void* args) {
-    static int ep_cnts = 0;
-        
-    uint8_t binding_node_ep_counts_sequence = 0;
-    uint8_t binding_node_counts_sequence = 0;
-
-    while(isSceneRemoteBindingStarted){
-        vTaskDelay(10 / portTICK_PERIOD_MS);     
-        switch(task_sequence_num){
-            case TASK_MODE_BLINK_ALL_LEDS:
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    gpio_set_level(gpio_touch_led_pins[i], 1);
-                }
-                vTaskDelay(50 / portTICK_PERIOD_MS);
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    gpio_set_level(gpio_touch_led_pins[i], 0);
-                }     
-                vTaskDelay(50 / portTICK_PERIOD_MS);      
-            break;
-            case TASK_MODE_GO_TO_ACTUAL_TASK:
-                task_sequence_num = TASK_MODE_ACTUAL_TASK_BLINK_LEDS;
-                nuos_find_active_nodes(save_pressed_button_index,  node_counts, 1);
-                break;
-            case TASK_MODE_ACTUAL_TASK_BLINK_LEDS:
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    gpio_set_level(gpio_touch_led_pins[i], 1);
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
-                    gpio_set_level(gpio_touch_led_pins[i], 0);
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
-                }                         
-            break;
-
-            case TASK_MODE_BLINK_OTHER_LEDS:
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    if(i != save_pressed_button_index){
-                        gpio_set_level(gpio_touch_led_pins[i], 1);
-                    }
-                }
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    if(i != save_pressed_button_index){
-                        gpio_set_level(gpio_touch_led_pins[i], 0);
-                    }
-                }     
-                vTaskDelay(100 / portTICK_PERIOD_MS);                 
-            break;  
-            case TASK_SEND_IDENTIFY_COMMAND:     
-                dst_node_info_t dst_node_info = existing_nodes_info[save_pressed_button_index].scene_switch_info.dst_node_info[node_counts_sequence];   
-                ep_cnts = dst_node_info.endpoint_counts;
-                if(node_counts_sequence < node_counts){
-                    //printf("short_addr:0x%x\n", existing_nodes_info[save_pressed_button_index].short_addr);
-                    
-                   // if(existing_nodes_info[node_counts_sequence].short_addr == 0x5300 || existing_nodes_info[node_counts_sequence].short_addr == 0x647e){
-
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
-                    send_identify_command(dst_node_info.short_addr, ENDPOINTS_LIST[save_pressed_button_index],
-                        
-                            dst_node_info.dst_ep_info.ep_data[node_ep_counts_sequence].dst_ep,  5);   
-                         
-
-                    existing_nodes_info[save_pressed_button_index].scene_switch_info.src_ep = ENDPOINTS_LIST[save_pressed_button_index];
-                    //}
-                    task_sequence_num = TASK_BLINK_SELECTED_LED;
-                }else{
-                    task_sequence_num = TASK_MODE_EXIT;
-                }
-                binding_node_ep_counts_sequence = node_ep_counts_sequence;
-                binding_node_counts_sequence = node_counts_sequence;
-
-                node_ep_counts_sequence++;
-                if(node_ep_counts_sequence >= ep_cnts){
-                    node_counts_sequence++;
-                    node_ep_counts_sequence = 0;
-                }
-                identify_device_complete_flag = true; 
-                //printf("node_counts_sequence:%d\n", node_counts_sequence);
-                //printf("node_ep_counts_sequence:%d\n", node_ep_counts_sequence);
-            break;
-
-            case TASK_BLINK_SELECTED_LED:
-                blink_single_ep_led(); 
-            break;
-
-            case TASK_SEND_BINDING_REQUEST:
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    if(i != save_pressed_button_index){
-                        gpio_set_level(gpio_touch_led_pins[i], 1);
-                    }
-                }             
-                printf("---BINDING---\n");
-
-                printf("binding_node_counts_sequence:%d\n", binding_node_counts_sequence);
-                printf("binding_node_ep_counts_sequence:%d\n", binding_node_ep_counts_sequence);
-
-                task_sequence_num = TASK_ALL_LED_ON;                               
-            break;
-            case TASK_SEND_UNBINDING_REQUEST:
-                printf("---UNBINDING---\n");
-                for(int i=0; i<TOTAL_LEDS; i++){
-                    if(i != save_pressed_button_index){
-                        gpio_set_level(gpio_touch_led_pins[i], 1);
-                    }
-                } 
-                task_sequence_num = TASK_ALL_LED_OFF;                              
-            break;
-            case TASK_ALL_LED_ON:
-                for(int k=0; k<TOTAL_LEDS; k++){
-                    gpio_set_level(gpio_touch_led_pins[k], 1);
-                }
-            break;
-            case TASK_ALL_LED_OFF:
-                for(int k=0; k<TOTAL_LEDS; k++){
-                    gpio_set_level(gpio_touch_led_pins[k], 0);
-                }   
-            break;                                  
-            case TASK_MODE_EXIT:
-                isSceneRemoteBindingStarted = false;
-                vTaskDelete(NULL);
-            break;
-            default: break;
-        }
-    }
-}
-
 
 
 // Function to convert XY color values to RGB
@@ -1629,7 +1218,7 @@ static void press_count_timer_callback(TimerHandle_t xTimer) {
     }
     if (total_switch_instances_clicked >= 6) {
         //if(!isSceneRemoteBindingStarted){
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                 //nuos_start_mode_change_color_temp_task();
             #else
                 nuos_start_mode_change_task(); 

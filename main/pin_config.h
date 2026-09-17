@@ -464,17 +464,13 @@
         #define LOAD_3_PIN                                                  GPIO_NUM_26
         #define LOAD_4_PIN                                                  GPIO_NUM_12
         #ifdef ENABLE_PWM_DIMMING
-            #if(USE_NUOS_ZB_DEVICE_TYPE  == DEVICE_2T_ANALOG_DIMMABLE_LIGHT) 
-            #define LOAD_5_PIN                                              GPIO_NUM_22 
-            #else
                 #ifdef CHANGE_LOAD_PIN
                     #define LOAD_5_PIN                                              GPIO_NUM_22
-                #else  
+                #else
                     #define LOAD_5_PIN                                              GPIO_NUM_3
-                #endif  
-            #endif
-           
-        #else  
+                #endif
+
+        #else
             #ifdef CHANGE_LOAD_PIN
             #define LOAD_5_PIN                                              GPIO_NUM_22 
             #else  

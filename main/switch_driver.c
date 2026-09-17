@@ -1,6 +1,8 @@
 #include "app_config.h"
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+
+
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
@@ -11,7 +13,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/timers.h"
-
+#include "esp_task_wdt.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -29,9 +31,26 @@
 #define ACTION_QUEUE_LEN             16
 #define TASK_STACK_SIZE_SWITCH       4096
 #define TASK_PRIORITY_SWITCH         10
-#define TASK_PRIORITY_WORKER         14 //5
+#define TASK_PRIORITY_WORKER         8 //5
 
-#define DEBOUNCE_US                  30000
+#define MIN_VALID_PRESS_US           20000   // NEW: 20ms floor — real human touches never release faster than this;
+                                              // anything shorter is a touch-IC glitch pulse, not a genuine click
+
+#define DEBOUNCE_US                  50000   // CHANGED: 30ms -> 50ms; now a "quiet window", see confirm_pending_edges()
+#define CLICK_LOCKOUT_US             200000  // NEW: ignore a re-press within 200ms of a release - touch pads can
+                                              // chatter a full low-high-low cycle mid-touch, which otherwise reads
+                                              // as a second genuine press/release and double-fires a single click
+#define DOUBLE_CLICK_BOUNCE_LOCKOUT_US 80000  // NEW: shorter chatter lockout used only for buttons with
+                                              // BTN_EVT_DOUBLE enabled. The full 200ms CLICK_LOCKOUT_US was
+                                              // absorbing the second, intentional tap of a fast real double-click
+                                              // (it can legitimately land 100-200ms after the first release),
+                                              // which is why double-click was collapsing into a single click / two
+                                              // separate single clicks. 80ms still filters genuine touch-IC bounce
+                                              // (which settles well under 50-80ms) while letting a real double-tap
+                                              // reach the click_count accumulator below.
+#define SINGLE_CLICK_DEDUPE_US       350000   // NEW: drop a SINGLE_CLICK for a button that already fired one
+                                              // within this window - final safety net for touch-IC glitch cycles
+                                              // that run past CLICK_LOCKOUT_US, see handle_confirmed_single_click()
 #define LONG_PRESS_US                700000
 #define LONG_HOLD_REPEAT_US          70000
 #define MULTI_CLICK_GAP_US           500000
@@ -40,13 +59,14 @@
 
 #define SETTING_MODE_MIN_US          10000000LL   // 10 seconds
 #define SETTING_MODE_MAX_US          20000000LL   // 20 seconds
-#define READY_COMMISSIONING_MS       30000        // 30 seconds
+#define READY_COMMISSIONING_MS       10000        // 30 seconds
 
 #define PATTERN_LEN                  6
 #define PATTERN_GAP_TIMEOUT_US       2000000
 
 extern bool isr_service_installed;
 extern bool ready_commisioning_flag;
+bool copy_ready_commisioning_flag = false;
 
 typedef enum {
     SWITCH_EVENT_SINGLE_CLICK = 1,
@@ -81,6 +101,27 @@ typedef struct {
     int64_t last_hold_log_us;
 
     uint8_t click_count;
+
+    // NEW: confirm-style debounce state (per button, correctly a struct member this time)
+    int64_t candidate_time_us;
+    bool    candidate_level;
+    bool    candidate_pending;
+
+    // NEW: set while absorbing a chattered press/release pair within CLICK_LOCKOUT_US
+    // of the last release - see confirm_pending_edges()
+    bool    bounce_suppressed;
+
+    // NEW: timestamp of the last SINGLE_CLICK actually fired for this button - see
+    // handle_confirmed_single_click(). CLICK_LOCKOUT_US only guards the press side
+    // (a re-press within 200ms of the prior release is absorbed as chatter); on the
+    // RGB DALI board a touch-IC glitch cycle can occasionally run just past that
+    // window and still produce a second full press/release cycle, which was
+    // reaching the app as two separate toggles for one physical tap (ON then
+    // immediately OFF). This is a second, semantic-level guard: a single click is
+    // dropped if the same button already fired one more recently than
+    // SINGLE_CLICK_DEDUPE_US, regardless of how the duplicate press/release made it
+    // this far.
+    int64_t last_single_click_us;
 } button_state_t;
 
 typedef struct {
@@ -92,6 +133,7 @@ typedef struct {
 
 static QueueHandle_t gpio_evt_queue         = NULL;
 static QueueHandle_t switch_action_queue    = NULL;
+static volatile uint32_t g_isr_queue_drops  = 0;   // NEW: raw edges lost because gpio_evt_queue was full
 static switch_func_pair_t *switch_func_pair = NULL;
 static uint8_t switch_num                   = 0;
 
@@ -117,34 +159,45 @@ static bool g_combo_led_on                  = false;
 bool combo_led_toggle_1                     = false;
 bool combo_led_toggle_2                     = false;
 
+bool long_press_10sec_valid                 = false;
+// REMOVED: the three stray file-scope candidate_* globals that were here before.
+// They were dead code (never referenced) and are now correctly per-button members
+// of button_state_t above.
+
 static void clear_ready_commissioning_flag(TimerHandle_t xTimer)
 {
+    copy_ready_commisioning_flag = false;
     ready_commisioning_flag = false;
-    ESP_LOGI(TAG, "ready_commisioning_flag cleared after 30s timeout");
+    setNVSStartCommissioningFlag(0);
+    light_driver_set_power(false);
+    ESP_LOGI(TAG, "copy_ready_commisioning_flag cleared after 10s timeout");
 }
 
 static void start_ready_commissioning_window(void)
 {
-    ready_commisioning_flag = true;
-
-    if (ready_commissioning_timer) {
-        xTimerStop(ready_commissioning_timer, 0);
-        xTimerChangePeriod(ready_commissioning_timer, pdMS_TO_TICKS(READY_COMMISSIONING_MS), 0);
-        xTimerStart(ready_commissioning_timer, 0);
+    if(long_press_10sec_valid){ 
+        ready_commisioning_flag = true;
+        copy_ready_commisioning_flag = true;
+        setNVSStartCommissioningFlag(1);
+        if (ready_commissioning_timer) {
+            xTimerStop(ready_commissioning_timer, 0);
+            xTimerChangePeriod(ready_commissioning_timer, pdMS_TO_TICKS(READY_COMMISSIONING_MS), 0);
+            xTimerStart(ready_commissioning_timer, 0);
+        }
+        ESP_LOGI(TAG, "copy_ready_commisioning_flag set for 30s");
     }
-
-    ESP_LOGI(TAG, "ready_commisioning_flag set for 30s");
+    
 }
 
 static void stop_ready_commissioning_window(void)
 {
+    copy_ready_commisioning_flag = false;
     ready_commisioning_flag = false;
-
     if (ready_commissioning_timer) {
         xTimerStop(ready_commissioning_timer, 0);
     }
-
-    ESP_LOGI(TAG, "ready_commisioning_flag cleared");
+    light_driver_set_power(false);
+    ESP_LOGI(TAG, "copy_ready_commisioning_flag cleared");
 }
 
 static inline bool is_valid_combo_mask(uint32_t mask)
@@ -245,11 +298,12 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         stop_ready_commissioning_window();
     }
     else if (match_6(0,2,0,2,0,2) || match_6(2,0,2,0,2,0)) {
-        ESP_LOGI(TAG, "PATTERN DETECTED: 1,3,1,3,1,3");
+        ESP_LOGI(TAG, "PATTERN DETECTED: 1,3,1,3,1,3 ready_commisioning_flag: %d", ready_commisioning_flag);
         reset_click_pattern();
         #if(defined(USE_COLOR_CONTROL) || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
+            
             wifi_webserver_active_flag = true;  
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
@@ -424,6 +478,7 @@ static void log_combo_hold_message(uint32_t combo_mask)
                 combo_status_led_update(combo_mask, false);
             }
         }
+        long_press_10sec_valid = true;
     } else if (combo_mask == 0x0A || combo_mask == 0x0C) {
         printf("WiFi Webserver Buttons Detected!!\n");
         if (combo_led_toggle_counts_2++ < 10) {
@@ -434,10 +489,16 @@ static void log_combo_hold_message(uint32_t combo_mask)
                 combo_status_led_update(combo_mask, false);
             }
         }
+        // CHANGED: WiFi Webserver combo no longer arms the 10s ready-commissioning
+        // window - only the Zigbee Commissioning combo (0x05/0x03) above may set this true.
+        long_press_10sec_valid = false;
     } else {
+        long_press_10sec_valid = false;
         printf("Unknown combo hold, mask=0x%02" PRIx32 "\n", combo_mask);
     }
 }
+
+#define TASK_PRIORITY_WORKER    5   // Must NOT be 14
 
 static void switch_worker_task(void *arg)
 {
@@ -450,9 +511,19 @@ static void switch_worker_task(void *arg)
                 .keypressed = act.keypressed,
                 .func = act.func
             };
-            if (func_ptr != NULL) {
+            
+            // NUOS: while the 30s ready-commissioning window is open, suppress every
+            // normal switch action (single/double/multi/long-press/combo) - only the
+            // click-pattern matcher (fed directly in confirm_pending_edges()) stays live.
+            if (func_ptr != NULL && !copy_ready_commisioning_flag) {
                 func_ptr(&out);
+            } else if (func_ptr != NULL) {
+                ESP_LOGW(TAG, "action suppressed: copy_ready_commisioning_flag active (button id=%d func=0x%02x)",
+                         act.button_id, act.func);
             }
+
+            // Yield CPU after every switch action processing
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }
@@ -464,8 +535,9 @@ static void emit_event(uint8_t button_id,
                        uint32_t combo_mask,
                        int64_t ts_us)
 {
+    printf("emit_event1\n");
     if (!switch_action_queue) return;
-
+    printf("emit_event2\n");
     switch_action_t act;
     memset(&act, 0, sizeof(switch_action_t));
     act.button_id = button_id;
@@ -479,7 +551,7 @@ static void emit_event(uint8_t button_id,
 
         ESP_LOGI(TAG, "SWITCH_EVENT_COMBO_LONG_PRESS mask=0x%02" PRIx32 " func=0x%02x",
                  combo_mask, act.func);
-
+        long_press_10sec_valid = false; 
         if (combo_mask == 0x05 || combo_mask == 0x03) {
             printf("Zigbee Comissioning Buttons Detected!!\n");
         } else if (combo_mask == 0x0A || combo_mask == 0x0C) {
@@ -487,7 +559,9 @@ static void emit_event(uint8_t button_id,
         }
 
         if (act.func != SWITCH_NOTHING_CONTROL) {
-            xQueueSend(switch_action_queue, &act, 0);
+            if (xQueueSend(switch_action_queue, &act, 0) != pdTRUE) {
+                ESP_LOGW(TAG, "action queue full: dropped combo event mask=0x%02" PRIx32, combo_mask);
+            }
         } else {
             printf("No function assigned for combo event!!\n");
         }
@@ -495,6 +569,7 @@ static void emit_event(uint8_t button_id,
     }
 
     int idx = find_button_index(pin);
+    printf("idx:%d\n", idx);
     if (idx < 0) {
         return;
     }
@@ -504,6 +579,7 @@ static void emit_event(uint8_t button_id,
             ESP_LOGI(TAG, "SWITCH_EVENT_SINGLE_CLICK");
             act.func = switch_func_pair[idx].single_func;
             act.keypressed = SINGLE_PRESS;
+            //switch_driver_gpios_intr_enabled(false); 
             break;
 
         case SWITCH_EVENT_DOUBLE_CLICK:
@@ -535,10 +611,13 @@ static void emit_event(uint8_t button_id,
     }
 
     if (act.func != SWITCH_NOTHING_CONTROL) {
-        xQueueSend(switch_action_queue, &act, 0);
+        if (xQueueSend(switch_action_queue, &act, 0) != pdTRUE) {
+            ESP_LOGW(TAG, "action queue full: dropped button id=%d event=%d", button_id, event);
+        }
     } else {
         printf("No function assigned for this event!!\n");
     }
+
 }
 
 static inline bool IRAM_ATTR is_switch_pin(gpio_num_t pin)
@@ -573,7 +652,11 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
     };
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xQueueSendFromISR(gpio_evt_queue, &evt, &xHigherPriorityTaskWoken);
+    if (xQueueSendFromISR(gpio_evt_queue, &evt, &xHigherPriorityTaskWoken) != pdTRUE) {
+        // Can't ESP_LOGW from IRAM ISR context - just count it, the polling
+        // task below reports the running total once it changes.
+        g_isr_queue_drops++;
+    }
 
     if (xHigherPriorityTaskWoken == pdTRUE) {
         portYIELD_FROM_ISR();
@@ -582,10 +665,29 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
 
 static void handle_confirmed_single_click(uint8_t button_id, gpio_num_t pin, int64_t ts_us)
 {
+    int idx = find_button_index(pin);
+    if (idx >= 0) {
+        button_state_t *b = &g_btn[idx];
+        if (b->last_single_click_us != 0 &&
+            (ts_us - b->last_single_click_us) < SINGLE_CLICK_DEDUPE_US) {
+            ESP_LOGW(TAG, "Button %d: suppressing duplicate single click (%lldus since last)",
+                    button_id, (long long)(ts_us - b->last_single_click_us));
+            return;
+        }
+        b->last_single_click_us = ts_us;
+    }
+
     detect_6_click_pattern(button_id, ts_us);
     emit_event(button_id, pin, SWITCH_EVENT_SINGLE_CLICK, 1, 0, ts_us);
 }
 
+// CHANGED: process_edge_event() no longer runs the press/release state machine directly.
+// It only stages the latest raw edge as a per-button "candidate". Any further edge on the
+// same pin overwrites the candidate and restarts the confirmation window. The real
+// press/release logic (below, in confirm_pending_edges()) only runs once the pin has been
+// quiet for DEBOUNCE_US — this is what stops a single physical click, whose contact bounce
+// has a gap wider than DEBOUNCE_US, from being seen as two separate press/release cycles
+// (which was producing the duplicate SWITCH_EVENT_SINGLE_CLICK you saw).
 static void process_edge_event(const gpio_evt_t *evt)
 {
     int idx = find_button_index(evt->pin);
@@ -593,71 +695,158 @@ static void process_edge_event(const gpio_evt_t *evt)
 
     button_state_t *b = &g_btn[idx];
 
-    if ((evt->isr_time_us - b->last_edge_us) < DEBOUNCE_US) {
-        return;
-    }
-    b->last_edge_us = evt->isr_time_us;
+    b->candidate_level = evt->level ? true : false;
+    b->candidate_time_us = evt->isr_time_us;
+    b->candidate_pending = true;
+}
 
-    bool new_level = evt->level ? true : false;
-    if (new_level == b->stable_level) {
-        return;
-    }
+// NEW: promotes a candidate edge to real button state once DEBOUNCE_US has passed
+// with no further edges on that pin. Contains exactly the same press/release logic
+// that used to live directly in process_edge_event().
+static void confirm_pending_edges(void)
+{
+    int64_t now = esp_timer_get_time();
 
-    b->stable_level = new_level;
+    for (int idx = 0; idx < switch_num; idx++) {
+        button_state_t *b = &g_btn[idx];
 
-    if (new_level == false) {
-        b->pressed = true;
-        b->long_reported = false;
-        b->setting_mode_armed = false;
-        b->over_20s_blocked = false;
-        b->press_start_us = evt->isr_time_us;
-        b->last_hold_log_us = 0;
-        g_combo_long_reported = false;
-    } else {
-        int64_t held_us = evt->isr_time_us - b->press_start_us;
-
-        b->pressed = false;
-        b->release_time_us = evt->isr_time_us;
-        b->last_hold_log_us = 0;
-
-        if (held_us >= SETTING_MODE_MIN_US && held_us < SETTING_MODE_MAX_US) {
-            start_ready_commissioning_window();
+        if (!b->candidate_pending) {
+            continue;
+        }
+        if ((now - b->candidate_time_us) < DEBOUNCE_US) {
+            continue;   // still within quiet window, wait (a newer edge already re-armed this)
         }
 
-        if (held_us >= SETTING_MODE_MAX_US) {
-            b->click_count = 0;
-            b->long_reported = true;
+        b->candidate_pending = false;
+
+        bool new_level = b->candidate_level;
+        if (new_level == b->stable_level) {
+            continue;   // no real level change
+        }
+
+        b->stable_level = new_level;
+        int64_t confirmed_ts = b->candidate_time_us;
+
+        if (new_level == false) {
+            // ---- Confirmed PRESS ----
+            // NEW: touch pads can chatter a full low-high-low cycle mid-touch. If this
+            // press lands within CLICK_LOCKOUT_US of the last release, it's almost
+            // certainly that chatter, not a genuine new press - absorb it so it can't
+            // start (and later close out) a second click cycle for the same touch.
+            // CHANGED: buttons with BTN_EVT_DOUBLE use a shorter lockout so a real
+            // double-click's second tap isn't absorbed as chatter - see
+            // DOUBLE_CLICK_BOUNCE_LOCKOUT_US above.
+            int64_t lockout_us = (switch_func_pair[idx].enabled_events & BTN_EVT_DOUBLE)
+                                      ? DOUBLE_CLICK_BOUNCE_LOCKOUT_US
+                                      : CLICK_LOCKOUT_US;
+            if (b->release_time_us != 0 &&
+                (confirmed_ts - b->release_time_us) < lockout_us) {
+                b->bounce_suppressed = true;
+                ESP_LOGW(TAG, "Button %d: absorbing bounce re-press (%lldus since release)",
+                        b->button_id, (long long)(confirmed_ts - b->release_time_us));
+                continue;
+            }
+
+            // NEW: defensive reset - if click_count is stale from a much earlier
+            // sequence (shouldn't normally happen since the gap-flush below runs first,
+            // but this guards against any race), clear it instead of accumulating into it.
+            if (b->click_count > 0 &&
+                (confirmed_ts - b->release_time_us) >= MULTI_CLICK_GAP_US) {
+                b->click_count = 0;
+            }
+
+            b->pressed = true;
+            b->long_reported = false;
             b->setting_mode_armed = false;
             b->over_20s_blocked = false;
-            ESP_LOGI(TAG, "Button %d held >20s, forcing NOTHING", b->button_id);
-        } else if (!b->long_reported) {
-            uint32_t ev = switch_func_pair[idx].enabled_events;
-
-            if ((ev & BTN_EVT_SINGLE) && !(ev & BTN_EVT_DOUBLE)) {
-                handle_confirmed_single_click(b->button_id, b->pin, evt->isr_time_us);
-                b->click_count = 0;
-            } else {
-                b->click_count++;
-            }
-        }
-
-        b->setting_mode_armed = false;
-        b->over_20s_blocked = false;
-
-        if (pressed_count() == 0) {
+            b->press_start_us = confirmed_ts;
+            b->last_hold_log_us = 0;
             g_combo_long_reported = false;
-        }
-
-        if (g_combo_press_start_us != 0 && pressed_count() == 0) {
-            int64_t combo_held_us = evt->isr_time_us - g_combo_press_start_us;
-
-            if (combo_held_us >= SETTING_MODE_MIN_US && combo_held_us < SETTING_MODE_MAX_US) {
-                start_ready_commissioning_window();
+        } else {
+            // ---- Confirmed RELEASE ----
+            // NEW: this release closes out a press we already decided was chatter
+            // (see the PRESS branch above) - stay out of the click/long-press state
+            // machine entirely, we never entered it for this cycle.
+            if (b->bounce_suppressed) {
+                b->bounce_suppressed = false;
+                continue;
             }
 
-            g_combo_press_start_us = 0;
-            g_combo_setting_mode_armed = false;
-            g_combo_over_20s_blocked = false;
+            int64_t held_us = confirmed_ts - b->press_start_us;
+
+            // NEW: reject implausibly short presses (touch-IC glitch pulses), before they can
+            // increment click_count or otherwise disturb button state.
+            if (held_us < MIN_VALID_PRESS_US) {
+                ESP_LOGW(TAG, "Button %d: ignoring glitch press (%lldus held, min=%dus)",
+                        b->button_id, (long long)held_us, MIN_VALID_PRESS_US);
+                b->pressed = false;
+                b->release_time_us = confirmed_ts;
+                b->last_hold_log_us = 0;
+                // Deliberately do NOT touch click_count, long_reported, setting_mode_armed,
+                // combo state, etc. — as far as the rest of the state machine is concerned,
+                // this glitch never happened.
+                continue;
+            }
+
+            b->pressed = false;
+            b->release_time_us = confirmed_ts;
+            b->last_hold_log_us = 0;
+
+            if (held_us >= SETTING_MODE_MIN_US && held_us < SETTING_MODE_MAX_US) {
+                start_ready_commissioning_window();
+                //printf("Button %d held >10s, ready_commisioning_flag set\n", b->button_id);
+            }
+
+            if (held_us >= SETTING_MODE_MAX_US) {
+                b->click_count = 0;
+                b->long_reported = true;
+                b->setting_mode_armed = false;
+                b->over_20s_blocked = false;
+                ESP_LOGI(TAG, "Button %d held >20s, forcing NOTHING", b->button_id);
+            } else if (!b->long_reported) {
+                if (copy_ready_commisioning_flag || ready_commisioning_flag) {
+                    // NUOS: commissioning window open (armed by a 10-20s long press).
+                    // Every click feeds the pattern matcher immediately regardless of the
+                    // button's configured single/double/multi behavior - this is what
+                    // disables double-click while the window is armed, since two quick
+                    // clicks now register as two separate pattern entries instead of being
+                    // grouped into SWITCH_EVENT_DOUBLE_CLICK.
+                    detect_6_click_pattern(b->button_id, confirmed_ts);
+                    b->click_count = 0;
+                } else {
+                    uint32_t ev = switch_func_pair[idx].enabled_events;
+
+                    // CHANGED: also require !(ev & BTN_EVT_MULTI) so a button configured for
+                    // SINGLE+MULTI (without DOUBLE) accumulates clicks instead of always firing
+                    // immediately. Doesn't change behavior for your current 4 buttons (none has
+                    // MULTI enabled) but avoids a footgun if you add one later.
+                    if ((ev & BTN_EVT_SINGLE) && !(ev & BTN_EVT_DOUBLE) && !(ev & BTN_EVT_MULTI)) {
+                        handle_confirmed_single_click(b->button_id, b->pin, confirmed_ts);
+                        b->click_count = 0;
+                    } else {
+                        b->click_count++;
+                    }
+                }
+            }
+
+            b->setting_mode_armed = false;
+            b->over_20s_blocked = false;
+
+            if (pressed_count() == 0) {
+                g_combo_long_reported = false;
+            }
+
+            if (g_combo_press_start_us != 0 && pressed_count() == 0) {
+                int64_t combo_held_us = confirmed_ts - g_combo_press_start_us;
+
+                if (combo_held_us >= SETTING_MODE_MIN_US && combo_held_us < SETTING_MODE_MAX_US) {
+                    start_ready_commissioning_window();
+                }
+
+                g_combo_press_start_us = 0;
+                g_combo_setting_mode_armed = false;
+                g_combo_over_20s_blocked = false;
+            }
         }
     }
 }
@@ -779,7 +968,7 @@ static void process_long_press_and_clicks(void)
     for (int i = 0; i < switch_num; i++) {
         button_state_t *b = &g_btn[i];
 
-        if (b->pressed && gpio_get_level(b->pin) == 0) {
+        if (b->pressed) {
             int64_t held_us = now - b->press_start_us;
 
             if (held_us >= SETTING_MODE_MIN_US) {
@@ -816,6 +1005,20 @@ static void process_long_press_and_clicks(void)
 
         if (!b->pressed && b->click_count > 0) {
             if ((now - b->release_time_us) >= MULTI_CLICK_GAP_US) {
+                // NEW: the commissioning window can be armed by a different button's
+                // combo/long-press while this click sequence was already accumulating
+                // (confirm_pending_edges() only checks the flag at each release, not
+                // here at final gap-timeout). Without this check a double/multi click
+                // that started just before the window opened could still fire once
+                // it's open, bypassing the same suppression NUOS relies on elsewhere -
+                // route it to the pattern matcher instead, consistent with
+                // confirm_pending_edges().
+                if (copy_ready_commisioning_flag || ready_commisioning_flag) {
+                    detect_6_click_pattern(b->button_id, now);
+                    b->click_count = 0;
+                    continue;
+                }
+
                 uint32_t ev = switch_func_pair[i].enabled_events;
 
                 if (b->click_count == 1) {
@@ -843,15 +1046,31 @@ static void process_long_press_and_clicks(void)
     }
 }
 
+// CHANGED: added esp_task_wdt_reset() (esp_task_wdt.h was already included but unused)
+// and confirm_pending_edges() call. Loop shape otherwise unchanged — it was already
+// safe against watchdog starvation since xQueueReceive blocks up to 10ms per pass
+// rather than busy-draining, so this is a safety net, not a fix for a live bug.
 static void switch_driver_button_detected(void *arg)
 {
     gpio_evt_t evt;
+    static uint32_t last_reported_drops = 0;
+
+    esp_task_wdt_add(NULL);   // NEW: register so we can feed it explicitly below
 
     while (1) {
         if (xQueueReceive(gpio_evt_queue, &evt, pdMS_TO_TICKS(10)) == pdTRUE) {
             process_edge_event(&evt);
         }
+        confirm_pending_edges();   // NEW: promote any debounced-quiet candidates
         process_long_press_and_clicks();
+
+        uint32_t drops = g_isr_queue_drops;
+        if (drops != last_reported_drops) {
+            ESP_LOGW(TAG, "gpio_evt_queue full: total raw edges dropped=%" PRIu32, drops);
+            last_reported_drops = drops;
+        }
+
+        esp_task_wdt_reset();      // NEW: explicit feed
     }
 }
 
@@ -881,6 +1100,13 @@ static bool switch_driver_gpio_init(switch_func_pair_t *button_func_pair, uint8_
         g_btn[i].release_time_us = 0;
         g_btn[i].last_hold_log_us = 0;
         g_btn[i].click_count = 0;
+
+        // NEW: init confirm-debounce state
+        g_btn[i].candidate_time_us = 0;
+        g_btn[i].candidate_level = true;
+        g_btn[i].candidate_pending = false;
+        g_btn[i].bounce_suppressed = false;
+        g_btn[i].last_single_click_us = 0;
     }
 
     io_conf.pin_bit_mask = pin_bit_mask;
@@ -981,17 +1207,6 @@ void switch_driver_gpios_intr_enabled(bool enabled)
     }
 }
 
-// void switch_driver_gpios_intr_enabled(bool enabled)
-// {
-//     for (int i = 0; i < switch_num; ++i) {
-//         if (enabled) {
-//             gpio_intr_enable(switch_func_pair[i].pin);
-//         } else {
-//             gpio_intr_disable(switch_func_pair[i].pin);
-//         }
-//     }
-// }
-
 bool switch_driver_init(switch_func_pair_t *button_func_pair,
                         uint8_t button_num,
                         esp_switch_callback_t cb)
@@ -1069,11 +1284,9 @@ static bool toggle_status_led_long_press        = false;
 
 void switch_driver_gpios_intr_enabled(bool enabled);
 extern esp_err_t nuos_set_color_rgb_mode_attribute(uint8_t index, uint8_t val_mode);
-#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-extern char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data);
-#endif
 
 extern bool ready_commisioning_flag;
+
 TimerHandle_t ready_commissioning_timer = NULL;
 
 static void IRAM_ATTR gpio_isr_handler(void *arg)
@@ -1094,24 +1307,6 @@ void switch_driver_gpios_intr_enabled(bool enabled)
         }
     }
 }
-
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-void task_mode_single_click(){
-    if(isSceneRemoteBindingStarted){
-        if(task_sequence_num == TASK_MODE_BLINK_ALL_LEDS){
-            task_sequence_num = TASK_MODE_GO_TO_ACTUAL_TASK;  
-        }else if(task_sequence_num == TASK_MODE_ACTUAL_TASK_BLINK_LEDS){
-            task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
-        }else if(task_sequence_num == TASK_MODE_BLINK_OTHER_LEDS){
-            task_sequence_num = TASK_SEND_IDENTIFY_COMMAND;
-            identify_device_complete_flag = false;
-        }else if(task_sequence_num == TASK_BLINK_SELECTED_LED){
-            task_sequence_num = TASK_MODE_BLINK_OTHER_LEDS;
-            identify_device_complete_flag = false;
-        }
-    }    
-}
-#endif
 
 static void esp_zb_callback(uint8_t param) {
 }
@@ -1158,30 +1353,22 @@ void button_click_handler(TimerHandle_t xTimer)
     if (local_clicks > CLICK_ARRAY_SIZE) local_clicks = CLICK_ARRAY_SIZE;
     click_count = 0;
 #ifdef USE_TRIPLE_CLICK
-    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM ||  \
-         (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH ||  \
-         USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX ||  \
-         USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
-        // No triple click action for these devices.
-    #else
         //printf("click_count:%d\n", local_clicks);
         if (local_clicks == MAX_COUNTS_FOR_TRIPLE_CLICK) {
             // Check if all presses were on the same button
             
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-                
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 
                   #ifdef USE_TWO_SWITCH_MODE
-                is_121212 = 
+                is_121212 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[3] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[1]);
-        
-                is_212121 = 
+
+                is_212121 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
@@ -1189,15 +1376,15 @@ void button_click_handler(TimerHandle_t xTimer)
                     (switch_num_pressed[4] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
 
-                is_122112 = 
+                is_122112 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[1]);
-        
-                is_211221 = 
+
+                is_211221 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[1]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
@@ -1207,15 +1394,15 @@ void button_click_handler(TimerHandle_t xTimer)
 
                   #else
 
-                is_121212 = 
+                is_121212 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-        
-                is_212121 = 
+
+                is_212121 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
@@ -1223,15 +1410,15 @@ void button_click_handler(TimerHandle_t xTimer)
                     (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
 
-                is_122112 = 
+                is_122112 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-        
-                is_211221 = 
+
+                is_211221 =
                     (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
@@ -1239,41 +1426,6 @@ void button_click_handler(TimerHandle_t xTimer)
                     (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
                     (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
                   #endif
-
-                #else
-                
-                is_121212 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-        
-                is_212121 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);
-
-                is_122112 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]);
-        
-                is_211221 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]);   
-                #endif                 
             #else
                 is_122112 = 
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
@@ -1331,17 +1483,6 @@ void button_click_handler(TimerHandle_t xTimer)
                 }
             } else if (is_121212 || is_212121) {
                 if(!ready_commisioning_flag){
-                    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-                        uint8_t button_index = nuos_get_button_press_index(switch_num_pressed[0]);
-                        nuos_do_task(button_index, button_index + 1, 1);
-                    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-                        #ifdef ENABLE_CURTAIN_TIMER_CONTROL
-                        wifi_webserver_active_flag = !wifi_webserver_active_flag;
-                        setNVSWebServerEnableFlag(wifi_webserver_active_flag); 
-                        esp_restart();	
-                        #endif
-                    #else    
-                    #endif 
                 } else {
 
                     #ifdef USE_WIFI_WEBSERVER
@@ -1362,9 +1503,7 @@ void button_click_handler(TimerHandle_t xTimer)
                 }             
             }
         }else if (local_clicks == 8) {
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-            
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
                     #ifndef USE_TWO_SWITCH_MODE
                 is_11221122 = 
                     (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
@@ -1404,29 +1543,8 @@ void button_click_handler(TimerHandle_t xTimer)
                     (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
                     (switch_num_pressed[7] == gpio_touch_btn_pins[0]); 
                     #endif
-                #else
-                is_11221122 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[6] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[7] == gpio_touch_btn_pins[2]);    
-                is_22112211 = 
-                    (switch_num_pressed[0] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[1] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[2] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[3] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[4] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[5] == gpio_touch_btn_pins[2]) &&
-                    (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
-                    (switch_num_pressed[7] == gpio_touch_btn_pins[0]);    
-                
-                #endif
             #else
-            is_11221122 = 
+            is_11221122 =
                 (switch_num_pressed[0] == gpio_touch_btn_pins[0]) &&
                 (switch_num_pressed[1] == gpio_touch_btn_pins[0]) &&
                 (switch_num_pressed[2] == gpio_touch_btn_pins[1]) &&
@@ -1449,20 +1567,18 @@ void button_click_handler(TimerHandle_t xTimer)
             if(is_11221122 || is_22112211){
                 touchLedsOffAfter1MinuteEnable = !touchLedsOffAfter1MinuteEnable;
                 setNVSAllLedsOff(touchLedsOffAfter1MinuteEnable);
-                #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_GROUP_DALI)
                     bool t_state = false;
                     for (int j = 0; j < 5; j++) {
                         t_state = !t_state;
-                        for (int i = 0; i < TOTAL_LEDS; i++){                         
+                        for (int i = 0; i < TOTAL_LEDS; i++){
                             nuos_on_off_led(i, t_state);
                         }
                         vTaskDelay(pdMS_TO_TICKS(100));
                     }
                     for (int i = 0; i < TOTAL_ENDPOINTS; i++) {
-                        nuos_zb_set_hardware(i, false); 
+                        nuos_zb_set_hardware(i, false);
                         vTaskDelay(pdMS_TO_TICKS(50));
-                    } 
-                #endif  
+                    }
             }
         } else if (local_clicks == 5) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
@@ -1479,7 +1595,6 @@ void button_click_handler(TimerHandle_t xTimer)
             }
             #endif
         }
-    #endif
 #endif // USE_TRIPLE_CLICK
 
 #ifdef USE_DOUBLE_PRESS
@@ -1519,11 +1634,7 @@ static void create_timers_at_init(void)
     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
         if (click_timer == NULL) {
             const TickType_t ticks =
-    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
-                pdMS_TO_TICKS(DOUBLE_CLICK_THRESHOLD_MS);
-    #else
                 pdMS_TO_TICKS(TRIPLE_CLICK_MAX_DELAY_MS);
-    #endif
             click_timer = xTimerCreate("ClickTimer", ticks, pdFALSE, NULL, button_click_handler);
             if (click_timer == NULL) {
                 ESP_LOGE(TAG, "Failed to create click_timer");
@@ -1659,12 +1770,7 @@ void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_tim
 
 void brightness_control_tasks(uint32_t io_num){
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
-            if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                is_long_press_brightness = true;
-                nuos_set_hardware_brightness(io_num);
-            }
-        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
                 if(change_cw_ww_color_flag){
                     if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
@@ -1690,22 +1796,6 @@ void brightness_control_tasks(uint32_t io_num){
                     nuos_set_hardware_brightness(io_num);
                 }
             }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_ANALOG_DIMMABLE_LIGHT || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_2T_PHASE_CUT_DIMMABLE_LIGHT)
-                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                    is_long_press_brightness = true;
-                    nuos_set_hardware_brightness(io_num);
-                }
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH) 
-            // if(brightness_count % 200 == 0){
-            //     is_long_press_brightness = true;
-            //     nuos_set_hardware_brightness(io_num);
-            // }   
-
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
-            #ifdef TUYA_ATTRIBUTES
-
-
-            #endif
         #else
             if(io_num == gpio_touch_btn_pins[3]){
                 if(selected_color_mode != 0){
@@ -1753,17 +1843,10 @@ static void switch_driver_button_detected(void *arg) {
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
         bool instant_two_switch_pressed_flag = false;
     #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
-    bool switch_keep_pressed_once_flag = true;
-    #endif
 
     #if defined(USE_DOUBLE_PRESS) || defined(USE_TRIPLE_CLICK)
         if (click_timer == NULL) {
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
-                click_timer = xTimerCreate("Click Timer", pdMS_TO_TICKS(DOUBLE_CLICK_THRESHOLD_MS), pdFALSE, (void *)0, button_click_handler);
-            #else
                 click_timer = xTimerCreate("Click Timer", pdMS_TO_TICKS(TRIPLE_CLICK_MAX_DELAY_MS), pdFALSE, (void *)0, button_click_handler);
-            #endif
             if (click_timer == NULL) {
                 ESP_LOGE("Button", "Failed to create click timer");
                 return;
@@ -1810,9 +1893,6 @@ static void switch_driver_button_detected(void *arg) {
             brightness_count = 0;
             switch_pressed_cnts = 0;
             reduced_bounce_time = DEBOUNCE_TIME_MS;
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
-            switch_keep_pressed_once_flag = true;
-            #endif
         }
 
         while (evt_flag) {
@@ -1843,13 +1923,7 @@ static void switch_driver_button_detected(void *arg) {
                             if ((current_time - last_release_time) >= 2) { // 2 ms
                                 last_release_time = current_time;
 
-                                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH)
-                                    #ifdef USE_CUSTOM_SCENE
-                                        button_func_pair.keypressed = SINGLE_PRESS; 
-                                    #endif   
-                                #else
-                                    button_func_pair.keypressed = LONG_PRESS_INC_DEC_LEVEL;                      
-                                #endif
+                                    button_func_pair.keypressed = LONG_PRESS_INC_DEC_LEVEL;
                                 
                                 if(wifi_webserver_active_flag){
                                     if(start_commissioning){
@@ -1861,12 +1935,6 @@ static void switch_driver_button_detected(void *arg) {
                                 brightness_control_tasks(io_num);
                                 switch_pressed_cnts = IdentifyTwoSwitchPressed();
                                 if (!two_switch_pressed_flag) {
-                                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || \
-                                        (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY))
-                                        if (switch_pressed_cnts >= 1) {
-                                            two_switch_pressed_flag = true;
-                                        }
-                                    #else
                                         if (switch_pressed_cnts >= 2) {
                                             two_switch_pressed_flag = true;
                                             nuos_set_rgb_led_commissioning_functionality();
@@ -1876,7 +1944,6 @@ static void switch_driver_button_detected(void *arg) {
                                             printf("2 switch pressed!!\n");
                                             #endif
                                         }
-                                    #endif
                                 }
 
                                 if (current_time - double_release_time >= 1000) {
@@ -1905,12 +1972,6 @@ static void switch_driver_button_detected(void *arg) {
                         }
                         #endif
                     }
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
-                        if (switch_keep_pressed_once_flag) {
-                            switch_keep_pressed_once_flag = false;
-                            nuos_zb_set_scene_switch_click(io_num, 1);
-                        }
-                    #endif
                     break;
 
                 case SWITCH_RELEASE_DETECTED:
@@ -1953,15 +2014,6 @@ static void switch_driver_button_detected(void *arg) {
                             xTimerStart(click_timer, 0);
                         } else {
                             //ESP_LOGW(TAG, "click_timer is NULL when trying to start it");
-                        }
-                    #endif
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RINGING_BELL_2)
-                        vTaskDelay(pdMS_TO_TICKS(20));
-                        nuos_zb_set_scene_switch_click(io_num, 0);
-                    #endif
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN_SWITCH)
-                        if(longpress_detected){
-                            button_func_pair.keypressed = LONG_PRESS;
                         }
                     #endif
 

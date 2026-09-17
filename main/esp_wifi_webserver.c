@@ -23,10 +23,9 @@
 #include "app_hardware_driver.h"
 #include "nvs_flash.h"
 #include "ha/esp_zigbee_ha_standard.h"
-#include "app_zigbee_group_commands.h"
 #include "app_zigbee_scene_commands.h"
 #include "app_zigbee_misc.h"
-#include "app_zigbee_query_nodes.h"
+#include "esp_wifi_station.h"
 
 #ifdef USE_C3_ADAPTER_UART_HW
 #include "zigbee_2_uart.h"
@@ -50,7 +49,7 @@ cJSON *offset_json                      = NULL;
 cJSON *calibration_json                 = NULL;
 cJSON *cobj_webserver                   = NULL;
 
-#define JSON_QUEUE_SIZE                 80
+#define JSON_QUEUE_SIZE                 10
 #define JSON_MAX_LEN                    1048
 
 typedef struct {
@@ -70,15 +69,9 @@ QueueHandle_t json_queue;
     extern void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene);     
 #endif
 uint8_t node_index, ep_index;
-void query_all_groups_task(void* args);
 void remove_scene_task(void* args);
 
 void remove_duplicates(int* array, int size, int* result, int* result_size);
-
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)
-    void add_scene_task(void* args);
-    void view_scene_table_task(void* args);
-#endif
 
 char input_str[12];
 const int size = MAX_DALI_ADDRESSES;//sizeof(dali_nvs_stt[0].device_ids) / sizeof(dali_nvs_stt[0].device_ids[0]);
@@ -102,11 +95,6 @@ void parse_json_3(const char *json_str);
 int map(int x, int in_min, int in_max, int out_min, int out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
-
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)
-    void add_scene_task(void* args);
-    void view_scene_table_task(void* args);
-#endif
 
 
 
@@ -204,7 +192,9 @@ void parse_json(const char *json_string) {
             setNVSWebServerEnableFlag(false);
             esp_restart();
         break;
-
+        case 73:
+            esp_dali_factory_reset_all_drivers();
+        break;
         case 9:
         //"{\"fxn\": 9, \"webserver\": 0"
         cobj_webserver = cJSON_GetObjectItem(root, "webserver");
@@ -224,356 +214,7 @@ void parse_json(const char *json_string) {
             esp_start_timer();
         }
         break;
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
-        case 2:
-            ac_model = cJSON_GetObjectItem(root, "ac_model");
-            ac_index = cJSON_GetObjectItem(root, "ac_index");
-            if (ac_model == NULL || ac_index == NULL) {
-                printf("Missing JSON keys\n");
-                cJSON_Delete(root);
-                return;
-            }
-            set_decode_type(ac_index->valueint);
-            printf("AC Model: %s\n", ac_model->valuestring);
-        break;
-
-        case 3:   //try
-            ac_model = cJSON_GetObjectItem(root, "ac_model");
-            ac_index = cJSON_GetObjectItem(root, "ac_index");
-            if (ac_index == NULL) {
-                printf("Missing JSON keys\n");
-                cJSON_Delete(root);
-                return;
-            }
-            decode_type = ac_index->valueint;         
-            state = !state; //toggle ac
-            if(!state) printf("Turning OFF: %s\n", ac_model->valuestring);
-            else printf("Turning ON: %s\n", ac_model->valuestring);
-            set_decode_type(decode_type);
-            nuos_try_ac(decode_type, state);
-        break;
-
-
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-        case 15:
-            selected_items = cJSON_GetObjectItem(root, "selected_items");
-            for (int p = 0 ; p < cJSON_GetArraySize(selected_items); p++)
-            {
-                cJSON * subitem = cJSON_GetArrayItem(selected_items, p);
-                cJSON *error = cJSON_GetObjectItem(subitem, "error");
-                if (error != NULL) {
-                    printf("ERROR getting details\n");
-                    cJSON_Delete(root);
-                    return;
-                }
-                cJSON *shortaddr = cJSON_GetObjectItem(subitem, "short");
-                cJSON *dstep = cJSON_GetObjectItem(subitem, "dst");
-                dbind = cJSON_GetObjectItem(subitem, "bind");
-                dstate = cJSON_GetObjectItem(subitem, "state");
-                dcheck = cJSON_GetObjectItem(subitem, "check");
-
-                uint8_t _is_state = (uint8_t)dstate->valueint;
-                uint8_t _is_bind = (uint8_t)dbind->valueint;
-                uint16_t _short_addr = (uint16_t)shortaddr->valueint;
-                uint8_t _dst_ep = (uint16_t)dstep->valueint; 
-                uint8_t is_check = (uint8_t)dcheck->valueint;
-
-                if(is_check && _is_state){ 
-                    send_identify_command(_short_addr, 1, _dst_ep, 6); 
-                }
-            
-            }                
-        break;
-        case 16:
-            option_selected = cJSON_GetObjectItem(root, "option");
-            int main_ep_bind_index = option_selected->valueint;   
-            uint8_t switch_id = main_ep_bind_index + 1;       
-            selected_items = cJSON_GetObjectItem(root, "selected_items");
-            for (int p = 0 ; p < cJSON_GetArraySize(selected_items); p++)
-            {
-                cJSON * subitem = cJSON_GetArrayItem(selected_items, p);
-                cJSON *error = cJSON_GetObjectItem(subitem, "error");
-                if (error != NULL) {
-                    printf("ERROR getting details\n");
-                    cJSON_Delete(root);
-                    return;
-                }
-                cJSON *shortaddr = cJSON_GetObjectItem(subitem, "short");
-                cJSON *dstep = cJSON_GetObjectItem(subitem, "dst");
-                dbind = cJSON_GetObjectItem(subitem, "bind");
-                dstate = cJSON_GetObjectItem(subitem, "state");
-                dlevel = cJSON_GetObjectItem(subitem, "level");
-
-                dcheck = cJSON_GetObjectItem(subitem, "check");
-
-                uint8_t _is_state = (uint8_t)dstate->valueint;
-                uint8_t _is_bind = (uint8_t)dbind->valueint;
-                uint16_t _short_addr = (uint16_t)shortaddr->valueint;
-                uint8_t _dst_ep = (uint8_t)dstep->valueint; 
-                uint8_t is_check = (uint8_t)dcheck->valueint;
-                uint8_t _level = (uint8_t)dlevel->valueint;
-
-                nuos_set_scene_devices(main_ep_bind_index, _is_state, _level, switch_id, _dst_ep, _short_addr);
-                
-            }                
-        break;
-        case 11:  //remote scene binding
-            //"option":"scene1"  
-            option_selected = cJSON_GetObjectItem(root, "option");
-            main_ep_bind_index = option_selected->valueint;   
-            switch_id = main_ep_bind_index + 1;  //wireless switch endpoint   
-
-            selected_items = cJSON_GetObjectItem(root, "selected_items");
-
-            //memset(&nodes_info, 0, sizeof(stt_scene_switch_t));
-            memcpy(&nodes_info, &existing_nodes_info[main_ep_bind_index], sizeof(stt_scene_switch_t));
-            node_counts = existing_nodes_info[main_ep_bind_index].scene_switch_info.total_records;
-            for(int i=0; i<node_counts; i++){
-                for(int j=0; j<nodes_info.scene_switch_info.dst_node_info[i].endpoint_counts; j++){                                     
-                    nodes_info.scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].is_bind = 0;
-                }
-            }
-            for (int p = 0 ; p < cJSON_GetArraySize(selected_items); p++){
-                cJSON * subitem = cJSON_GetArrayItem(selected_items, p);
-                cJSON *error = cJSON_GetObjectItem(subitem, "error");
-                if (error != NULL) {
-                    printf("ERROR getting details\n");
-                    cJSON_Delete(root);
-                    return;
-                }
-                cJSON *shortaddr = cJSON_GetObjectItem(subitem, "short");
-                cJSON *dstep = cJSON_GetObjectItem(subitem, "dst");
-                dbind = cJSON_GetObjectItem(subitem, "bind");
-                dstate = cJSON_GetObjectItem(subitem, "state");
-                dlevel = cJSON_GetObjectItem(subitem, "level");
-                dcolor = cJSON_GetObjectItem(subitem, "color");
-                dcheck = cJSON_GetObjectItem(subitem, "check");
-
-                uint8_t _is_bind = (uint8_t)dbind->valueint;
-                uint8_t _is_state = (uint8_t)dstate->valueint;
-                uint8_t is_check = (uint8_t)dcheck->valueint;
-                uint16_t short_addr = (uint16_t)shortaddr->valueint;
-                uint8_t dst_ep = (uint8_t)dstep->valueint;
-
-                printf("short_addr:0x%x  dst_ep:%d\n", short_addr, dst_ep);
-                if(_is_bind && _is_state) {                  
-                    uint8_t src_ep = ENDPOINTS_LIST[main_ep_bind_index];
-                    printf("src_ep:%d,  main_ep_bind_index:%d\n", src_ep, main_ep_bind_index);
-                    if(main_ep_bind_index != 0xff){
-                        uint8_t node_index = get_node_index(main_ep_bind_index, short_addr);
-                        if(node_index != 0xff){
-                            uint8_t ep_index = get_ep_index(main_ep_bind_index, node_index, dst_ep);
-                            printf("dst_ep:%d,  ep_index:%d\n", dst_ep, ep_index);
-                            if(ep_index != 0xff) {
-                                // nodes_info.scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep = dst_ep;
-                                // nodes_info.scene_switch_info.dst_node_info[node_index].short_addr = short_addr;
-                                nodes_info.scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind = 1;
-                                binding_count++;
-                                printf("Binding_count:%d\n", binding_count);
-                                    
-                            }else{
-                                printf("ERROR: No DST ENDPOINT FOUND!!\n");
-                            }
-                        }else{
-                            printf("ERROR: No NODE INDEX FOUND!!\n");
-                        } 
-                    }else{
-                        printf("ERROR: No SRC ENDPOINT FOUND!!\n");
-                    }                                        
-                }  
-            }
-
-            if (binding_count > 0) {
-                printf("----nuos_bind_task----\n");
-                nuos_bind_task(main_ep_bind_index, nodes_info.scene_switch_info.dst_node_info);               
-            }             
-        break;
-        case 21: //remote scene Un-binding
-            //"option":"scene1"  
-            option_selected = cJSON_GetObjectItem(root, "option");
-            main_ep_bind_index = option_selected->valueint;   
-            switch_id = main_ep_bind_index + 1;  //wireless switch endpoint   
-            selected_items = cJSON_GetObjectItem(root, "selected_items");
-            //memset(&nodes_info, 0, sizeof(stt_scene_switch_t));
-            memcpy(&nodes_info, &existing_nodes_info[main_ep_bind_index], sizeof(stt_scene_switch_t));
-            node_counts = existing_nodes_info[main_ep_bind_index].scene_switch_info.total_records;
-            for(int i=0; i<node_counts; i++){
-                for(int j=0; j<nodes_info.scene_switch_info.dst_node_info[i].endpoint_counts; j++){                                     
-                    nodes_info.scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].is_bind = 0;
-                }
-            }
-            for (int p = 0 ; p < cJSON_GetArraySize(selected_items); p++){
-                cJSON * subitem = cJSON_GetArrayItem(selected_items, p);
-                cJSON *error = cJSON_GetObjectItem(subitem, "error");
-                if (error != NULL) {
-                    printf("ERROR getting details\n");
-                    cJSON_Delete(root);
-                    return;
-                }
-                cJSON *shortaddr = cJSON_GetObjectItem(subitem, "short");
-                cJSON *dstep = cJSON_GetObjectItem(subitem, "dst");
-                dbind = cJSON_GetObjectItem(subitem, "bind");
-                dstate = cJSON_GetObjectItem(subitem, "state");
-                dlevel = cJSON_GetObjectItem(subitem, "level");
-                dcolor = cJSON_GetObjectItem(subitem, "color");
-                dcheck = cJSON_GetObjectItem(subitem, "check");
-
-                uint8_t _is_bind = (uint8_t)dbind->valueint;
-                uint8_t _is_state = (uint8_t)dstate->valueint;
-                uint8_t is_check = (uint8_t)dcheck->valueint;
-                uint16_t short_addr = (uint16_t)shortaddr->valueint;
-                uint8_t dst_ep = (uint8_t)dstep->valueint;
-
-                printf("short_addr:0x%x  dst_ep:%d\n", short_addr, dst_ep);
-                if(_is_bind && _is_state) {                  
-                    uint8_t src_ep = ENDPOINTS_LIST[main_ep_bind_index];
-                    printf("src_ep:%d,  main_ep_bind_index:%d\n", src_ep, main_ep_bind_index);
-                    if(main_ep_bind_index != 0xff){
-                        uint8_t node_index = get_node_index(main_ep_bind_index, short_addr);
-                        if(node_index != 0xff){
-                            uint8_t ep_index = get_ep_index(main_ep_bind_index, node_index, dst_ep);
-                            printf("dst_ep:%d,  ep_index:%d\n", dst_ep, ep_index);
-                            if(ep_index != 0xff) {
-                                //nodes_info
-                                // nodes_info.scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep = dst_ep;
-                                // nodes_info.scene_switch_info.dst_node_info[node_index].short_addr = short_addr;
-                                nodes_info.scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind = 0;
-                                binding_count++;
-                                printf("Binding_count:%d\n", binding_count);
-                                //======> write here code
-                            }else{
-                                printf("ERROR: No DST ENDPOINT FOUND!!\n");
-                            }
-                        }else{
-                            printf("ERROR: No NODE INDEX FOUND!!\n");
-                        } 
-                    }else{
-                        printf("ERROR: No SRC ENDPOINT FOUND!!\n");
-                    } 
-                                                        
-                }  
-            }
-            if (binding_count > 0) {
-                printf("----nuos_unbind_task----\n");
-                nuos_unbind_task(main_ep_bind_index, nodes_info.scene_switch_info.dst_node_info);               
-            }    
-        break;  
-
-        case 22:  //clear all records
-            clear_all_records_in_nvs();
-        break;
-        case 23:  //set scene selected devices's attributes
-            option_selected = cJSON_GetObjectItem(root, "option");
-            main_ep_bind_index = option_selected->valueint;   
-            switch_id = main_ep_bind_index + 1;  //wireless switch endpoint   
-            
-            for(int node_index=0; node_index<existing_nodes_info[main_ep_bind_index].scene_switch_info.total_records; node_index++){
-                for(int ep_index = 0; ep_index <existing_nodes_info[main_ep_bind_index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){
-                    if(existing_nodes_info[main_ep_bind_index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind == 1){
-                        do_remote_scene_bindings(
-                            main_ep_bind_index, 
-                            existing_nodes_info[main_ep_bind_index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep, 
-                            existing_nodes_info[main_ep_bind_index].scene_switch_info.dst_node_info[node_index].short_addr, 
-                            true);
-                    }
-                }
-            }
-
-        break;
-
-
-
-
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)
-            case 12:
-                //{"fxn":"12","option":1,"data":{"index":1,"name":"SWITCH_2","intensity":50,"isOn":false}}
-                cJSON *data = cJSON_GetObjectItem(root, "data");
-                cJSON *dataIndex = cJSON_GetObjectItem(data, "index");
-                cJSON *dataIntensity = cJSON_GetObjectItem(data, "intensity");
-                cJSON *dataIsOn = cJSON_GetObjectItem(data, "isOn");
-
-                // Ensure 'isOn' is a boolean
-                bool isOn = false;
-                if (cJSON_IsBool(dataIsOn)) {
-                    isOn = cJSON_IsTrue(dataIsOn);
-                    printf("isOn: %s\n", isOn ? "true" : "false");
-                } else {
-                    printf("Error: 'isOn' is not a boolean\n");
-                }
-
-                uint8_t index = (uint8_t)dataIndex->valueint;
-                uint8_t level = atoi(dataIntensity->valuestring);
-                
-                printf("index:%d level:%d isOn:%d\n", index, level, isOn);
-                zb_scene_info[index].group_id = global_group_id[0];
-                zb_scene_info[index].scene_id = global_scene_id[index];
-                zb_scene_info[index].is_on = (uint8_t)isOn;
-                zb_scene_info[index].intensity = level;
-                zb_scene_info[index].dst_ep = 1;
-                
-                xTaskCreate(add_scene_task, "add_scene_task", 8192, &index, 25, NULL); 
-                //xTaskCreate(query_all_groups_task, "query_group_task", 4096, &global_group_id[index], 25, NULL); 
-                //xTaskCreate(view_scene_table_task, "view_scene_table_task", 4096, &index, 26, NULL);    
-            break; 
-            case 13:
-                //{"fxn":"12","option":1,"data":{"index":1,"name":"SWITCH_2","intensity":50,"isOn":false}}
-                data = cJSON_GetObjectItem(root, "data");
-                dataIndex = cJSON_GetObjectItem(data, "index");
-                dataIntensity = cJSON_GetObjectItem(data, "intensity");
-                dataIsOn = cJSON_GetObjectItem(data, "isOn");
-
-                // Ensure 'isOn' is a boolean
-                isOn = false;
-                if (cJSON_IsBool(dataIsOn)) {
-                    isOn = cJSON_IsTrue(dataIsOn);
-                    printf("isOn: %s\n", isOn ? "true" : "false");
-                } else {
-                    printf("Error: 'isOn' is not a boolean\n");
-                }
-
-                index = (uint8_t)dataIndex->valueint;
-                level = atoi(dataIntensity->valuestring);
-                
-                printf("index:%d level:%d isOn:%d\n", index, level, isOn);
-                zb_scene_info[index].group_id = global_group_id[0];
-                zb_scene_info[index].scene_id = global_scene_id[index];
-                zb_scene_info[index].is_on = (uint8_t)isOn;
-                zb_scene_info[index].intensity = level;
-                zb_scene_info[index].dst_ep = 1;
-                xTaskCreate(remove_scene_task, "remove_scene_task", 8192, &index, 25, NULL); 
-            break;                   
-        #endif 
-    #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-        case 60: // Set curtain offset time (expecting seconds, convert to ms)
-            offset_json = cJSON_GetObjectItem(root, "offset");
-            if (offset_json == NULL) {
-                printf("Missing JSON keys index\n");
-                cJSON_Delete(root);
-                return;
-            } 
-            // Convert seconds to milliseconds
-            device_info[0].curtain_motor_start_offset = (uint8_t)(offset_json->valueint/10);
-            
-            ESP_LOGI(TAG, "Curtain offset set via JSON: %ds (%.1fms)", 
-                        device_info[0].curtain_motor_start_offset, offset_json->valueint);
- 
-            calibration_json = cJSON_GetObjectItem(root, "calibration");
-            if (calibration_json == NULL) {
-                printf("Missing JSON keys index\n");
-                cJSON_Delete(root);
-                return;
-            }             //12000/100
-            // Convert seconds to milliseconds
-            device_info[0].curtain_motor_total_time = (uint32_t)(calibration_json->valueint/1000);
-            
-            ESP_LOGI(TAG, "Curtain calibration set via JSON: %ds (%dms)", 
-                        device_info[0].curtain_motor_total_time, (int)calibration_json->valueint);
-            nuos_store_data_to_nvs(0);            
-            break;
-
-            
-    #else
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI )
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             case 10:
                 cJSON *sindex = cJSON_GetObjectItem(root, "index");
                 if (sindex == NULL) {
@@ -851,147 +492,13 @@ void parse_json(const char *json_string) {
                 printf("svalue: %d\n", svalue->valueint);
 
                 
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
-                    device_info[0].device_state = true;
-                    device_info[1].device_state = true;
-                    device_info[2].device_state = true;
-                    device_info[3].device_state = true;                
-                    device_info[3].device_level = (uint8_t)map(brightness, 0, 100, 0, MAX_DIM_LEVEL_VALUE);
-                    device_info[3].device_val  = (uint8_t)map(brightness, 0, 1000, 0, 1000);
-                    nuos_zb_set_hardware(3, false);
-                    nuos_set_hw_brightness(3);
-                #else
-                    dali_nvs_stt[index].brightness = (uint8_t)map(brightness, 0, 100, 0, 254); 
-                    nuos_dali_set_group_brightness(dali_nvs_stt[index].group_id, index, dali_nvs_stt[index].brightness);
-                    nuos_store_dali_data_to_nvs(index);
-                #endif
-                
-                break;             
+                dali_nvs_stt[index].brightness = (uint8_t)map(brightness, 0, 100, 0, 254);
+                nuos_dali_set_group_brightness(dali_nvs_stt[index].group_id, index, dali_nvs_stt[index].brightness);
+                nuos_store_dali_data_to_nvs(index);
+
+                break;
         #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
-            case 30:
-                device_info[0].device_state = true;
-                device_info[1].device_state = true;
-                device_info[2].device_state = true;
-                device_info[3].device_state = true;
-
-                //{favcolor: "#d31717", fxn: "30"}
-                cJSON *favcolor_item  = cJSON_GetObjectItem(root, "favcolor");
-
-                if (!cJSON_IsString(favcolor_item)) {
-                    printf("Invalid favcolor value\n");
-                    return;
-                }
-
-                const char* hex_color = favcolor_item->valuestring;
-
-                // Validate hex color string
-                if (strlen(hex_color) != 7 || hex_color[0] != '#') {
-                    printf("Invalid hex color format\n");
-                    return;
-                }
-                int r, g, b;
-                sscanf(hex_color + 1, "%02x%02x%02x", &r, &g, &b);
-                // Convert hexadecimal to decimal
-                device_info[0].device_level = (uint8_t)r;
-                device_info[1].device_level = (uint8_t)g;
-                device_info[2].device_level = (uint8_t)b;
-
-                printf("RED:    0x%x\n", device_info[0].device_level);
-                printf("GREEN:    0x%x\n", device_info[1].device_level);
-                printf("BLUE:    0x%x\n", device_info[2].device_level);
-
-                nuos_zb_set_hardware(3, false);
-
-            break;
-            case 31:
-                cJSON *sbaudrate = cJSON_GetObjectItem(root, "baud_rate");
-                if (sbaudrate == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                uint32_t baudrate = atoi(sbaudrate->valuestring);
-
-                cJSON *sdatabits = cJSON_GetObjectItem(root, "data_bits");
-                if (sdatabits == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                // uint32_t databits = sdatabits->valuestring;
-
-                cJSON *sparity = cJSON_GetObjectItem(root, "parity");
-                if (sparity == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                // uint32_t parity = sparity->valuestring;  
-
-                cJSON *sstopbits = cJSON_GetObjectItem(root, "stop_bits");
-                if (sstopbits == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                // uint32_t stopbits = sstopbits->valuestring;
-
-                cJSON *sflowctrl = cJSON_GetObjectItem(root, "flow_ctrl");
-                if (sflowctrl == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                // uint32_t flowctrl = sflowctrl->valuestring; 
-
-                uart_word_length_t databits = string_to_uart_word_length_t(sdatabits->valuestring);
-                uart_stop_bits_t stopbits = string_to_uart_stop_bits_t(sstopbits->valuestring);
-                uart_parity_t parity = string_to_uart_parity_t(sparity->valuestring);
-                uart_hw_flowcontrol_t flowctrl = string_to_uart_hw_flowcontrol_t(sflowctrl->valuestring);
-                
-                uart_stt.data_bits = databits;
-                uart_stt.stop_bits = stopbits;
-                uart_stt.parity = parity;
-                uart_stt.flow_ctrl = flowctrl;
-                writeUartStruct(0, (uart_config_t*)&uart_stt);
-
-                if(baudrate == 0){ //enable default
-                    dmx_nvs_stt.set_default_flag = true;
-                } else{
-                    dmx_nvs_stt.set_default_flag = false;
-                }
-                dmx_nvs_stt.uart_baudrate = baudrate;
-                writeDmxStruct(0, (dmx_variable_t*)&dmx_nvs_stt);
-                esp_restart();
-
-            break;
-
-            case 32: //{fxn: "32", index: 0, value: "17"}
-                cJSON *sdmxstartch = cJSON_GetObjectItem(root, "value");
-                if (sdmxstartch == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                dmx_nvs_stt.dmx_start_address = (uint8_t)atoi(sdmxstartch->valuestring);
-                writeDmxStruct(0, (dmx_variable_t*)&dmx_nvs_stt);
-                esp_restart(); 
-            break;
-
-            case 34: //{fxn: "32", index: 0, value: "17"}
-                cJSON *sdmxgpiopin = cJSON_GetObjectItem(root, "value");
-                if (sdmxgpiopin == NULL) {
-                    printf("Missing JSON keys index\n");
-                    cJSON_Delete(root);
-                    return;
-                }   
-                dmx_nvs_stt.dmx_gpio_pin = (uint8_t)atoi(sdmxgpiopin->valuestring);
-                writeDmxStruct(0, (dmx_variable_t*)&dmx_nvs_stt);
-                esp_restart();
-            break;            
-        #endif
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             case 16:  //Set Color Temperature of DALI Group
                 sindex = cJSON_GetObjectItem(root, "index");
                 if (sindex == NULL) {
@@ -1057,10 +564,9 @@ void parse_json(const char *json_string) {
                 const char* response = cJSON_PrintUnformatted(root_o);
                 printf("%s\n", response);
                 cJSON_Delete(root_o); 
-                break; 
+                break;
         #endif
-        
-    #endif
+
 case 40:
 
            // {"fxn":"40","scene_ids":[1],"control_type":1}
@@ -1403,9 +909,9 @@ case 40:
             for (int i = 0; i < scene_group_switch_info.total_ids[index22]; ++i) {
                 printf("%d ", scene_group_switch_info.device_ids[index22][i]);
                 
-                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
                 #else
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
                     #else
                     printf("Added to group: %d the id: %d ctrl_type: %d\n", scene_group_switch_info.group_id[index22], scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.control_type);
@@ -1413,8 +919,8 @@ case 40:
                     #endif
                         nuos_dali_add_light_to_group(scene_group_switch_info.device_ids[index22][i], scene_group_switch_info.group_id[index22]);
                         vTaskDelay(80 / portTICK_PERIOD_MS);
-                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI) 
-                    #else  
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+                    #else
                     }
                     #endif
                 #endif
@@ -2108,62 +1614,6 @@ void parse_json_3(const char *json_str)
 //     cJSON_Delete(root);
 // }
 
-void query_all_groups_task(void* args) {
-    uint16_t group_id = *((uint16_t *)args);
-    nuos_zigbee_group_query_all_groups(group_id);
-    vTaskDelete(NULL); // Delete the task after executing
-}
-
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH)
-    void add_scene_task(void* args) {
-        uint8_t index = *((uint8_t *)args);
-        printf("index:%d", index);
-        esp_zb_lock_acquire(portMAX_DELAY);
-        nuos_zb_scene_add_scene_broadcast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, ENDPOINTS_LIST[index], 
-        zb_scene_info[index].dst_ep, zb_scene_info[index].is_on, zb_scene_info[index].intensity);
-
-        // nuos_zb_scene_add_scene_unicast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, 
-        // ENDPOINTS_LIST[index], 
-        // zb_scene_info[index].dst_ep,
-        // 0x808a, 
-        // zb_scene_info[index].is_on, zb_scene_info[index].intensity);
-
-
-        // nuos_zb_scene_add_scene_groupcast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, 
-        // ENDPOINTS_LIST[index], 
-        // zb_scene_info[index].dst_ep,
-        // zb_scene_info[index].is_on, zb_scene_info[index].intensity);
-
-        // nuos_zb_scene_store_scene_unicast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, ENDPOINTS_LIST[index], 
-        // zb_scene_info[index].dst_ep, 0x808a);
-
-        nuos_zb_scene_store_scene_broadcast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, ENDPOINTS_LIST[index], zb_scene_info[index].dst_ep);
-        // nuos_zb_scene_store_scene_unicast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, ENDPOINTS_LIST[index], 
-        // zb_scene_info[index].dst_ep, 0x808a);
-        esp_zb_lock_release();
-        vTaskDelete(NULL); // Delete the task after executing
-    }
-
-
-    void remove_scene_task(void* args) {
-        uint8_t index = *((uint8_t *)args);
-        printf("index:%d", index);
-        esp_zb_lock_acquire(portMAX_DELAY);
-        nuos_zb_scene_remove_scene_broadcast_request(zb_scene_info[index].group_id, zb_scene_info[index].scene_id, ENDPOINTS_LIST[index], 
-        zb_scene_info[index].dst_ep);
-        esp_zb_lock_release();
-        vTaskDelete(NULL); // Delete the task after executing
-    }
-
-
-    void view_scene_table_task(void* args) {
-        uint8_t index = *((uint8_t *)args);
-        printf("index:%d", index);
-        esp_zb_zcl_scenes_table_show(ENDPOINTS_LIST[index]);  
-        vTaskDelete(NULL); // Delete the task after executing
-    }
-#endif
-
 char* replaceSubstring(const char* original, const char* toReplace, const char* replaceWith) {
     char* result;
     char* insertPoint;
@@ -2278,150 +1728,150 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
-    char* prepare_json(uint8_t index){
-        int total_item = 0;
-        for(int node_index=0; node_index<node_counts; node_index++){
-            for(int ep_index=0; ep_index<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){   
-                //if(existing_nodes_info[i].src_endpoint[j] == ENDPOINTS_LIST[index])  {
-                    webpageItem[total_item].short_  = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                    webpageItem[total_item].dst     =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
-                    webpageItem[total_item].src     =  existing_nodes_info[index].scene_switch_info.src_ep;
-                    webpageItem[total_item].bind    = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind;
-                    webpageItem[total_item].state   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state;
-                    webpageItem[total_item].level   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
-                    webpageItem[total_item].value   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
-                    webpageItem[total_item].check   = 0;
-                    strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].ep_name);
-                    strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
-                    total_item++;             
+    // char* prepare_json(uint8_t index){
+    //     int total_item = 0;
+    //     for(int node_index=0; node_index<node_counts; node_index++){
+    //         for(int ep_index=0; ep_index<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; ep_index++){   
+    //             //if(existing_nodes_info[i].src_endpoint[j] == ENDPOINTS_LIST[index])  {
+    //                 webpageItem[total_item].short_  = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+    //                 webpageItem[total_item].dst     =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].dst_ep;
+    //                 webpageItem[total_item].src     =  existing_nodes_info[index].scene_switch_info.src_ep;
+    //                 webpageItem[total_item].bind    = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].is_bind;
+    //                 webpageItem[total_item].state   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.state;
+    //                 webpageItem[total_item].level   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.level;
+    //                 webpageItem[total_item].value   = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].data.value;
+    //                 webpageItem[total_item].check   = 0;
+    //                 strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[ep_index].ep_name);
+    //                 strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
+    //                 total_item++;             
                
-            }
-        } 
+    //         }
+    //     } 
     
-        //start task and wait for all record to be finished
-        cJSON *json = cJSON_CreateArray();
-        for (size_t i = 0; i < total_item; i++) {
-            // Start creating a cJSON object
-            cJSON *item_json = cJSON_CreateObject();
-            // Add fields to the cJSON object
-            cJSON_AddNumberToObject(item_json, "short", webpageItem[i].short_);
-            cJSON_AddStringToObject(item_json, "g_name", webpageItem[i].g_name);
-            cJSON_AddStringToObject(item_json, "name", webpageItem[i].name);
-            cJSON_AddNumberToObject(item_json, "dst", webpageItem[i].dst);
-            cJSON_AddNumberToObject(item_json, "src", webpageItem[i].src);
-            cJSON_AddNumberToObject(item_json, "bind", webpageItem[i].bind);
-            cJSON_AddNumberToObject(item_json, "state", webpageItem[i].state);
-            cJSON_AddNumberToObject(item_json, "level", webpageItem[i].level);
-            cJSON_AddNumberToObject(item_json, "color", webpageItem[i].value);
-            cJSON_AddNumberToObject(item_json, "check", webpageItem[i].check);
-            cJSON_AddItemToArray(json, item_json);
-        }
-        const char *response = cJSON_Print(json);
-        cJSON_Delete(json);
-        return response;
-    }
+    //     //start task and wait for all record to be finished
+    //     cJSON *json = cJSON_CreateArray();
+    //     for (size_t i = 0; i < total_item; i++) {
+    //         // Start creating a cJSON object
+    //         cJSON *item_json = cJSON_CreateObject();
+    //         // Add fields to the cJSON object
+    //         cJSON_AddNumberToObject(item_json, "short", webpageItem[i].short_);
+    //         cJSON_AddStringToObject(item_json, "g_name", webpageItem[i].g_name);
+    //         cJSON_AddStringToObject(item_json, "name", webpageItem[i].name);
+    //         cJSON_AddNumberToObject(item_json, "dst", webpageItem[i].dst);
+    //         cJSON_AddNumberToObject(item_json, "src", webpageItem[i].src);
+    //         cJSON_AddNumberToObject(item_json, "bind", webpageItem[i].bind);
+    //         cJSON_AddNumberToObject(item_json, "state", webpageItem[i].state);
+    //         cJSON_AddNumberToObject(item_json, "level", webpageItem[i].level);
+    //         cJSON_AddNumberToObject(item_json, "color", webpageItem[i].value);
+    //         cJSON_AddNumberToObject(item_json, "check", webpageItem[i].check);
+    //         cJSON_AddItemToArray(json, item_json);
+    //     }
+    //     const char *response = cJSON_Print(json);
+    //     cJSON_Delete(json);
+    //     return response;
+    // }
     
 
-    char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data){
-        char *response  = "[]";
-        if(scene_id != 0xff){
-            int total_item = 0;
-            //if (httpd_query_key_value(query, "erase_data", value_data, sizeof(value_data)) == ESP_OK) { 
+    // char * nuos_do_task(uint8_t index, uint8_t scene_id, uint8_t erase_data){
+    //     char *response  = "[]";
+    //     if(scene_id != 0xff){
+    //         int total_item = 0;
+    //         //if (httpd_query_key_value(query, "erase_data", value_data, sizeof(value_data)) == ESP_OK) { 
                 
-                printf("erase_data:%d\n", erase_data);
-                if(erase_data == 1){
-                    clear_all_records_in_nvs();
+    //             printf("erase_data:%d\n", erase_data);
+    //             if(erase_data == 1){
+    //                 clear_all_records_in_nvs();
 
-                    memset(&nodes_info, 0, sizeof(stt_scene_switch_t));
-                    memset(existing_nodes_info, 0, sizeof(existing_nodes_info));
+    //                 memset(&nodes_info, 0, sizeof(stt_scene_switch_t));
+    //                 memset(existing_nodes_info, 0, sizeof(existing_nodes_info));
 
-                }else{
-                    printf("total_records:%d\n", existing_nodes_info[index].scene_switch_info.total_records);
-                    memcpy(&nodes_info, &existing_nodes_info[index], sizeof(stt_scene_switch_t));
-                    node_counts = existing_nodes_info[index].scene_switch_info.total_records;
-                }
-            //}                            
-            int total_node_counts = nuos_find_active_nodes(index, node_counts, erase_data);
-            if(erase_data == 1){
-                memcpy(&existing_nodes_info[index], &nodes_info, sizeof(stt_scene_switch_t));
-            }
-            ESP_LOGI(TAG, "-------------total_node_counts=%d-----------\n", total_node_counts);
-            if(total_node_counts == 0){
-                response = prepare_json(index);
-                for(int i=0; i<existing_nodes_info[index].scene_switch_info.total_records; i++){
-                    printf("----------------NODE_ADDRESS:0x%x---------------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].short_addr);
-                    printf("ep_counts:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts);
-                    printf("node_name:%s\n" , existing_nodes_info[index].scene_switch_info.dst_node_info[i].node_name);
+    //             }else{
+    //                 printf("total_records:%d\n", existing_nodes_info[index].scene_switch_info.total_records);
+    //                 memcpy(&nodes_info, &existing_nodes_info[index], sizeof(stt_scene_switch_t));
+    //                 node_counts = existing_nodes_info[index].scene_switch_info.total_records;
+    //             }
+    //         //}                            
+    //         int total_node_counts = nuos_find_active_nodes(index, node_counts, erase_data);
+    //         if(erase_data == 1){
+    //             memcpy(&existing_nodes_info[index], &nodes_info, sizeof(stt_scene_switch_t));
+    //         }
+    //         ESP_LOGI(TAG, "-------------total_node_counts=%d-----------\n", total_node_counts);
+    //         if(total_node_counts == 0){
+    //             response = prepare_json(index);
+    //             for(int i=0; i<existing_nodes_info[index].scene_switch_info.total_records; i++){
+    //                 printf("----------------NODE_ADDRESS:0x%x---------------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].short_addr);
+    //                 printf("ep_counts:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts);
+    //                 printf("node_name:%s\n" , existing_nodes_info[index].scene_switch_info.dst_node_info[i].node_name);
                     
-                    for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts; j++){
-                        printf("........ATTRIBUTE VALUES........\n");
-                        printf("dst_ep:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].dst_ep);
+    //                 for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[i].endpoint_counts; j++){
+    //                     printf("........ATTRIBUTE VALUES........\n");
+    //                     printf("dst_ep:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].dst_ep);
                         
-                        for(uint8_t k=0; k<existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].clusters_count; k++){
+    //                     for(uint8_t k=0; k<existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].clusters_count; k++){
 
-                            printf("cluster_id:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k]);
+    //                         printf("cluster_id:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k]);
 
 
-                            if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 6){
-                                printf("state:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.state);
-                            }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 8){
-                                printf("level:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.level);                                                
-                            }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 768){
-                                printf("color:0x%lx\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.value);                                                
-                            }
+    //                         if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 6){
+    //                             printf("state:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.state);
+    //                         }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 8){
+    //                             printf("level:%d\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.level);                                                
+    //                         }else if(existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].cluster_id[k] == 768){
+    //                             printf("color:0x%lx\n", existing_nodes_info[index].scene_switch_info.dst_node_info[i].dst_ep_info.ep_data[j].data.value);                                                
+    //                         }
                             
-                        }
-                    }
-                    printf("................................\n");
-                }
+    //                     }
+    //                 }
+    //                 printf("................................\n");
+    //             }
 
-            }else{
+    //         }else{
                 
-                for(int node_index=0; node_index<total_node_counts; node_index++){
-                    ESP_LOGI(TAG, "-------------endpoint_counts=%d-----------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts);
-                    for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; j++){
-                        webpageItem[total_item].short_ = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
-                        webpageItem[total_item].dst =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].dst_ep;
-                        webpageItem[total_item].bind = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].is_bind;
-                        webpageItem[total_item].state = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.state;
-                        webpageItem[total_item].level = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.level;
-                        webpageItem[total_item].value = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.value;
+    //             for(int node_index=0; node_index<total_node_counts; node_index++){
+    //                 ESP_LOGI(TAG, "-------------endpoint_counts=%d-----------\n", existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts);
+    //                 for(int j=0; j<existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].endpoint_counts; j++){
+    //                     webpageItem[total_item].short_ = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].short_addr;
+    //                     webpageItem[total_item].dst =  existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].dst_ep;
+    //                     webpageItem[total_item].bind = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].is_bind;
+    //                     webpageItem[total_item].state = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.state;
+    //                     webpageItem[total_item].level = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.level;
+    //                     webpageItem[total_item].value = existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].data.value;
 
-                        webpageItem[total_item].src = existing_nodes_info[index].scene_switch_info.src_ep;
-                        strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].ep_name);
-                        strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
-                        total_item++;
-                    }
-                }
+    //                     webpageItem[total_item].src = existing_nodes_info[index].scene_switch_info.src_ep;
+    //                     strcpy(webpageItem[total_item].name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].dst_ep_info.ep_data[j].ep_name);
+    //                     strcpy(webpageItem[total_item].g_name, existing_nodes_info[index].scene_switch_info.dst_node_info[node_index].node_name);
+    //                     total_item++;
+    //                 }
+    //             }
                 
-                //start task and wait for all record to be finished
-                cJSON *json = cJSON_CreateArray();
-                for (size_t i = 0; i < total_item; i++) {
-                    // Start creating a cJSON object
-                    cJSON *item_json = cJSON_CreateObject();
-                    // Add fields to the cJSON object
-                    cJSON_AddNumberToObject(item_json, "short", webpageItem[i].short_);
-                    cJSON_AddStringToObject(item_json, "g_name", webpageItem[i].g_name);
-                    cJSON_AddNumberToObject(item_json, "val", webpageItem[i].value);
-                    cJSON_AddStringToObject(item_json, "name", webpageItem[i].name);
-                    cJSON_AddNumberToObject(item_json, "dst", webpageItem[i].dst);
-                    cJSON_AddNumberToObject(item_json, "src", webpageItem[i].src);
-                    cJSON_AddNumberToObject(item_json, "bind", webpageItem[i].bind);
-                    cJSON_AddNumberToObject(item_json, "state", webpageItem[i].state);
-                    cJSON_AddNumberToObject(item_json, "level", webpageItem[i].level);
-                    cJSON_AddNumberToObject(item_json, "color", webpageItem[i].value);
-                    cJSON_AddNumberToObject(item_json, "check", webpageItem[i].check);
-                    cJSON_AddItemToArray(json, item_json);
-                }
-                response = cJSON_Print(json);
-                printf("response: %s", response);
-                cJSON_Delete(json);
-            }                          
-        }
-        return response;
-    }
+    //             //start task and wait for all record to be finished
+    //             cJSON *json = cJSON_CreateArray();
+    //             for (size_t i = 0; i < total_item; i++) {
+    //                 // Start creating a cJSON object
+    //                 cJSON *item_json = cJSON_CreateObject();
+    //                 // Add fields to the cJSON object
+    //                 cJSON_AddNumberToObject(item_json, "short", webpageItem[i].short_);
+    //                 cJSON_AddStringToObject(item_json, "g_name", webpageItem[i].g_name);
+    //                 cJSON_AddNumberToObject(item_json, "val", webpageItem[i].value);
+    //                 cJSON_AddStringToObject(item_json, "name", webpageItem[i].name);
+    //                 cJSON_AddNumberToObject(item_json, "dst", webpageItem[i].dst);
+    //                 cJSON_AddNumberToObject(item_json, "src", webpageItem[i].src);
+    //                 cJSON_AddNumberToObject(item_json, "bind", webpageItem[i].bind);
+    //                 cJSON_AddNumberToObject(item_json, "state", webpageItem[i].state);
+    //                 cJSON_AddNumberToObject(item_json, "level", webpageItem[i].level);
+    //                 cJSON_AddNumberToObject(item_json, "color", webpageItem[i].value);
+    //                 cJSON_AddNumberToObject(item_json, "check", webpageItem[i].check);
+    //                 cJSON_AddItemToArray(json, item_json);
+    //             }
+    //             response = cJSON_Print(json);
+    //             printf("response: %s", response);
+    //             cJSON_Delete(json);
+    //         }                          
+    //     }
+    //     return response;
+    // }
 
 // A mock structure representing your DALI configuration items.
 // Replace this or load this array dynamically from your NVS, SPIFFS, or RAM.
@@ -2862,7 +2312,7 @@ char * parse_query(const char *req_query) {
                 scene_id = index+1; 
                 if (httpd_query_key_value(req_query, "erase_data", value_data, sizeof(value_data)) == ESP_OK) { 
                     erase_data = atoi(value_data);
-                    response = nuos_do_task(index, scene_id, erase_data);
+                  //  response = nuos_do_task(index, scene_id, erase_data);
                 }  
                 
             }                
@@ -3162,20 +2612,6 @@ char * parse_query(const char *req_query) {
         return ESP_OK;
     }
 #endif
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
-// Handler for curtain values API - now using /items endpoint
-esp_err_t curtain_values_get_handler(httpd_req_t *req) {
-    char json_response[100];
-    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-        snprintf(json_response, sizeof(json_response), 
-                "{\"offset\":%d,\"calibration\":%d}", 
-                device_info[0].curtain_motor_start_offset*10, device_info[0].curtain_motor_total_time*1000);
-    #endif  
-    httpd_resp_set_type(req, "application/json");
-    return httpd_resp_send(req, json_response, strlen(json_response));
-}
-#endif
-
 // Modify your http_get_handler to serve the embedded HTML
 esp_err_t http_get_handler(httpd_req_t *req) {
     // Add these external declarations for the embedded HTML
@@ -3188,9 +2624,6 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-    extern const char index_html_start[] asm("_binary_index_curtain_html_start");
-    extern const char index_html_end[]   asm("_binary_index_curtain_html_end");    
     #endif
 
     // Calculate HTML size from embedded binary
@@ -3202,12 +2635,13 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     return httpd_resp_send(req,  (const char*)index_html_start, html_size);
 }
 
+static httpd_handle_t server = NULL;
 void start_webserver() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;  // Increase the stack size
     // config.lru_purge_enable = true;   // purge least recently used sessions
     // config.send_wait_timeout = 2;     // seconds to wait for send completion (default is unlimited)
-    httpd_handle_t server = NULL;
+    
     httpd_uri_t index_uri = {
         .uri       = "/",
         .method    = HTTP_GET,
@@ -3221,7 +2655,7 @@ void start_webserver() {
         .handler   = submit_post_handler,
         .user_ctx  = NULL
     };
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         httpd_uri_t items_uri = {
             .uri       = "/items",
             .method    = HTTP_GET,
@@ -3243,27 +2677,28 @@ void start_webserver() {
             .user_ctx  = NULL
         };
         #endif
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)    
-        httpd_uri_t items_uri = {
-            .uri       = "/items",
-            .method    = HTTP_GET,
-            .handler   = curtain_values_get_handler,
-            .user_ctx  = NULL
-        };    
     #endif
-    if (httpd_start(&server, &config) == ESP_OK) {
-    	httpd_register_uri_handler(server, &index_uri);
-		httpd_register_uri_handler(server, &submit_uri);
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-            httpd_register_uri_handler(server, &items_uri);
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-                httpd_register_uri_handler(server, &get_config);
-                httpd_register_uri_handler(server, &set_config);
-            #endif
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN) 
-            httpd_register_uri_handler(server, &items_uri);
+
+    esp_err_t ret = httpd_start(&server, &config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG,
+                 "httpd_start failed: %s",
+                 esp_err_to_name(ret));
+        server = NULL;
+        return;
+    } 
+
+    httpd_register_uri_handler(server, &index_uri);
+    httpd_register_uri_handler(server, &submit_uri);
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        httpd_register_uri_handler(server, &items_uri);
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            httpd_register_uri_handler(server, &get_config);
+            httpd_register_uri_handler(server, &set_config);
         #endif
-    }
+    #endif
+    
+    ESP_LOGI(TAG, "HTTP server started successfully");
 }
 
 void remove_duplicates(int* array, int size, int* result, int* result_size) {
@@ -3283,13 +2718,18 @@ void remove_duplicates(int* array, int size, int* result, int* result_size) {
     *result_size = j;
 }
 
+
 bool nuos_init_webserver(){
     #ifdef USE_WIFI_WEBSERVER
+        printf("Starting Webserver...\n");
         json_queue = xQueueCreate(JSON_QUEUE_SIZE, sizeof(json_msg_t));
+        if ( json_queue == 0) {
+            ESP_LOGE(TAG, "json_queue Queue was not created and must not be used");
+        }    
         xTaskCreate(json_worker_task, "json_worker_task", 16384, NULL, TASK_PRIORITY_WEBSERVER, NULL);
         
         #ifdef USE_C3_ADAPTER_UART_HW
-        //uart_init();
+
         #else
         wifi_station_main();
         start_webserver(); 

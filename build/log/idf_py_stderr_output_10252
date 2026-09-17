@@ -1,0 +1,24 @@
+Command: cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DPYTHON=C:\Users\procu\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe -DESP_PLATFORM=1 -DCCACHE_ENABLE=0 C:\esp\esp-zigbee-sdk\examples\esp_zigbee_HA_sample\NUOS_HA_Zigbee_Controller_Code
+8c750b088-8a7d630-1.6.4-2026-09-10 07:52:29 UTC
+CMake Warning at C:/Users/procu/esp/v5.5/esp-idf/tools/cmake/component.cmake:274 (message):
+  SRCS and SRC_DIRS are both specified; ignoring SRC_DIRS.
+Call Stack (most recent call first):
+  C:/Users/procu/esp/v5.5/esp-idf/tools/cmake/component.cmake:455 (__component_add_sources)
+  main/CMakeLists.txt:1 (idf_component_register)
+
+
+Traceback (most recent call last):
+  File "C:\Users\procu\esp\v5.5\esp-idf\components\esp_rom\gen_gdbinit.py", line 72, in <module>
+    gdbinit_lines = generate_gdbinit_rom_add_symbols(target)
+  File "C:\Users\procu\esp\v5.5\esp-idf\components\esp_rom\gen_gdbinit.py", line 32, in generate_gdbinit_rom_add_symbols
+    raise EnvironmentError(
+        'ESP_ROM_ELF_DIR environment variable is not defined. Please try to run IDF "install" and "export" scripts.')
+OSError: ESP_ROM_ELF_DIR environment variable is not defined. Please try to run IDF "install" and "export" scripts.
+CMake Warning at C:/Users/procu/esp/v5.5/esp-idf/tools/cmake/gdbinit.cmake:52 (message):
+  Error while generating esp_rom gdbinit
+Call Stack (most recent call first):
+  C:/Users/procu/esp/v5.5/esp-idf/tools/cmake/project.cmake:356 (__generate_gdbinit)
+  C:/Users/procu/esp/v5.5/esp-idf/tools/cmake/project.cmake:974 (__project_info)
+  CMakeLists.txt:11 (project)
+
+

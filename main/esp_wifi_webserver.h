@@ -2,7 +2,6 @@
 #ifndef MAIN_WEBSERVER_H_
 	#define MAIN_WEBSERVER_H_
 	#ifdef USE_WIFI_WEBSERVER
-	    #include "esp_wifi_station.h"
 		extern char webpage[33000];
 		extern void prepare_html_complete_string();
 		void start_webserver();

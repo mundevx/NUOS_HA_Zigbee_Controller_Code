@@ -1,0 +1,876 @@
+Command: ninja all
+[1/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/bignum_mod.c.obj
+[2/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/block_cipher.c.obj
+[3/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/bignum_mod_raw.c.obj
+[4/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/camellia.c.obj
+[5/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/base64.c.obj
+[6/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/aria.c.obj
+[7/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ccm.c.obj
+[8/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/asn1parse.c.obj
+[9/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/bignum_core.c.obj
+[10/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/chacha20.c.obj
+[11/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/chachapoly.c.obj
+[12/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/cipher_wrap.c.obj
+[13/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/constant_time.c.obj
+[14/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/bignum.c.obj
+[15/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/des.c.obj
+[16/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/dhm.c.obj
+[17/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/cipher.c.obj
+[18/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/cmac.c.obj
+[19/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecdh.c.obj
+[20/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ctr_drbg.c.obj
+[21/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecdsa.c.obj
+[22/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecjpake.c.obj
+[23/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecp_curves_new.c.obj
+[24/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/entropy.c.obj
+[25/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/entropy_poll.c.obj
+[26/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecp_curves.c.obj
+[27/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/hkdf.c.obj
+[28/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/error.c.obj
+[29/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ecp.c.obj
+[30/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/gcm.c.obj
+[31/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/lmots.c.obj
+[32/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/md5.c.obj
+[33/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/nist_kw.c.obj
+[34/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/md.c.obj
+[35/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/memory_buffer_alloc.c.obj
+[36/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/lms.c.obj
+[37/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/hmac_drbg.c.obj
+[38/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/padlock.c.obj
+[39/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pk_ecc.c.obj
+[40/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pem.c.obj
+[41/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pk_wrap.c.obj
+[42/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pkcs12.c.obj
+[43/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/oid.c.obj
+[44/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pk.c.obj
+[45/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pkcs5.c.obj
+[46/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pkwrite.c.obj
+[47/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/pkparse.c.obj
+[48/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/platform.c.obj
+[49/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/poly1305.c.obj
+[50/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/platform_util.c.obj
+[51/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_cipher.c.obj
+[52/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_client.c.obj
+[53/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_aead.c.obj
+[54/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_driver_wrappers_no_static.c.obj
+[55/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_ecp.c.obj
+[56/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_hash.c.obj
+[57/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_ffdh.c.obj
+[58/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_mac.c.obj
+[59/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_rsa.c.obj
+[60/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_se.c.obj
+[61/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_pake.c.obj
+[62/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_storage.c.obj
+[63/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto_slot_management.c.obj
+[64/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/ripemd160.c.obj
+[65/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_util.c.obj
+[66/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_its_file.c.obj
+[67/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/rsa_alt_helpers.c.obj
+[68/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/threading.c.obj
+[69/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/psa_crypto.c.obj
+[70/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/version.c.obj
+[71/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/sha3.c.obj
+[72/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/timing.c.obj
+[73/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/sha1.c.obj
+[74/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/sha256.c.obj
+[75/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/rsa.c.obj
+[76/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/version_features.c.obj
+[77/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/sha512.c.obj
+[78/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/esp_hardware.c.obj
+[79/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/aes/dma/esp_aes_gdma_impl.c.obj
+[80/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/sha/core/esp_sha_gdma_impl.c.obj
+[81/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/esp_mem.c.obj
+[82/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/aes/esp_aes_xts.c.obj
+[83/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/esp_timing.c.obj
+[84/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/84ae2122b7f7d9a813f6e00312ce2e80/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c.obj
+[85/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/aes/dma/esp_aes_dma_core.c.obj
+[86/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/aes/esp_aes_common.c.obj
+[87/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/aes/dma/esp_aes.c.obj
+[88/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/ecc/esp_ecc.c.obj
+[89/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/sha/esp_sha.c.obj
+[90/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/ecc/ecc_alt.c.obj
+[91/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/md/esp_md.c.obj
+[92/318] Building C object esp-idf/mbedtls/mbedtls/3rdparty/p256-m/CMakeFiles/p256m.dir/p256-m/p256-m.c.obj
+[93/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/esp_ds/esp_rsa_sign_alt.c.obj
+[94/318] Building C object esp-idf/mbedtls/mbedtls/3rdparty/p256-m/CMakeFiles/p256m.dir/p256-m_driver_entrypoints.c.obj
+[95/318] Building C object esp-idf/mbedtls/mbedtls/library/CMakeFiles/mbedcrypto.dir/C_/Users/procu/esp/v5.5/esp-idf/components/mbedtls/port/sha/core/sha.c.obj
+[96/318] Building C object esp-idf/mbedtls/mbedtls/3rdparty/everest/CMakeFiles/everest.dir/library/everest.c.obj
+[97/318] Building C object esp-idf/mbedtls/mbedtls/3rdparty/everest/CMakeFiles/everest.dir/library/x25519.c.obj
+[98/318] Building C object esp-idf/mbedtls/mbedtls/3rdparty/everest/CMakeFiles/everest.dir/library/Hacl_Curve25519_joined.c.obj
+[99/318] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp\esp-zigbee-sdk\examples\esp_zigbee_HA_sample\NUOS_HA_Zigbee_Controller_Code\build\bootloader\esp-idf\esptool_py && C:\Users\procu\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Users/procu/esp/v5.5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/bootloader/bootloader.bin"
+Bootloader binary size 0x57e0 bytes. 0x2820 bytes (31%) free.
+[100/318] No install step for 'bootloader'
+[101/318] Completed 'bootloader'
+[102/318] Linking CXX static library esp-idf\mbedtls\mbedtls\library\libmbedcrypto.a
+[103/318] Linking CXX static library esp-idf\mbedtls\mbedtls\3rdparty\p256-m\libp256m.a
+[104/318] Linking CXX static library esp-idf\mbedtls\mbedtls\3rdparty\everest\libeverest.a
+[105/318] Building ASM object esp-idf/mbedtls/CMakeFiles/__idf_mbedtls.dir/__/__/x509_crt_bundle.S.obj
+[106/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/gpio_glitch_filter_ops.c.obj
+[107/318] Building C object esp-idf/esp_pm/CMakeFiles/__idf_esp_pm.dir/pm_locks.c.obj
+[108/318] Building C object esp-idf/esp_pm/CMakeFiles/__idf_esp_pm.dir/pm_trace.c.obj
+[109/318] Building C object esp-idf/mbedtls/CMakeFiles/__idf_mbedtls.dir/esp_crt_bundle/esp_crt_bundle.c.obj
+[110/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/gpio_pin_glitch_filter.c.obj
+[111/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/dedic_gpio.c.obj
+[112/318] Building C object esp-idf/esp_pm/CMakeFiles/__idf_esp_pm.dir/pm_impl.c.obj
+[113/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/rtc_io.c.obj
+[114/318] Building C object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/instruction_decode.c.obj
+[115/318] Building C object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/interrupt.c.obj
+[116/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/gpio_flex_glitch_filter.c.obj
+[117/318] Building ASM object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/vectors.S.obj
+[118/318] Building ASM object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/vectors_intc.S.obj
+[119/318] Building C object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/rv_utils.c.obj
+[120/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/gpio.c.obj
+[121/318] Linking C static library esp-idf\mbedtls\libmbedtls.a
+[122/318] Building C object esp-idf/riscv/CMakeFiles/__idf_riscv.dir/interrupt_plic.c.obj
+[123/318] Building C object esp-idf/esp_driver_gpio/CMakeFiles/__idf_esp_driver_gpio.dir/src/gpio_etm.c.obj
+[124/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/esp_ieee802154.c.obj
+[125/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_event.c.obj
+[126/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_ack.c.obj
+[127/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_sec.c.obj
+[128/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_pib.c.obj
+[129/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_frame.c.obj
+[130/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_util.c.obj
+[131/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_timer.c.obj
+[132/318] Building C object esp-idf/ieee802154/CMakeFiles/__idf_ieee802154.dir/driver/esp_ieee802154_dev.c.obj
+[133/318] Building C object esp-idf/espressif__led_strip/CMakeFiles/__idf_espressif__led_strip.dir/src/led_strip_api.c.obj
+[134/318] Building C object esp-idf/espressif__esp-zigbee-lib/CMakeFiles/__idf_espressif__esp-zigbee-lib.dir/src/compat/esp_log.c.obj
+[135/318] Building C object esp-idf/light_driver/CMakeFiles/__idf_light_driver.dir/src/light_driver.c.obj
+[136/318] Building C object esp-idf/espressif__led_strip/CMakeFiles/__idf_espressif__led_strip.dir/src/led_strip_rmt_encoder.c.obj
+[137/318] Building C object esp-idf/espressif__led_strip/CMakeFiles/__idf_espressif__led_strip.dir/src/led_strip_rmt_dev.c.obj
+[138/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/split_argv.c.obj
+[139/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/commands.c.obj
+[140/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/esp_console_common.c.obj
+[141/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/esp_console_repl_internal.c.obj
+[142/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_cmd.c.obj
+[143/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_date.c.obj
+[144/318] Linking C static library esp-idf\esp_pm\libesp_pm.a
+[145/318] Building C object esp-idf/cjson/CMakeFiles/__idf_cjson.dir/cJSON.c.obj
+[146/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/linenoise/linenoise.c.obj
+[147/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/esp_console_repl_chip.c.obj
+[148/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_dbl.c.obj
+[149/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_dstr.c.obj
+[150/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_end.c.obj
+[151/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_file.c.obj
+[152/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_lit.c.obj
+[153/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_int.c.obj
+[154/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_hashtable.c.obj
+[155/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_rem.c.obj
+[156/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_utils.c.obj
+[157/318] Linking C static library esp-idf\esp_driver_gpio\libesp_driver_gpio.a
+[158/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_rex.c.obj
+[159/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/arg_str.c.obj
+[160/318] Building C object esp-idf/console/CMakeFiles/__idf_console.dir/argtable3/argtable3.c.obj
+[161/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_compat.c.obj
+[162/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_runner.c.obj
+[163/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_utils_freertos.c.obj
+[164/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_utils_cache.c.obj
+[165/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_utils_memory.c.obj
+[166/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity/src/unity.c.obj
+[167/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/unity_port_esp32.c.obj
+[168/318] Building C object esp-idf/unity/CMakeFiles/__idf_unity.dir/port/esp/unity_utils_memory_esp.c.obj
+[169/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/proto-c/constants.pb-c.c.obj
+[170/318] Building C object esp-idf/protobuf-c/CMakeFiles/__idf_protobuf-c.dir/protobuf-c/protobuf-c/protobuf-c.c.obj
+[171/318] Linking C static library esp-idf\riscv\libriscv.a
+[172/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/proto-c/sec0.pb-c.c.obj
+[173/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/proto-c/session.pb-c.c.obj
+[174/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/proto-c/sec1.pb-c.c.obj
+[175/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/common/protocomm.c.obj
+[176/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/proto-c/sec2.pb-c.c.obj
+[177/318] Building C object esp-idf/esp_https_server/CMakeFiles/__idf_esp_https_server.dir/src/https_server.c.obj
+[178/318] Linking C static library esp-idf\ieee802154\libieee802154.a
+[179/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/transports/protocomm_console.c.obj
+[180/318] Linking C static library esp-idf\espressif__led_strip\libespressif__led_strip.a
+[181/318] Linking C static library esp-idf\cjson\libcjson.a
+[182/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/security/security0.c.obj
+[183/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/transports/protocomm_httpd.c.obj
+[184/318] Linking C static library esp-idf\console\libconsole.a
+[185/318] Linking C static library esp-idf\espressif__esp-zigbee-lib\libespressif__esp-zigbee-lib.a
+[186/318] Linking C static library esp-idf\light_driver\liblight_driver.a
+[187/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/crypto/srp6a/esp_srp_mpi.c.obj
+[188/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/security/security2.c.obj
+[189/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/security/security1.c.obj
+[190/318] Building C object esp-idf/protocomm/CMakeFiles/__idf_protocomm.dir/src/crypto/srp6a/esp_srp.c.obj
+[191/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/crc32.cpp.obj
+[192/318] Linking C static library esp-idf\protobuf-c\libprotobuf-c.a
+[193/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/SPI_Flash.cpp.obj
+[194/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/Partition.cpp.obj
+[195/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/WL_Ext_Safe.cpp.obj
+[196/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/WL_Ext_Perf.cpp.obj
+[197/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/wear_levelling.cpp.obj
+[198/318] Building C object esp-idf/json/CMakeFiles/__idf_json.dir/cJSON/cJSON_Utils.c.obj
+[199/318] Building CXX object esp-idf/wear_levelling/CMakeFiles/__idf_wear_levelling.dir/WL_Flash.cpp.obj
+[200/318] Building C object esp-idf/cmock/CMakeFiles/__idf_cmock.dir/CMock/src/cmock.c.obj
+[201/318] Building C object esp-idf/app_trace/CMakeFiles/__idf_app_trace.dir/host_file_io.c.obj
+[202/318] Linking C static library esp-idf\unity\libunity.a
+[203/318] Building C object esp-idf/app_trace/CMakeFiles/__idf_app_trace.dir/port/port_uart.c.obj
+[204/318] Building C object esp-idf/json/CMakeFiles/__idf_json.dir/cJSON/cJSON.c.obj
+[205/318] Building C object esp-idf/esp_driver_cam/CMakeFiles/__idf_esp_driver_cam.dir/esp_cam_ctlr.c.obj
+[206/318] Building C object esp-idf/app_trace/CMakeFiles/__idf_app_trace.dir/app_trace_util.c.obj
+[207/318] Building C object esp-idf/app_trace/CMakeFiles/__idf_app_trace.dir/app_trace.c.obj
+[208/318] Building C object esp-idf/esp_driver_cam/CMakeFiles/__idf_esp_driver_cam.dir/dvp_share_ctrl.c.obj
+[209/318] Building C object esp-idf/esp_eth/CMakeFiles/__idf_esp_eth.dir/src/esp_eth_netif_glue.c.obj
+[210/318] Building C object esp-idf/esp_hid/CMakeFiles/__idf_esp_hid.dir/src/esp_hidd.c.obj
+[211/318] Building C object esp-idf/esp_hid/CMakeFiles/__idf_esp_hid.dir/src/esp_hidh.c.obj
+[212/318] Building C object esp-idf/esp_eth/CMakeFiles/__idf_esp_eth.dir/src/phy/esp_eth_phy_802_3.c.obj
+[213/318] Linking C static library esp-idf\esp_https_server\libesp_https_server.a
+[214/318] Building C object esp-idf/esp_hid/CMakeFiles/__idf_esp_hid.dir/src/esp_hid_common.c.obj
+[215/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_common.c.obj
+[216/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_panel_io.c.obj
+[217/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_panel_nt35510.c.obj
+[218/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_panel_ops.c.obj
+[219/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_panel_st7789.c.obj
+[220/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/src/esp_lcd_panel_ssd1306.c.obj
+[221/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/i2c/esp_lcd_panel_io_i2c_v1.c.obj
+[222/318] Linking C static library esp-idf\protocomm\libprotocomm.a
+[223/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_init.c.obj
+[224/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/i2c/esp_lcd_panel_io_i2c_v2.c.obj
+[225/318] Building C object esp-idf/esp_lcd/CMakeFiles/__idf_esp_lcd.dir/spi/esp_lcd_panel_io_spi.c.obj
+[226/318] Building C object esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/src/esp_local_ctrl.c.obj
+[227/318] Building C object esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/proto-c/esp_local_ctrl.pb-c.c.obj
+[228/318] Building C object esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/src/esp_local_ctrl_handler.c.obj
+[229/318] Building C object esp-idf/esp_local_ctrl/CMakeFiles/__idf_esp_local_ctrl.dir/src/esp_local_ctrl_transport_httpd.c.obj
+[230/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_crc.c.obj
+[231/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_sha.c.obj
+[232/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_common.c.obj
+[233/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_uart.c.obj
+[234/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_elf.c.obj
+[235/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_flash.c.obj
+[236/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/core_dump_binary.c.obj
+[237/318] Linking C static library esp-idf\wear_levelling\libwear_levelling.a
+[238/318] Building C object esp-idf/espcoredump/CMakeFiles/__idf_espcoredump.dir/src/port/riscv/core_dump_port.c.obj
+[239/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/diskio/diskio_rawflash.c.obj
+[240/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/diskio/diskio_wl.c.obj
+[241/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/src/ffunicode.c.obj
+[242/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/diskio/diskio.c.obj
+[243/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/port/freertos/ffsystem.c.obj
+[244/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/diskio/diskio_sdmmc.c.obj
+[245/318] Linking C static library esp-idf\json\libjson.a
+[246/318] Building C object esp-idf/esp_eth/CMakeFiles/__idf_esp_eth.dir/src/esp_eth.c.obj
+[247/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/vfs/vfs_fat_spiflash.c.obj
+[248/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/src/ff.c.obj
+[249/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/vfs/vfs_fat_sdmmc.c.obj
+[250/318] Building C object esp-idf/fatfs/CMakeFiles/__idf_fatfs.dir/vfs/vfs_fat.c.obj
+[251/318] Building C object esp-idf/mqtt/CMakeFiles/__idf_mqtt.dir/esp-mqtt/lib/mqtt_msg.c.obj
+[252/318] Building C object esp-idf/mqtt/CMakeFiles/__idf_mqtt.dir/esp-mqtt/lib/mqtt_outbox.c.obj
+[253/318] Building C object esp-idf/mqtt/CMakeFiles/__idf_mqtt.dir/esp-mqtt/lib/platform_esp32_idf.c.obj
+[254/318] Building C object esp-idf/nvs_sec_provider/CMakeFiles/__idf_nvs_sec_provider.dir/nvs_sec_provider.c.obj
+[255/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs_api.c.obj
+[256/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs/src/spiffs_cache.c.obj
+[257/318] Building C object esp-idf/rt/CMakeFiles/__idf_rt.dir/FreeRTOS_POSIX_utils.c.obj
+[258/318] Building C object esp-idf/rt/CMakeFiles/__idf_rt.dir/FreeRTOS_POSIX_mqueue.c.obj
+[259/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs/src/spiffs_gc.c.obj
+[260/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs/src/spiffs_check.c.obj
+[261/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs/src/spiffs_hydrogen.c.obj
+[262/318] Building C object esp-idf/mqtt/CMakeFiles/__idf_mqtt.dir/esp-mqtt/mqtt_client.c.obj
+[263/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/wifi_ctrl.c.obj
+[264/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/wifi_config.c.obj
+[265/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/wifi_scan.c.obj
+[266/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/esp_spiffs.c.obj
+[267/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/handlers.c.obj
+[268/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/scheme_console.c.obj
+[269/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/proto-c/wifi_scan.pb-c.c.obj
+[270/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/proto-c/wifi_config.pb-c.c.obj
+[271/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/proto-c/wifi_constants.pb-c.c.obj
+[272/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/proto-c/wifi_ctrl.pb-c.c.obj
+[273/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/manager.c.obj
+[274/318] Building C object esp-idf/wifi_provisioning/CMakeFiles/__idf_wifi_provisioning.dir/src/scheme_softap.c.obj
+[275/318] Building C object esp-idf/spiffs/CMakeFiles/__idf_spiffs.dir/spiffs/src/spiffs_nucleus.c.obj
+[276/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/app_nvs_store_info.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'store_motion_auto_enable_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:272:14: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  272 |    esp_err_t err;
+      |              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'read_motion_auto_enable_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:291:19: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  291 |         esp_err_t err;
+      |                   ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'store_motion_disable_timeout_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:306:14: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  306 |    esp_err_t err;
+      |              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'read_motion_disable_timeout_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:325:19: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  325 |         esp_err_t err;
+      |                   ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'store_timeout_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:341:14: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  341 |    esp_err_t err;
+      |              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'read_timeout_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:359:19: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  359 |         esp_err_t err;
+      |                   ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'store_color_mode_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:383:14: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  383 |    esp_err_t err;
+      |              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'read_color_mode_value':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:403:19: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  403 |         esp_err_t err;
+      |                   ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'writeEpStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:693:15: warning: unused variable 'err' [-Wunused-variable]
+  693 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'readEpStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:707:15: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  707 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'writeDaliStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:720:15: warning: unused variable 'err' [-Wunused-variable]
+  720 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'readDaliStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:734:15: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  734 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'writeSceneInfoStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:749:15: warning: unused variable 'err' [-Wunused-variable]
+  749 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'readSceneInfoStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:763:15: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  763 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'writeUartStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:779:15: warning: unused variable 'err' [-Wunused-variable]
+  779 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'readUartStruct':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:793:15: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+  793 |     esp_err_t err = ESP_OK;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'nuos_store_dali_scene_switch_data_to_nvs':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:1434:15: warning: unused variable 'err' [-Wunused-variable]
+ 1434 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'nuos_read_dali_scene_switch_data_to_nvs':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:1466:15: warning: variable 'err' set but not used [-Wunused-but-set-variable]
+ 1466 |     esp_err_t err;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'nuos_store_group_membership_to_nvs':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:2165:15: warning: unused variable 'err' [-Wunused-variable]
+ 2165 |     esp_err_t err = ESP_OK;
+      |               ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c: In function 'nuos_read_selected_dali_address_from_nvs':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nvs_store_info.c:2189:15: warning: unused variable 'err' [-Wunused-variable]
+ 2189 |     esp_err_t err = ESP_OK;
+      |               ^~~
+[277/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/switch_driver.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.c:497:9: warning: "TASK_PRIORITY_WORKER" redefined
+  497 | #define TASK_PRIORITY_WORKER    5   // Must NOT be 14
+      |         ^~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.c:34:9: note: this is the location of the previous definition
+   34 | #define TASK_PRIORITY_WORKER         8 //5
+      |         ^~~~~~~~~~~~~~~~~~~~
+[278/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/app_nuos_timer.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nuos_timer.c:43:13: warning: 'led_state' defined but not used [-Wunused-variable]
+   43 | static bool led_state                                                                   = false;
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_nuos_timer.c:29:20: warning: 'TAG' defined but not used [-Wunused-variable]
+   29 | static const char *TAG                                                                  = "ESP_ZB_TIMERS";
+      |                    ^~~
+[279/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/esp_zb_controller_main.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:90:9: warning: missing initializer for field 'keypressed' of 'switch_func_pair_t' [-Wmissing-field-initializers]
+   90 |         {gpio_touch_btn_pins[0], SWITCH_ONOFF_TOGGLE_CONTROL},
+      |         ^
+In file included from C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:30:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.h:199:13: note: 'keypressed' declared here
+  199 |     uint8_t keypressed;
+      |             ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:91:9: warning: missing initializer for field 'keypressed' of 'switch_func_pair_t' [-Wmissing-field-initializers]
+   91 |         {gpio_touch_btn_pins[1], SWITCH_ONOFF_TOGGLE_CONTROL},
+      |         ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.h:199:13: note: 'keypressed' declared here
+  199 |     uint8_t keypressed;
+      |             ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:92:9: warning: missing initializer for field 'keypressed' of 'switch_func_pair_t' [-Wmissing-field-initializers]
+   92 |         {gpio_touch_btn_pins[2], SWITCH_ONOFF_TOGGLE_CONTROL},
+      |         ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.h:199:13: note: 'keypressed' declared here
+  199 |     uint8_t keypressed;
+      |             ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:93:9: warning: missing initializer for field 'keypressed' of 'switch_func_pair_t' [-Wmissing-field-initializers]
+   93 |         {gpio_touch_btn_pins[3], SWITCH_ONOFF_TOGGLE_CONTROL}
+      |         ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/switch_driver.h:199:13: note: 'keypressed' declared here
+  199 |     uint8_t keypressed;
+      |             ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c: In function 'ieee_cb':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:495:37: warning: unused variable 'ieee_resp' [-Wunused-variable]
+  495 |         esp_zb_zdo_ieee_addr_rsp_t *ieee_resp = (esp_zb_zdo_ieee_addr_rsp_t *)resp;
+      |                                     ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c: In function 'zb_cmd_custom_cluster_handler':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:922:69: warning: dereferencing 'void *' pointer
+  922 |                 memcpy(data_cmd_0xfc, (uint8_t*)&message->data.value[1], sizeof(data_cmd_0xfc));
+      |                                                                     ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c: In function 'zb_apsde_data_indication_handler':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:1843:13: warning: unused variable 'seq_number' [-Wunused-variable]
+ 1843 |     uint8_t seq_number          = ind.asdu[1];
+      |             ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:1842:13: warning: unused variable 'frame_control' [-Wunused-variable]
+ 1842 |     uint8_t frame_control       = ind.asdu[0];
+      |             ^~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c: At top level:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:1984:9: warning: "SAFE_MODE_HOLD_TIME_MS" redefined
+ 1984 | #define SAFE_MODE_HOLD_TIME_MS      10000   // 10 seconds
+      |         ^~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:1983:9: note: this is the location of the previous definition
+ 1983 | #define SAFE_MODE_HOLD_TIME_MS      3000
+      |         ^~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:1425:16: warning: 'last_percentage_val' defined but not used [-Wunused-variable]
+ 1425 | static uint8_t last_percentage_val                = 255;
+      |                ^~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:776:18: warning: 'zb_basic_reset_factory_handler' defined but not used [-Wunused-function]
+  776 | static esp_err_t zb_basic_reset_factory_handler(const esp_zb_zcl_basic_reset_factory_default_message_t *message){
+      |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:542:13: warning: 'zb_zdo_match_desc_handler' defined but not used [-Wunused-function]
+  542 | static void zb_zdo_match_desc_handler(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t endpoint, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:472:13: warning: 'ep_cb' defined but not used [-Wunused-function]
+  472 | static void ep_cb(esp_zb_zdp_status_t zdo_status, uint8_t ep_count, uint8_t *ep_id_list, void *user_ctx)
+      |             ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_zb_controller_main.c:89:31: warning: 'button_func_pair' defined but not used [-Wunused-variable]
+   89 |     static switch_func_pair_t button_func_pair[] = {
+      |                               ^~~~~~~~~~~~~~~~
+[280/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/app_hardware_driver_dali_scene_switch.cpp.obj
+[281/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/app_hardware_driver_dali_direct_switch.cpp.obj
+[282/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/app_hardware_driver_dali_tunable_light_tuya.cpp.obj
+[283/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/app_zigbee_clusters.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'recall_scenes_task':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:409:39: warning: unused variable 'result' [-Wunused-variable]
+  409 |                             esp_err_t result = esp_zb_zcl_write_attr_cmd_req(&write_req1);
+      |                                       ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:489:43: warning: unused variable 'result2' [-Wunused-variable]
+  489 |                                 esp_err_t result2 = esp_zb_zcl_write_attr_cmd_req(&write_req_2);
+      |                                           ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:467:39: warning: unused variable 'result' [-Wunused-variable]
+  467 |                             esp_err_t result = esp_zb_zcl_write_attr_cmd_req(&write_req);
+      |                                       ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_set_scene_button_attribute':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:506:21: warning: unused variable 'addr_mode' [-Wunused-variable]
+  506 |             uint8_t addr_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+      |                     ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_report_curtain_blind_state':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2376:29: warning: variable 'status' set but not used [-Wunused-but-set-variable]
+ 2376 |         esp_zb_zcl_status_t status = ESP_OK;
+      |                             ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'bind_identify_cb':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2709:21: warning: unused variable 'dst_endpoint' [-Wunused-variable]
+ 2709 |             uint8_t dst_endpoint = *((uint8_t*)user_ctx);
+      |                     ^~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'bind_level_cb':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2854:28: warning: unused variable 'info' [-Wunused-variable]
+ 2854 |             zigbee_info_t* info = (zigbee_info_t*)user_ctx;
+      |                            ^~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_basic_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3324:33: warning: unused variable 'cfg' [-Wunused-variable]
+ 3324 |     esp_zb_basic_cluster_cfg_t  cfg = {
+      |                                 ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3322:13: warning: unused variable 'date_code' [-Wunused-variable]
+ 3322 |     uint8_t date_code = ESP_ZB_ZCL_BASIC_DATE_CODE_DEFAULT_VALUE;
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3313:14: warning: unused variable 'hw_version' [-Wunused-variable]
+ 3313 |     uint16_t hw_version = 1;
+      |              ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_power_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3347:17: warning: unused variable 'bat_size' [-Wunused-variable]
+ 3347 |         uint8_t bat_size = 1;
+      |                 ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3346:17: warning: unused variable 'bat_quantity' [-Wunused-variable]
+ 3346 |         uint8_t bat_quantity = 1;
+      |                 ^~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_time_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3437:13: warning: unused variable 'dst_start' [-Wunused-variable]
+ 3437 |     uint8_t dst_start = 0;
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_identify_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3462:13: warning: unused variable 'test_attr' [-Wunused-variable]
+ 3462 |     uint8_t test_attr = 4;
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_level_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3604:14: warning: unused variable 'transition_time' [-Wunused-variable]
+ 3604 |     uint16_t transition_time = 0x0000;
+      |              ^~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3603:13: warning: unused variable 'on_level' [-Wunused-variable]
+ 3603 |     uint8_t on_level = current_level;
+      |             ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3602:13: warning: unused variable 'move_rate' [-Wunused-variable]
+ 3602 |     uint8_t move_rate = current_level;
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_color_temperature_control_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3674:20: warning: unused variable 'MID_TEMP' [-Wunused-variable]
+ 3674 |     const uint16_t MID_TEMP = min_temp + (max_temp - min_temp)/2;
+      |                    ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3670:15: warning: unused variable 'enhanced_current_hue' [-Wunused-variable]
+ 3670 |      uint16_t enhanced_current_hue = ESP_ZB_ZCL_COLOR_CONTROL_ENHANCED_CURRENT_HUE_DEFAULT_VALUE;
+      |               ^~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_color_ctrl_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3784:14: warning: unused variable 'enhanced_current_hue' [-Wunused-variable]
+ 3784 |     uint16_t enhanced_current_hue = ESP_ZB_ZCL_COLOR_CONTROL_ENHANCED_CURRENT_HUE_DEFAULT_VALUE;
+      |              ^~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_zb_create_tuya_cluster':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3919:14: warning: unused variable 'set_temp' [-Wunused-variable]
+ 3919 |     uint16_t set_temp = 27;
+      |              ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'led_transition':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4115:14: warning: unused variable 'delay_per_step' [-Wunused-variable]
+ 4115 |     uint16_t delay_per_step = transition_time_ms / steps;
+      |              ^~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_set_privilege_command_attribute_in_queue':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4234:35: warning: unused variable 'end' [-Wunused-variable]
+ 4234 |                             Color end = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
+      |                                   ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4224:35: warning: variable 'start' set but not used [-Wunused-but-set-variable]
+ 4224 |                             Color start = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
+      |                                   ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4304:31: warning: unused variable 'endf1' [-Wunused-variable]
+ 4304 |                         Color endf1 = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
+      |                               ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4293:31: warning: variable 'startf1' set but not used [-Wunused-but-set-variable]
+ 4293 |                         Color startf1 = {device_info[0].device_level, device_info[1].device_level, device_info[2].device_level};
+      |                               ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4286:33: warning: unused variable 'effect_durationf1' [-Wunused-variable]
+ 4286 |                         uint8_t effect_durationf1 = (scene_data->bytes[3] & 0x07); //in nsec
+      |                                 ^~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4285:33: warning: unused variable 'transition_timef1' [-Wunused-variable]
+ 4285 |                         uint8_t transition_timef1 = (scene_data->bytes[2] & 0x07); //in sec
+      |                                 ^~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4284:33: warning: unused variable 'mode1f1' [-Wunused-variable]
+ 4284 |                         uint8_t mode1f1 = ((scene_data->bytes[1] >> 6) & 0x02) |  ((scene_data->bytes[2] >> 7) & 0x01);
+      |                                 ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4282:34: warning: unused variable 'cct1f1' [-Wunused-variable]
+ 4282 |                         uint16_t cct1f1 = (vvf1 << 8) | scene_data->bytes[9];
+      |                                  ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4281:34: warning: unused variable 'cctf1' [-Wunused-variable]
+ 4281 |                         uint16_t cctf1 = scene_data->bytes[5] & 0x03;        //[1:0]
+      |                                  ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4278:34: warning: unused variable 'b1f1' [-Wunused-variable]
+ 4278 |                         uint16_t b1f1 = (vvf1 << 8) | scene_data->bytes[8];
+      |                                  ^~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4277:34: warning: unused variable 'bbf1' [-Wunused-variable]
+ 4277 |                         uint16_t bbf1 = (scene_data->bytes[5] >> 2) & 0x03; //[3:2]
+      |                                  ^~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4216:33: warning: unused variable 'effect_duration' [-Wunused-variable]
+ 4216 |                         uint8_t effect_duration = (music_data->bytes[3] & 0x07); //in nsec
+      |                                 ^~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4215:33: warning: unused variable 'transition_time' [-Wunused-variable]
+ 4215 |                         uint8_t transition_time = (music_data->bytes[2] & 0x07); //in sec
+      |                                 ^~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4214:33: warning: unused variable 'mode1' [-Wunused-variable]
+ 4214 |                         uint8_t mode1 = ((music_data->bytes[1] >> 6) & 0x02) |  ((music_data->bytes[2] >> 7) & 0x01);
+      |                                 ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4212:34: warning: unused variable 'cct1' [-Wunused-variable]
+ 4212 |                         uint16_t cct1 = (vv << 8) | music_data->bytes[9];
+      |                                  ^~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4211:34: warning: unused variable 'cct' [-Wunused-variable]
+ 4211 |                         uint16_t cct = music_data->bytes[5] & 0x03;        //[1:0] T
+      |                                  ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4208:34: warning: unused variable 'b1' [-Wunused-variable]
+ 4208 |                         uint16_t b1 = (vv << 8) | music_data->bytes[8];
+      |                                  ^~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:4207:34: warning: unused variable 'bb' [-Wunused-variable]
+ 4207 |                         uint16_t bb = (music_data->bytes[5] >> 2) & 0x03; //[3:2]  B
+      |                                  ^~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_set_attribute_cluster_2':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5016:35: warning: unused variable 'color_Z' [-Wunused-variable]
+ 5016 |                             float color_Z = (255 - color_x - color_y) / color_y;
+      |                                   ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5015:35: warning: unused variable 'color_X' [-Wunused-variable]
+ 5015 |                             float color_X = color_x / color_y;
+      |                                   ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5011:59: warning: unused variable 'blue_f' [-Wunused-variable]
+ 5011 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                                           ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5011:46: warning: unused variable 'green_f' [-Wunused-variable]
+ 5011 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                              ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5011:35: warning: unused variable 'red_f' [-Wunused-variable]
+ 5011 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                   ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5257:30: warning: unused variable 'val' [-Wunused-variable]
+ 5257 |                     uint16_t val = *(int16_t *)message->attribute.data.value;
+      |                              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: In function 'nuos_set_attribute_cluster_3':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5645:35: warning: unused variable 'color_Z' [-Wunused-variable]
+ 5645 |                             float color_Z = (255 - color_x - color_y) / color_y;
+      |                                   ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5644:35: warning: unused variable 'color_X' [-Wunused-variable]
+ 5644 |                             float color_X = color_x / color_y;
+      |                                   ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5640:59: warning: unused variable 'blue_f' [-Wunused-variable]
+ 5640 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                                           ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5640:46: warning: unused variable 'green_f' [-Wunused-variable]
+ 5640 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                              ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5640:35: warning: unused variable 'red_f' [-Wunused-variable]
+ 5640 |                             float red_f = 0, green_f = 0, blue_f = 0, color_x, color_y;
+      |                                   ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:5887:30: warning: unused variable 'val' [-Wunused-variable]
+ 5887 |                     uint16_t val = *(int16_t *)message->attribute.data.value;
+      |                              ^~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c: At top level:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:3062:13: warning: 'unbind_cb' defined but not used [-Wunused-function]
+ 3062 | static void unbind_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2746:13: warning: 'bind_cb_remote' defined but not used [-Wunused-function]
+ 2746 | static void bind_cb_remote(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2739:13: warning: 'bind_cb_sensor' defined but not used [-Wunused-function]
+ 2739 | static void bind_cb_sensor(esp_zb_zdp_status_t zdo_status, void *user_ctx){
+      |             ^~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2728:13: warning: 'bind_cb_wireless_scene' defined but not used [-Wunused-function]
+ 2728 | static void bind_cb_wireless_scene(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2714:13: warning: 'bind_cb_curtain' defined but not used [-Wunused-function]
+ 2714 | static void bind_cb_curtain(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2704:13: warning: 'bind_identify_cb' defined but not used [-Wunused-function]
+ 2704 | static void bind_identify_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2696:13: warning: 'bind_time_cluster_cb' defined but not used [-Wunused-function]
+ 2696 | static void bind_time_cluster_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2686:13: warning: 'bind_thermostat_cb' defined but not used [-Wunused-function]
+ 2686 | static void bind_thermostat_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:2666:13: warning: 'bind_fan_cb' defined but not used [-Wunused-function]
+ 2666 | static void bind_fan_cb(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:1185:17: warning: 'kelvin_to_mireds' defined but not used [-Wunused-function]
+ 1185 | static uint16_t kelvin_to_mireds(uint16_t kelvin)
+      |                 ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:1140:13: warning: 'zb_sync_attributes_alarm_cb123' defined but not used [-Wunused-function]
+ 1140 | static void zb_sync_attributes_alarm_cb123(uint8_t index)
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:654:16: warning: 'fan_level_val' defined but not used [-Wunused-variable]
+  654 | static uint8_t fan_level_val = 0;
+      |                ^~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:252:18: warning: 'zb_switch_send_recall_scene_to_light' defined but not used [-Wunused-function]
+  252 | static esp_err_t zb_switch_send_recall_scene_to_light(uint8_t ep, uint16_t group_id, uint8_t scene_id)
+      |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_clusters.c:85:22: warning: 'privilege_evt_queue' defined but not used [-Wunused-variable]
+   85 | static QueueHandle_t privilege_evt_queue                        = NULL;
+      |                      ^~~~~~~~~~~~~~~~~~~
+[284/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/zigbee_2_uart.c.obj
+[285/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/app_zigbee_misc.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c: In function 'bind_cb_2':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:127:38: warning: unused variable 'bind_req' [-Wunused-variable]
+  127 |         esp_zb_zdo_bind_req_param_t *bind_req = (esp_zb_zdo_bind_req_param_t*)user_ctx;
+      |                                      ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:139:44: warning: variable 'report_cmd' set but not used [-Wunused-but-set-variable]
+  139 |             esp_zb_zcl_config_report_cmd_t report_cmd;
+      |                                            ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c: In function 'nuos_switch_single_click_task':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:729:13: warning: unused variable 'sindex' [-Wunused-variable]
+  729 |     uint8_t sindex = 0;
+      |             ^~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c: In function 'xyToRgb':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1106:13: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1106 |     *r = *r < 0 ? 0 : *r > 255 ? 255 : *r;
+      |             ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1106:26: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1106 |     *r = *r < 0 ? 0 : *r > 255 ? 255 : *r;
+      |                          ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1107:13: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1107 |     *g = *g < 0 ? 0 : *g > 255 ? 255 : *g;
+      |             ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1107:26: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1107 |     *g = *g < 0 ? 0 : *g > 255 ? 255 : *g;
+      |                          ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1108:13: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1108 |     *b = *b < 0 ? 0 : *b > 255 ? 255 : *b;
+      |             ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:1108:26: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 1108 |     *b = *b < 0 ? 0 : *b > 255 ? 255 : *b;
+      |                          ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c: At top level:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:618:16: warning: 'cccounts' defined but not used [-Wunused-variable]
+  618 | static uint8_t cccounts = 0;
+      |                ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:617:13: warning: 'one_time_scan_flag' defined but not used [-Wunused-variable]
+  617 | static bool one_time_scan_flag = true;
+      |             ^~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:258:13: warning: 'unbind_cb_2' defined but not used [-Wunused-function]
+  258 | static void unbind_cb_2(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:124:13: warning: 'bind_cb_2' defined but not used [-Wunused-function]
+  124 | static void bind_cb_2(esp_zb_zdp_status_t zdo_status, void *user_ctx)
+      |             ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_zigbee_misc.c:39:16: warning: 'identify_src_sp' defined but not used [-Wunused-variable]
+   39 | static uint8_t identify_src_sp                  = 3;
+      |                ^~~~~~~~~~~~~~~
+[286/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/parson.c.obj
+[287/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/esp_wifi_station.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_station.c:278:9: warning: "IP4_ADDR" redefined
+  278 | #define IP4_ADDR(ipaddr, a, b, c, d) ((ipaddr)->addr = ((uint32_t)(d) << 24) | ((uint32_t)(c) << 16) | ((uint32_t)(b) << 8) | (uint32_t)(a))
+      |         ^~~~~~~~
+In file included from C:/Users/procu/esp/v5.5/esp-idf/components/lwip/lwip/src/include/lwip/ip_addr.h:43,
+                 from C:/Users/procu/esp/v5.5/esp-idf/components/lwip/lwip/src/include/lwip/sockets.h:50,
+                 from C:/Users/procu/esp/v5.5/esp-idf/components/lwip/include/lwip/sockets.h:8,
+                 from C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_station.c:33:
+C:/Users/procu/esp/v5.5/esp-idf/components/lwip/lwip/src/include/lwip/ip4_addr.h:104:9: note: this is the location of the previous definition
+  104 | #define IP4_ADDR(ipaddr, a,b,c,d)  (ipaddr)->addr = PP_HTONL(LWIP_MAKEU32(a,b,c,d))
+      |         ^~~~~~~~
+[288/318] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index_curtain.html.S.obj
+[289/318] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index_dali_master.html.S.obj
+[290/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/nuos_zigbee_scene_commands.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c: In function 'control_zb_devices':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c:829:17: warning: unused variable 's_val' [-Wunused-variable]
+  829 |         uint8_t s_val = *(uint8_t*)value;
+      |                 ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c: In function 'zb_get_scene_recall_resp_handler':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c:1864:24: warning: passing argument 1 of 'nuos_set_scene' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 1864 |         nuos_set_scene(message);
+      |                        ^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c:1751:56: note: expected 'esp_zb_zcl_recall_scene_message_t *' {aka 'struct esp_zb_zcl_recall_scene_message_s *'} but argument is of type 'const esp_zb_zcl_recall_scene_message_t *' {aka 'const struct esp_zb_zcl_recall_scene_message_s *'}
+ 1751 | void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
+      |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c: At top level:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/nuos_zigbee_scene_commands.c:31:22: warning: 'scene_queue' defined but not used [-Wunused-variable]
+   31 | static QueueHandle_t scene_queue = NULL;
+      |                      ^~~~~~~~~~~
+[291/318] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/esp_wifi_webserver.c.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: In function 'parse_json':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:986:20: warning: unused variable 's_id' [-Wunused-variable]
+  986 |             cJSON *s_id    = cJSON_GetObjectItem(root, "scene_id");
+      |                    ^~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:1115:17: warning: unused variable 'group' [-Wunused-variable]
+ 1115 |             int group = g_id ? g_id->valueint : 0;
+      |                 ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: In function 'http_get_config_handler':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:1975:10: warning: unused variable 'value_fxn' [-Wunused-variable]
+ 1975 |     char value_fxn[32];
+      |          ^~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: In function 'parse_query_2':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2020:16: warning: return discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2020 |         return response_error_2;
+      |                ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2065:20: warning: return discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2065 |             return response_error_3;
+      |                    ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2141:20: warning: return discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2141 |             return response_error_4;
+      |                    ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2166:16: warning: return discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2166 |         return response_error_1;
+      |                ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2176:20: warning: return discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2176 |             return response_error_3;
+      |                    ^~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2198:17: warning: unused variable 'deviceType' [-Wunused-variable]
+ 2198 |         int32_t deviceType = 0;//daliQueryDeviceType(nodes.addresses[i]);
+      |                 ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2007:9: warning: unused variable 'erase_data' [-Wunused-variable]
+ 2007 |     int erase_data = 0;
+      |         ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2006:13: warning: unused variable 'scene_id' [-Wunused-variable]
+ 2006 |     uint8_t scene_id = 0xff;
+      |             ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2005:10: warning: unused variable 'value_data' [-Wunused-variable]
+ 2005 |     char value_data[32];
+      |          ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: In function 'parse_query':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2296:9: warning: variable 'erase_data' set but not used [-Wunused-but-set-variable]
+ 2296 |     int erase_data = 0;
+      |         ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2295:13: warning: variable 'scene_id' set but not used [-Wunused-but-set-variable]
+ 2295 |     uint8_t scene_id = 0xff;
+      |             ^~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: In function 'http_get_items_handler':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:2595:13: warning: unused variable 'index' [-Wunused-variable]
+ 2595 |         int index = 0;
+      |             ^~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c: At top level:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/esp_wifi_webserver.c:37:12: warning: 'decode_type' defined but not used [-Wunused-variable]
+   37 | static int decode_type                  = 0;
+      |            ^~~~~~~~~~~
+[292/318] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index_dali_scn.html.S.obj
+[293/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/DALI.cpp.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DALI.cpp:46:45: warning: ignoring attribute 'section (".iram1.1")' because it conflicts with previous 'section (".iram1.0")' [-Wattributes]
+   46 | void IRAM_ATTR DALI::markBusActivityFromISR()
+      |                                             ^
+In file included from C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DALI.cpp:1:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DALI.h:140:20: note: previous declaration here
+  140 |     void IRAM_ATTR markBusActivityFromISR();
+      |                    ^~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DALI.cpp: In member function 'void DALI::markBusActivityFromISR()':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DALI.cpp:54:9: warning: '++' expression of 'volatile'-qualified type is deprecated [-Wvolatile]
+   54 |         bus_activity_counter++;
+      |         ^~~~~~~~~~~~~~~~~~~~
+[294/318] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index_dali_direct_addr.html.S.obj
+[295/318] Building ASM object esp-idf/main/CMakeFiles/__idf_main.dir/__/__/index_dali_switch.html.S.obj
+[296/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/app_hardware_driver_dali_rgb.cpp.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp: In function 'void nuos_zb_init_hardware()':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:173:9: warning: missing initializer for member 'ledc_timer_config_t::deconfigure' [-Wmissing-field-initializers]
+  173 |         };
+      |         ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:185:13: warning: missing initializer for member 'ledc_channel_config_t::sleep_mode' [-Wmissing-field-initializers]
+  185 |             };
+      |             ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:185:13: warning: missing initializer for member 'ledc_channel_config_t::flags' [-Wmissing-field-initializers]
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp: In function 'void init_rgb_timer()':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:581:5: warning: missing initializer for member 'esp_timer_create_args_t::skip_unhandled_events' [-Wmissing-field-initializers]
+  581 |     };
+      |     ^
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp: In function 'void interpret_frame(uint8_t, uint8_t)':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:604:10: warning: variable 'is_command' set but not used [-Wunused-but-set-variable]
+  604 |     bool is_command = false;
+      |          ^~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp: At global scope:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:1526:17: warning: 'void esp_dali_init_node_task(void*)' defined but not used [-Wunused-function]
+ 1526 |     static void esp_dali_init_node_task(void *pvParameters) {
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:1505:17: warning: 'void esp_dali_commissioning_led_blink_task(void*)' defined but not used [-Wunused-function]
+ 1505 |     static void esp_dali_commissioning_led_blink_task(void *pvParameters){
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:1503:25: warning: 'dali_comm_task_handle' defined but not used [-Wunused-variable]
+ 1503 |     static TaskHandle_t dali_comm_task_handle = NULL;
+      |                         ^~~~~~~~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:142:20: warning: 'last_dali_level' defined but not used [-Wunused-variable]
+  142 |     static uint8_t last_dali_level = 0;
+      |                    ^~~~~~~~~~~~~~~
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/app_hardware_driver_dali_rgb.cpp:30:27: warning: 'rx_group_idle_timer' defined but not used [-Wunused-variable]
+   30 | static esp_timer_handle_t rx_group_idle_timer;
+      |                           ^~~~~~~~~~~~~~~~~~~
+[297/318] Linking C static library esp-idf\cmock\libcmock.a
+[298/318] Linking C static library esp-idf\app_trace\libapp_trace.a
+[299/318] Linking C static library esp-idf\esp_driver_cam\libesp_driver_cam.a
+[300/318] Linking C static library esp-idf\esp_hid\libesp_hid.a
+[301/318] Linking C static library esp-idf\esp_lcd\libesp_lcd.a
+[302/318] Linking C static library esp-idf\esp_local_ctrl\libesp_local_ctrl.a
+[303/318] Linking C static library esp-idf\espcoredump\libespcoredump.a
+[304/318] Linking C static library esp-idf\esp_eth\libesp_eth.a
+[305/318] Linking C static library esp-idf\fatfs\libfatfs.a
+[306/318] Linking C static library esp-idf\mqtt\libmqtt.a
+[307/318] Linking C static library esp-idf\nvs_sec_provider\libnvs_sec_provider.a
+[308/318] Linking C static library esp-idf\rt\librt.a
+[309/318] Linking C static library esp-idf\spiffs\libspiffs.a
+[310/318] Linking C static library esp-idf\wifi_provisioning\libwifi_provisioning.a
+[311/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/DaliCommands.cpp.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DaliCommands.cpp: In member function 'bool DaliCommands::set_rgb_3X(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, bool)':
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/DaliCommands.cpp:403:13: warning: unused variable 'retryCount' [-Wunused-variable]
+  403 |     uint8_t retryCount = 0;
+      |             ^~~~~~~~~~
+[312/318] Building CXX object esp-idf/main/CMakeFiles/__idf_main.dir/dali_receiver.cpp.obj
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/dali_receiver.cpp:241:48: warning: ignoring attribute 'section (".iram1.6")' because it conflicts with previous 'section (".iram1.2")' [-Wattributes]
+  241 | void IRAM_ATTR Receiver::handle_pin_change_isr() {
+      |                                                ^
+In file included from C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/dali_receiver.cpp:3:
+C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/main/dali_receiver.h:63:20: note: previous declaration here
+   63 |     void IRAM_ATTR handle_pin_change_isr();
+      |                    ^~~~~~~~~~~~~~~~~~~~~
+[313/318] Linking C static library esp-idf\main\libmain.a
+[314/318] Generating esp-idf/esp_system/ld/sections.ld
+[315/318] Building C object CMakeFiles/on_off_light_bulb.elf.dir/project_elf_src_esp32c6.c.obj
+[316/318] Linking CXX executable on_off_light_bulb.elf
+[317/318] Generating binary image from built executable
+esptool.py v4.10.dev2
+Creating esp32c6 image...
+Merged 1 ELF section
+Successfully created esp32c6 image.
+Generated C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/on_off_light_bulb.bin
+[318/318] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\esp\esp-zigbee-sdk\examples\esp_zigbee_HA_sample\NUOS_HA_Zigbee_Controller_Code\build\esp-idf\esptool_py && C:\Users\procu\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe C:/Users/procu/esp/v5.5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/partition_table/partition-table.bin C:/esp/esp-zigbee-sdk/examples/esp_zigbee_HA_sample/NUOS_HA_Zigbee_Controller_Code/build/on_off_light_bulb.bin"
+on_off_light_bulb.bin binary size 0x167f60 bytes. Smallest app partition is 0x1e0000 bytes. 0x780a0 bytes (25%) free.

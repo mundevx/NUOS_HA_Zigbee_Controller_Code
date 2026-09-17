@@ -100,6 +100,7 @@ private:
         VERIFY_SHORT_ADDRESS = 0b10111001,
         CONTROL_BROADCAST = 0b11111110,
     };
+
     enum {
         QUERY_DEVICE_TYPE = 0x99,
         QUERY_POWER_ON_LEVEL = 0xA3,
@@ -109,6 +110,7 @@ private:
         QUERY_GROUPS_8_TO_15 = 0xC1,
         QUERY_GEAR_FEATURES = 0xF7,
     } ;
+
 public:
 
     #define IS_INVERTED
@@ -125,11 +127,9 @@ public:
     DALI(gpio_num_t txPin, gpio_num_t rxPin);
     ~DALI();                          // Destructor for cleanup
     void begin(bool* is_isr_handler);
-    
-    bool isShortAddressUsed(uint8_t shortAddr);
-    int getNextFreeShortAddress();
+    void factoryResetDaliDrivers();
     int initNodes(const uint8_t* addresses, uint8_t numAddresses);
-    int commissionNewNodes();
+    int initNodes(uint8_t address);
     void turnOff(uint8_t nodeAddress);
     void setMax(uint8_t nodeAddress);
     void setValue(uint8_t nodeAddress, uint8_t value);
@@ -150,17 +150,16 @@ public:
     void IRAM_ATTR markBusActivityFromISR();
     uint32_t getBusActivityCounter();
     bool isBusIdle();
-    bool sendCommandWithRetry(uint8_t command, uint8_t data, uint8_t* retryCount);
-    
-    bool sendCommandRetryPublic(uint8_t command, uint8_t data, uint8_t* retryCount);
+    bool sendCommandWithRetry(uint8_t command, uint8_t data);
     void daliSetFrameDelay(uint16_t delay_us);
 
     int readExistingDrivers(uint8_t *addressList, int maxDevices);
     bool waitForResponse();
+    int commissionNewNodes();
     bool clearShortAddress(uint8_t shortAddr);
     bool resetDriver(uint8_t shortAddr);
     void sendData(uint8_t value);
-    void sendBit(bool bit);
+
     int32_t queryGear(uint8_t shortAddr, uint8_t query_cmd);
     int waitForResponseValue(uint8_t *outputByte);
     int32_t queryPowerOnLevel(uint8_t shortAddr);
@@ -170,28 +169,29 @@ public:
     int32_t queryDeviceInGroupA(uint8_t shortAddr);
     int32_t queryDeviceInGroupB(uint8_t shortAddr);
     int32_t queryGearFeatures(uint8_t shortAddr);
+    int getNextFreeShortAddress();
+    bool isShortAddressUsed(uint8_t shortAddr);
 private:
     volatile bool tx_in_progress_ = false;
     bool sendZero(void);
     bool sendOne(void);
-
-    void sendZeroNormal(void);
-    void sendOneNormal(void);
-
     void releaseBus();
     // bool sendCommand32WithRetry(uint8_t command1, uint8_t data1,
     //                             uint8_t command2, uint8_t data2);
     bool sendCommand32Raw(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);                            
 
     bool sendCommand(uint8_t command, uint8_t data);
-    void sendCommandNormal(uint8_t command, uint8_t data);
-    bool sendCommandRetry(uint8_t command, uint8_t data, uint8_t* retryCount);
     bool sendCommand32(uint8_t command1, uint8_t data1, uint8_t command2, uint8_t data2);
     bool sendSearchAddr(uint32_t addr);
     bool sendProgramShortAddr(uint8_t nodeNumber);
     void withdrawNode(uint32_t addr);
 
-    
+    void sendZeroNormal(void);
+    void sendOneNormal(void);
+    void sendBit(bool bit);
+
+    void sendCommandNormal(uint8_t command, uint8_t data);
+
     bool waitBusIdleStable(uint32_t stable_us, uint32_t timeout_us);
     volatile bool bus_busy_ = false;
     volatile int64_t last_bus_activity_us_ = 0;
@@ -202,7 +202,7 @@ private:
     static constexpr uint32_t DALI_FRAME_BITS = 17;                    // 1 start + 16 data
     static constexpr uint32_t DALI_FORWARD_FRAME_US = DALI_FRAME_BITS * DALI_BIT_US; // ~14144 us
     static constexpr uint32_t DALI_POST_TX_IDLE_US = 3700;             // your existing stop/settle
-    static constexpr uint32_t DALI_COMPLETE_FRAME_US = DALI_FORWARD_FRAME_US + DALI_POST_TX_IDLE_US;  //17844
+    static constexpr uint32_t DALI_COMPLETE_FRAME_US = DALI_FORWARD_FRAME_US + DALI_POST_TX_IDLE_US;
     static constexpr uint32_t DALI_BUS_IDLE_MIN_US = 5000;             // choose 9TE or your required value
     
     bool sendCommandRaw(uint8_t command, uint8_t data);       // add this

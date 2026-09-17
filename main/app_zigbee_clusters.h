@@ -1,7 +1,6 @@
 #ifndef _APP_ZIGBEE_CLUSTER_H_
 #define _APP_ZIGBEE_CLUSTER_H_
     #include "ha/esp_zigbee_ha_standard.h"
-    #include "app_zigbee_query_nodes.h"
     #include "app_zigbee_misc.h"
     extern esp_err_t nuos_driver_init(void);
     extern esp_zb_ep_list_t * nuos_init_zb_clusters();

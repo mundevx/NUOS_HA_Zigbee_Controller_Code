@@ -11,9 +11,17 @@
 
 
 #define DELAY_COMMAND_SEND                  50
-#define MAX_RETRIES_CCT_SENDING_FAILED      10
+// CHANGED: was 50. set_color_temperature()/set_color_rgb() wrap set_color_temp()/set_rgb_3()
+// in this outer retry, but each frame those send already retries internally for up to
+// DALI_RETRY_COUNTS(50) x ~17.8ms (~890ms) inside DALI::sendCommand waiting for the bus to
+// go idle - and set_color_temp()/set_rgb_3() bail out on the very first frame that fails.
+// So a busy bus made the whole multi-frame op retry up to 50 x ~890ms =~ 45s, synchronously
+// on the worker task that also drains the button queue - seen as button presses "hanging".
+// The inner retry already provides the real resilience; this outer layer only needs to
+// absorb an occasional one-off glitch.
+#define MAX_RETRIES_CCT_SENDING_FAILED      50
 
-//extern void switch_driver_gpios_intr_enabled(bool enabled);
+bool on_scene_attribute_reporting_cb_flag = false;
 
 bool group_state = false;
 struct DaliMessage {
@@ -115,6 +123,7 @@ void DaliCommands::begin_rx(bool* is_isr, QueueHandle_t rxFrameQueue) {
 void DaliCommands::dali_rx_intr_enabled(bool enabled)
 {
     receiver.dali_rx_intr_enabled(enabled);
+
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Basic Control Functions
@@ -168,7 +177,6 @@ bool DaliCommands::send_command_special(uint8_t opcode, uint8_t address) {
     
 }
 
-
 bool DaliCommands::send_command_standard(uint8_t opcode, uint8_t address) {
     // Get the upper bit
     uint8_t mask = address & 0x80;
@@ -178,28 +186,9 @@ bool DaliCommands::send_command_standard(uint8_t opcode, uint8_t address) {
     return daliCore.sendCommandPublic(new_address, opcode);
 }
 
-bool DaliCommands::send_command_special_ret_retry(uint8_t opcode, uint8_t address, uint8_t* retryCount) {
-    
-    return daliCore.sendCommandRetryPublic(opcode, address, retryCount);
-    
-}
-
-
-bool DaliCommands::send_command_standard_ret_retry(uint8_t opcode, uint8_t address, uint8_t* retryCount ) {
-    // Get the upper bit
-    uint8_t mask = address & 0x80;
-    // Change address to have 1 in LSb to signify 'standard command'
-    uint8_t new_address = mask | ((address << 1) + 1);
-    
-    return daliCore.sendCommandRetryPublic(new_address, opcode, retryCount);
-}
-
 bool DaliCommands::send_command_special_normal(uint8_t opcode, uint8_t address) {
-    
-    return daliCore.sendCommandNormalPublic(opcode, address);
-    
+    return daliCore.sendCommandNormalPublic(opcode, address);   
 }
-
 
 bool DaliCommands::send_command_standard_normal(uint8_t opcode, uint8_t address) {
     // Get the upper bit
@@ -216,7 +205,90 @@ void DaliCommands::send_command_special32(uint8_t opcode1, uint8_t address1,
     daliCore.sendCommandPublic32(opcode1, address1, opcode2, address2);   
 }
 
+// void DaliCommands::send_command_standard32(uint8_t opcode1, uint8_t address1,
+//                                            uint8_t opcode2, uint8_t address2) {
+    
+//     // Get the upper bit for address 1
+//     uint8_t mask1 = address1 & 0x80;
+//     uint8_t new_address1 = mask1 | ((address1 << 1) + 1);
+   
+//     // Get the upper bit for address 2
+//     uint8_t mask2 = address2 & 0x80;
+//     uint8_t new_address2 = mask2 | ((address2 << 1) + 1);
+   
+//     daliCore.sendCommandPublic32(new_address1, opcode1, new_address2, opcode2);
+// }
 
+// void DaliCommands::send_command_special_standard32(uint8_t opcode1, uint8_t address1,
+//                                            uint8_t opcode2, uint8_t address2) {
+    
+//     // Get the upper bit for address 1
+//     uint8_t mask2 = address2 & 0x80;
+//     uint8_t new_address2 = mask2 | ((address2 << 1) + 1);
+   
+
+//     daliCore.sendCommandPublic32(opcode1, address1, new_address2, opcode2);
+// }
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Color Temperature Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
+//     // Calculate Mirek from Kelvin
+//     if(kelvin == 0) return false;
+
+//     uint16_t mirek = 1000000 / kelvin;
+//     uint8_t dtr0 = (uint8_t)(mirek & 0x00FF);
+//     uint8_t dtr1 = (uint8_t)((mirek >> 8) & 0x00FF);
+
+//     // Set temperature
+//     bool result1 = send_command_special(SET_DTR0, dtr0);
+//     if(result1) {
+//         printf("DTR0 set to %d\n", dtr0);
+//     } else {
+//         printf("Failed to set DTR0\n");
+//     }
+//     bool result2 = send_command_special(SET_DTR1, dtr1);
+//     if(result2) {
+//         printf("DTR1 set to %d\n", dtr1);
+//     } else {
+//         printf("Failed to set DTR1\n");
+//     }
+//      // Lock DT8 sequence for the whole bus
+//     //xSemaphoreTake(s_dali_dt8_mutex, portMAX_DELAY);
+//     // Enable device type 8
+//     bool result3 = send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+//     if(result3) {
+//         printf("Device type 8 enabled\n");
+//     } else {
+//         printf("Failed to enable device type 8\n");
+//     }
+//     // Set the temporary color to the temperature
+//     bool result4 = send_command_standard(SET_COLOR_TEMP, addr);
+//     if(result4) {
+//         printf("Color temperature set\n");
+//     } else {
+//         printf("Failed to set color temperature\n");
+//     }
+
+//     //send_command_special(ENABLE_DEVICE_TYPE, 0x08);
+//     bool result5 = send_command_standard(COLOR_ACTIVATE, addr);
+//     if(result5) {
+//         printf("Color activated\n");
+//     } else {
+//         printf("Failed to activate color\n");
+//     }
+//     // Release DT8 bus lock
+//     //xSemaphoreGive(s_dali_dt8_mutex);
+//     if(!result1 || !result2 || !result3 || !result4 || !result5) {
+//         return false;
+//     }
+//     return true;
+// }
+// void DaliCommands::send_command_activate_color(uint8_t addr){
+//     send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);    
+//     send_command_standard_normal(COLOR_ACTIVATE, addr);  
+// }
 bool DaliCommands::set_color_temp_normal(uint8_t addr, uint16_t kelvin) {
     if (kelvin == 0) return false;
  
@@ -230,177 +302,131 @@ bool DaliCommands::set_color_temp_normal(uint8_t addr, uint16_t kelvin) {
     send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard_normal(SET_COLOR_TEMP, addr);        // FIX #2 via send_command_standard
    
-    // send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);    
-    // send_command_standard_normal(COLOR_ACTIVATE, addr);     // FIX #2 via send_command_standard
+    send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);    
+    send_command_standard_normal(COLOR_ACTIVATE, addr);     // FIX #2 via send_command_standard
 
     return true;
 }
 
-bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin) {
-    if (kelvin == 0) return false;
- 
-    uint16_t mirek = 1000000UL / kelvin;
-    uint8_t  dtr0  = mirek & 0xFF;
-    uint8_t  dtr1  = (mirek >> 8) & 0xFF;
+bool DaliCommands::set_color_temp(uint8_t addr, uint16_t kelvin)
+{
+    uint16_t mirek = 1000000 / kelvin;
+    uint8_t dtr0 = mirek & 0xFF;
+    uint8_t dtr1 = (mirek >> 8) & 0xFF;
+    uint32_t start_cnt = daliCore.getBusActivityCounter();
+    if (!send_command_special(SET_DTR0, dtr0))
+        return false;
 
-    uint8_t retryCount = 0;
-    if (!send_command_special_ret_retry(SET_DTR0, dtr0, &retryCount))              return false;
-    if (!send_command_special_ret_retry(SET_DTR1, dtr1, &retryCount))              return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    if (!send_command_special(SET_DTR1, dtr1))
+        return false;
+
+    if (!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
+        return false;
+
+    if (!send_command_standard(SET_COLOR_TEMP, addr))
+        return false;
+
+    if (!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
+        return false;
+
+    if (!send_command_standard(COLOR_ACTIVATE, addr))
+        return false;
+    uint32_t end_cnt = daliCore.getBusActivityCounter();
+
+    // Only our own 5 frames should have occurred
+    // if ((end_cnt - start_cnt) > 5)
+    if ((end_cnt - start_cnt) > 15)
+    {
+        printf("DT8 transaction corrupted by another master\n");
         return false;
     }
-    if (!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))    return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }
-    if (!send_command_standard_ret_retry(SET_COLOR_TEMP, addr, &retryCount))       return false;  // FIX #2 via send_command_standard
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }    
-    if (!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))    return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }    
-    if (!send_command_standard_ret_retry(COLOR_ACTIVATE, addr, &retryCount))       return false;  // FIX #2 via send_command_standard
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }
- 
-    ESP_LOGD(TAG, "set_color_temp: OK addr=0x%02X kelvin=%u mirek=%u", addr, kelvin, mirek);
+    printf("DT8 transaction completed successfully\n");
     return true;
 }
- 
-void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp) {
-    // 1. Guard against 0 or invalid temperature to prevent useless retries
-    if (temp == 0) {
-        ESP_LOGW(TAG, "set_color_temperature: temp is 0, aborting");
-        return;
-    }
 
-    // 2. Reduce retry limit (e.g., 3-5 retries instead of 50)
 
-    for (int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++) {
-        if (set_color_temp(addr, temp)){
-            return;
-        } 
-        //uint32_t delay_ms = 500 + (esp_random() % 1000);
-        uint32_t delay_ms = 100 + (esp_random() % 100);
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
-    ESP_LOGE(TAG, "set_color_temperature: failed after %d retries addr=0x%02X temp=%u",
-             MAX_RETRIES_CCT_SENDING_FAILED, addr, temp);          
+void DaliCommands::set_color_temperature(uint8_t addr, uint16_t temp)
+{
+    // if(on_scene_attribute_reporting_cb_flag){
+    //     on_scene_attribute_reporting_cb_flag = false;
+    //     for(int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++)
+    //     {
+    //         if(set_color_temp(addr, temp))
+    //             return;
+    //         // random backoff
+    //         uint32_t delay_ms = 10 + (esp_random() % 20);
+    //         vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    //     }
+    // }else{
+        set_color_temp_normal(addr, temp);
+    // }
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // RGB Color Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool DaliCommands::set_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
-    uint8_t retryCount = 0;
+    // Set RGB
+    if(!send_command_special(SET_DTR0, r))
+        return false;
+    if(!send_command_special(SET_DTR1, g))
+        return false;
+    if(!send_command_special(SET_DTR2, b))
+        return false;
 
-    if(r==0xff) r = 0xfe;
-    if(g==0xff) g = 0xfe;
-    if(b==0xff) b = 0xfe;
-
-    if (!send_command_special_ret_retry(SET_DTR0, r, &retryCount))              return false;
-    if (!send_command_special_ret_retry(SET_DTR1, g, &retryCount))              return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    // Enable device type 8
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
-    }
-    if (!send_command_special_ret_retry(SET_DTR2, b, &retryCount))              return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    if(!send_command_standard(SET_TEMP_RGB_DIM, addr))
         return false;
-    }
-    if (!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))    return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+        
+    // Enable device type 8
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
-    }
-    if (!send_command_standard_ret_retry(SET_TEMP_RGB_DIM, addr, &retryCount))       return false;  // FIX #2 via send_command_standard
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    // Enable device type 8
+    if(!send_command_standard(COLOR_ACTIVATE, addr))
         return false;
-    }    
-    if (!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))    return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }    
-    if (!send_command_standard_ret_retry(COLOR_ACTIVATE, addr, &retryCount))       return false;  // FIX #2 via send_command_standard
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
-        return false;
-    }
 
     return true;
 }
 
 bool DaliCommands::set_rgb_3(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
-    uint8_t retryCount = 0;
-
-    if(r==0xff) r = 0xfe;
-    if(g==0xff) g = 0xfe;
-    if(b==0xff) b = 0xfe;
-
+   
     // Set RGB
-    if (!send_command_special_ret_retry(SET_DTR0, r, &retryCount))              return false;
-    if (!send_command_special_ret_retry(SET_DTR1, g, &retryCount))              return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    if(!send_command_special(SET_DTR0, r))
         return false;
-    }
-    if (!send_command_special_ret_retry(SET_DTR2, b, &retryCount))              return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    if(!send_command_special(SET_DTR1, g))
         return false;
-    }
+    if(!send_command_special(SET_DTR2, b))
+        return false;
 
-    if (!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))    return false;
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    // Enable device type 8
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
-    }
-    if (!send_command_standard_ret_retry(SET_TEMP_RGB_DIM, addr, &retryCount))       return false;  // FIX #2 via send_command_standard
-    if(retryCount > 1) {
-        ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+    if(!send_command_standard(SET_TEMP_RGB_DIM, addr))
         return false;
-    }  
     if(mode_change_flag){
-        if (!send_command_special_ret_retry(SET_DTR0, 0, &retryCount))              return false;
-        if(retryCount > 1) {
-            ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+        if(!send_command_special(SET_DTR0, 0))
+        return false;
+        if(!send_command_special(SET_DTR1, 0))
             return false;
-        }
-        if (!send_command_special_ret_retry(SET_DTR1, 0, &retryCount))              return false;
-        if(retryCount > 1) {
-            ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+        if(!send_command_special(SET_DTR2, 0))
             return false;
-        }
-        if (!send_command_special_ret_retry(SET_DTR2, 0, &retryCount))              return false;
-        if(retryCount > 1) {
-            ESP_LOGW(TAG, "set_color_temp: had to retry DTR commands %d times", retryCount);
+        if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
             return false;
-        }
-        if(!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))
+        if(!send_command_standard(SET_TEMP_WAF_DIM, addr))
             return false;
-        if(!send_command_standard_ret_retry(SET_TEMP_WAF_DIM, addr, &retryCount))
-            return false;
-    }
-    if(!send_command_special_ret_retry(ENABLE_DEVICE_TYPE, 0x08, &retryCount))
+    }   
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
         // Enable device type 8
-    if(!send_command_standard_ret_retry(COLOR_ACTIVATE, addr, &retryCount))
+    if(!send_command_standard(COLOR_ACTIVATE, addr))
         return false;
 
     return true;
 }
+
 bool DaliCommands::set_rgb_3X(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     uint8_t retryCount = 0;
 
@@ -411,12 +437,12 @@ bool DaliCommands::set_rgb_3X(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uin
     // Set RGB
     send_command_special_normal(SET_DTR0, r);
     send_command_special_normal(SET_DTR1, g);
-
     send_command_special_normal(SET_DTR2, b);
 
     send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard_normal(SET_TEMP_RGB_DIM, addr);
     if(mode_change_flag){
+        mode_change_flag = false;
         send_command_special_normal(SET_DTR0, 0);
         send_command_special_normal(SET_DTR1, 0);
         send_command_special_normal(SET_DTR2, 0);
@@ -429,6 +455,7 @@ bool DaliCommands::set_rgb_3X(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uin
 
     return true;
 }
+
 void DaliCommands::set_rgb_32(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim) {
     
     // Set RGB using 32-bit command
@@ -443,24 +470,24 @@ void DaliCommands::set_rgb_32(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uin
 bool DaliCommands::set_off_waf_channels(uint8_t addr) {
     
     // Set dim to 0 for WAF channels
-    if(!send_command_special_normal(SET_DTR0, 0))  // w
+    if(!send_command_special(SET_DTR0, 0))  // w
         return false;
-    if(!send_command_special_normal(SET_DTR1, 0))  // a
+    if(!send_command_special(SET_DTR1, 0))  // a
         return false;
-    if(!send_command_special_normal(SET_DTR2, 0))  // f
+    if(!send_command_special(SET_DTR2, 0))  // f
         return false;
    
     // Enable device type 8
-    if(!send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08))
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
-    if(!send_command_standard_normal(SET_TEMP_WAF_DIM, addr))
+    if(!send_command_standard(SET_TEMP_WAF_DIM, addr))
         return false;
 
     //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, SET_TEMP_WAF_DIM, addr);
 
-    if(!send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08))
+    if(!send_command_special(ENABLE_DEVICE_TYPE, 0x08))
         return false;
-    if(!send_command_standard_normal(COLOR_ACTIVATE, addr))
+    if(!send_command_standard(COLOR_ACTIVATE, addr))
         return false;
 
     return true;
@@ -545,28 +572,32 @@ void DaliCommands::set_cct_dimming(uint8_t addr, uint8_t dim) {
 
 void DaliCommands::set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
-    for(int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++)
-    {
-        if(set_rgb_3(addr, r, g, b, dim, mode_change_flag))
-            return;
+    // if(on_scene_attribute_reporting_cb_flag){
+    //     on_scene_attribute_reporting_cb_flag = false;
+    //     for(int retry = 0; retry < MAX_RETRIES_CCT_SENDING_FAILED; retry++){
+    //         if(set_rgb_3(addr, r, g, b, dim, mode_change_flag))
+    //             return;
+    //         // random backoff
+    //         uint32_t delay_ms = 20 + (esp_random() % 100);
 
-        // random backoff
-        uint32_t delay_ms = 100 + (esp_random() % 500);
-
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
+    //         vTaskDelay(pdMS_TO_TICKS(delay_ms));
+    //     }
+    // }else{
+        set_rgb_3X(addr, r, g, b, dim, mode_change_flag);
+    // }
+    
+   
 }
 
 void DaliCommands::set_color_rgb_2(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
-    set_rgb_3(addr, r, g, b, dim, mode_change_flag);
-   
-    // Enable device type 8
-    send_command_special(ENABLE_DEVICE_TYPE, 0x08);
-    send_command_standard(COLOR_ACTIVATE, addr);
-
-    //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, COLOR_ACTIVATE, addr);
-
+    // if(on_scene_attribute_reporting_cb_flag){
+    //     on_scene_attribute_reporting_cb_flag = false;
+    //     set_rgb_3(addr, r, g, b, dim, mode_change_flag);
+    // }else{
+        set_rgb_3X(addr, r, g, b, dim, mode_change_flag);
+    // }
+    
 }
 
 void DaliCommands::set_color_rgb_WAF(uint8_t addr, uint8_t dim) {
@@ -575,6 +606,7 @@ void DaliCommands::set_color_rgb_WAF(uint8_t addr, uint8_t dim) {
     // Enable device type 8
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
+   //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, COLOR_ACTIVATE, addr); 
 }
 
 void DaliCommands::set_color_cct_waf_dim(uint8_t addr, uint8_t dim) {
@@ -651,9 +683,9 @@ void DaliCommands::set_fade_rate(uint8_t addr, uint8_t rate)
     
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, rate);
-    //vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
-    //vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
     send_command_standard(SET_FADE_RATE, addr);
     
@@ -689,9 +721,9 @@ bool DaliCommands::add_to_group(uint8_t addr, uint8_t group)
     
     // Send the command to add to group
     send_command_standard(ADD_TO_GROUP + group, addr);
-    //vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(ADD_TO_GROUP + group, addr);
-    //vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     
     return true;
 }
@@ -701,9 +733,9 @@ void DaliCommands::remove_from_group(uint8_t addr, uint8_t group)
     
     // Send the command to remove from group
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-    //vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-    //vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     
 }
 
@@ -737,6 +769,7 @@ void DaliCommands::set_group_power_on_level(uint8_t addr, uint8_t power_on_level
 
 void DaliCommands::set_group_off(uint8_t group_id)
 {
+    //daliCore.sendCommandPublic(0x80 | (group_id << 1), 0x00);
     send_command_standard(OFF, group_id | (1<<7));
     send_command_standard(OFF, group_id | (1<<7));
     group_state = 0;
@@ -759,14 +792,8 @@ uint8_t DaliCommands::get_group_addr(uint8_t group_id)
 
 void DaliCommands::set_group_level(uint8_t group_id, uint8_t value){
     daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
-    daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
+    // daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
 }
-
-void DaliCommands::set_group_level_normal(uint8_t group_id, uint8_t value){
-    daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
-    daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
-}
-
 
 void DaliCommands::set_group_color_cct(uint8_t group_id, uint16_t color_temp_kelvin){
     uint8_t group_addr = group_id | (1<<7);
@@ -784,34 +811,45 @@ void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, u
     if((r==0) && (g==0) && (b==0)) {
         if(group_state) set_group_off(group_id);
     }else {
+        printf("==> R:%d G:%d B:%d dim:%d mode:%d\n",r,g,b, dim, mode_change_flag);
         set_color_rgb(group_addr, r, g, b, dim, mode_change_flag);      
     }
-}
-void DaliCommands::set_group_color_rgb_normal(uint8_t group_id, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag){
-    
-    uint8_t group_addr = group_id | (1<<7);
-    set_rgb_3X(group_addr, r, g, b, dim, mode_change_flag);      
 }
 
 void DaliCommands::set_broadcast_level(uint8_t value){
     daliCore.sendCommandPublic(0xFE, value);
 }
 
-void DaliCommands::set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag){
-   
-    
+void DaliCommands::set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim){
+
+
     if((r==0) & (g==0) & (b==0)) {
         send_broadcast(OFF_C);
         group_state = false;
     }else {
-       // set_color_rgb(0xff, r, g, b, dim, true);
-        set_rgb_3X(0xff, r, g, b, dim, mode_change_flag); 
-        // if(!group_state) {
-        //     group_state = true;
-        //     send_broadcast(ON_C);
-        // }        
+        set_color_rgb(0xff, r, g, b, dim, true);
+        if(!group_state) {
+            group_state = true;
+            send_broadcast(ON_C);
+        }
     }
-    
+
+}
+
+void DaliCommands::set_broadcast_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag){
+
+
+    if((r==0) & (g==0) & (b==0)) {
+        send_broadcast(OFF_C);
+        group_state = false;
+    }else {
+        set_color_rgb(0xff, r, g, b, dim, mode_change_flag);
+        if(!group_state) {
+            group_state = true;
+            send_broadcast(ON_C);
+        }
+    }
+
 }
 
 void DaliCommands::set_broadcast_color_rgb_2(uint8_t r, uint8_t g, uint8_t b, uint8_t dim){
@@ -855,11 +893,21 @@ void DaliCommands::set_level_scene(uint8_t addr, uint8_t scene , uint8_t scene_l
     
 }
 
-void DaliCommands::set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t temp)
+void DaliCommands::set_color_scene(uint8_t addr, uint8_t scene, uint8_t scene_level , uint16_t kelvin)
 {
-    set_color_temp_normal(addr, temp);    
+   
+ 
+    uint16_t mirek = 1000000 / kelvin;
+    uint8_t dtr0 = (uint8_t)(mirek & 0x00FF);
+    uint8_t dtr1 = (uint8_t)((mirek >> 8) & 0x00FF);
+
+    send_command_special_normal(SET_DTR0, dtr0);      
+    send_command_special_normal(SET_DTR1, dtr1);         
+
+    send_command_special_normal(ENABLE_DEVICE_TYPE, 0x08);
+    send_command_standard_normal(SET_COLOR_TEMP, addr);        // FIX #2 via send_command_standard
+   
     daliCore.sendCommandPublic(SET_DTR0, scene_level);
-    //set_dim_value(addr, scene_level);
     // Store what is in the temperorary color as scene color and also scene level to DTR0
     send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
     send_command_standard(STORE_DTR_AS_SCENE + scene, addr);
@@ -913,6 +961,11 @@ void DaliCommands:: send_broadcast(uint8_t status){
     
 }
 
+void DaliCommands::factoryResetDaliDrivers(){
+
+    daliCore.factoryResetDaliDrivers();
+}
+
 int DaliCommands::initNodes(const uint8_t* addresses, uint8_t numAddresses)
 {
 return daliCore.initNodes(addresses, numAddresses);
@@ -921,6 +974,7 @@ return daliCore.initNodes(addresses, numAddresses);
 int DaliCommands::commissionNewNodes(){
     return daliCore.commissionNewNodes();
 }
+
 int DaliCommands::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses)
 {
 return daliCore.scanAssignedShortAddresses(foundAddresses, maxAddresses);
@@ -956,8 +1010,11 @@ void DaliCommands::query(uint8_t shortAddress, uint8_t queryCommand) {
     // receiver.set_query_mode(true);  
     // enableRxInterrupt(); 
     // vTaskDelay(50 / portTICK_PERIOD_MS);
-    // receiver.set_query_mode(false);  // Set to 16-bit mode   
+    // receiver.set_query_mode(false);  // Set to 16-bit mode
+    
 }
+
+
 
 
 int DaliCommands::readExistingDrivers(uint8_t *addressList, int maxDevices){
@@ -1002,5 +1059,9 @@ int32_t DaliCommands::queryDeviceInGroupB(uint8_t shortAddr) {
 int32_t DaliCommands::queryGearFeatures(uint8_t shortAddr) {
     return daliCore.queryGear(shortAddr, 0xF7);
 }
+
+
+
+
 
 

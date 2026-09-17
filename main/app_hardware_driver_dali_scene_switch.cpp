@@ -15,7 +15,6 @@
     #include "DALI.h"
     #include "zigbee_2_uart.h" 
     #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
-    #include "esp_wifi_station.h"
     // instantiate global object (adjust constructor args as needed)
     // DALI                                                       dali(gpio_load_pins[1], gpio_load_pins[0]);
     DaliCommands                                               dali(gpio_load_pins[1], gpio_load_pins[0]);
@@ -29,6 +28,7 @@
     extern "C" bool nuos_check_state_touch_leds();
     // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_);
     int start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
+    void esp_dali_factory_reset_all_drivers();
 
     #define LEDC_TIMER              		                    LEDC_TIMER_0
     #define LEDC_MODE               		                    LEDC_LOW_SPEED_MODE
@@ -301,8 +301,7 @@ static void receiveDaliFrame(void *arg) {
                     #endif
 
                     //printf("Recall DALI Scene (Broadcast) :%d\n", scene_group_switch_info.scene_ids[index]);
-                    dali.go_to_scene(0xff, scene_group_switch_info.scene_ids[index]);  
-                                       
+                    dali.go_to_scene(0xff, scene_group_switch_info.scene_ids[index]);                    
                 } else {
                     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                         ledc_set_duty(LEDC_MODE, pwm_channels[i], 0);            
@@ -500,7 +499,7 @@ static void receiveDaliFrame(void *arg) {
 
     extern "C" void nuos_dali_set_state_group(uint8_t group_id, bool _state) { 
         if(!_state) dali.set_group_off(group_id);
-        else dali.set_group_level_normal(group_id, 254);//dali.set_group_on(group_id);
+        else dali.set_group_level(group_id, 254);//dali.set_group_on(group_id);
     }
 
     extern "C" void nuos_dali_add_device_to_scene(uint8_t device_id, uint8_t scene_id, uint8_t scene_level, uint16_t cct_temp) {
@@ -829,6 +828,9 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
     }    
 }
     int total_nodes_assigned = 0;
+    void esp_dali_factory_reset_all_drivers(){
+        dali.factoryResetDaliDrivers();
+    }
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;
         
@@ -913,7 +915,9 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
         #ifdef USE_WIFI_WEBSERVER
         #ifndef USE_C3_ADAPTER_UART_HW
         vTaskDelay(pdMS_TO_TICKS(200));
+        #ifdef USE_C3_ADAPTER_UART_HW
         wifi_restart();
+        #endif
         vTaskDelay(pdMS_TO_TICKS(500));  // Allow WiFi to stabilize
         #endif
         #endif

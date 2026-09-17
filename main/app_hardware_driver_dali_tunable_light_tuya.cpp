@@ -13,7 +13,6 @@
     #include "driver/ledc.h"
     #include "DaliCommands.h"
     #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
-    #include "esp_wifi_station.h"
 
     
     DaliCommands 										        dali(gpio_load_pins[1], gpio_load_pins[0]);
@@ -676,7 +675,9 @@
         }
         #endif
     }
+    void esp_dali_factory_reset_all_drivers(){
 
+    }
     void set_leds(int i, bool _state_){
         #ifndef USE_TWO_SWITCH_MODE
         if(i == 0){
@@ -1187,7 +1188,7 @@
     extern "C" void nuos_dali_normal_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value) {
         uint8_t val = map_1_255_to_100_255(value);
         // printf("Brightness set to %d\n", val);
-        dali.set_group_level_normal(group_id, val);
+        dali.set_group_level(group_id, val);
     }
         
     void start_dali_led_blink_task(){
@@ -1500,8 +1501,8 @@
             addr = (b1 >> 1) & 0x3F;
             scene = b2 - 0x40;
 
-            // printf("STORE SCENE %d → Device %d  Level=%d Color=%d\n",
-            //     scene, addr, last_dtr0, last_color_dtr0);
+            printf("STORE SCENE %d → Device %d  Level=%d Color=%d\n",
+                scene, addr, last_dtr0, last_color_dtr0);
 
             for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
                 if(addr == scene_group_switch_info.device_ids[0][i]){
@@ -1516,6 +1517,7 @@
                     else scene_group_switch_info.device_state[scene][i]  = true;
                     //printf("============DATA SAVED SUCCESSFULLY============\n");
                     switch_driver_gpios_intr_enabled(false);
+                    
                     dali.dali_rx_intr_enabled(false);
                     nuos_store_dali_scene_switch_data_to_nvs(&scene_group_switch_info);
                     dali.dali_rx_intr_enabled(true);
@@ -1540,7 +1542,7 @@
             //printf("records:%d\n", scene_group_switch_info.total_ids[0]);
             if(scene_group_switch_info.total_ids[0] > 0){
                 for(int j=0; j<scene_group_switch_info.total_ids[0]; j++){
-                    //printf("Device %d found in Records!!\n", scene_group_switch_info.device_ids[0][j]);
+                    printf("Device %d found in Records!!\n", scene_group_switch_info.device_ids[0][j]);
                     if(scene_group_switch_info.device_scene[scene][j] == scene){
                         //printf("Scene %d found in Records!!\n", scene);
                         if(scene_group_switch_info.device_state[scene][j]){
@@ -1560,14 +1562,17 @@
                     nuos_set_state_attribute(0);
                 }else{
                     device_info[0].device_state = true;
-                    device_info[0].device_level = max_level;
-                    device_info[0].device_val = max_cct;
-                    printf("max_level:%d max_cct:%d\n", max_level, max_cct);
-                    #ifndef USE_TWO_SWITCH_MODE
-                    device_info[0].fan_speed = find_closest_index(max_cct);
-                    device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
-                    #endif
-
+                    if(max_level >= 1){
+                        device_info[0].device_level = max_level;
+                        device_info[0].device_val = max_cct;
+                    
+                        printf("max_level:%d max_cct:%d\n", max_level, max_cct);
+                        #ifndef USE_TWO_SWITCH_MODE
+                        device_info[0].fan_speed = find_closest_index(max_cct);
+                        device_info[0].ac_temperature = find_closest_index_2(device_info[0].device_level);
+                        #endif
+                    }
+                    printf("DALI_STATE:%d\n", device_info[0].device_state);
                     if(!device_info[0].device_state) {
                         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
                             #ifndef USE_TWO_SWITCH_MODE

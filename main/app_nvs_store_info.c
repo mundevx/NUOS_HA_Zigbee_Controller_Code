@@ -597,23 +597,10 @@ void nuos_write_default_value(){
 	for(int index=0; index<TOTAL_ENDPOINTS; index++){
         device_info[index].device_state = 1;
         device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
-        #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-        
-        #else
-		device_info[index].light_color_x = 0x2300;
-		device_info[index].light_color_y = 0x9100;
-        #endif
+        device_info[index].light_color_x = 0x2300;
+        device_info[index].light_color_y = 0x9100;
         device_info[index].dim_up = 1;
-        #endif
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
-            device_info[index].device_level = 128;
-            device_info[index].fan_speed = 2; //medium
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)      
-            device_info[index].ac_temperature = 23;
-            device_info[index].ac_decode_type = 16; //15-coolix 
-            device_info[index].ac_mode = 3; //cool
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)  
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             if(index == 3){
                 device_info[index].device_state = 1;
                 device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
@@ -649,7 +636,7 @@ void write_nvs_configuration(){
     #ifdef USE_ZB_ONLY_FAN
         nvs_store_max = TOTAL_ENDPOINTS+1;
     #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         nvs_store_max = TOTAL_BUTTONS;
     #endif
     printf("START\n");
@@ -657,22 +644,10 @@ void write_nvs_configuration(){
         printf("index:%d ", index);
         device_info[index].device_state = 1;
         device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
-        #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-        #else
-		device_info[index].light_color_x = 0;
-		device_info[index].light_color_y = 0;
-        #endif
+        device_info[index].light_color_x = 0;
+        device_info[index].light_color_y = 0;
         device_info[index].dim_up = 1;
-        #endif
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1_LIGHT_1_FAN_CUSTOM)
-            device_info[index].device_level = 128;
-            device_info[index].fan_speed = 2; //medium
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)      
-            device_info[index].ac_temperature = 23;
-            device_info[index].ac_decode_type = 16; //15-coolix 
-            device_info[index].ac_mode = 3; //cool
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)  
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             if(index == 3){
                 device_info[index].device_state = 1;
                 device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
@@ -696,11 +671,7 @@ void write_nvs_configuration(){
         //     wifi_info.is_wifi_sta_mode = 0;
         //     writeEpWifiStruct(&wifi_info);	
         // }
-		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-
-        #else
         //wifi_info.is_wifi_sta_mode = 0;
-        #endif
 		// strcpy(wifi_info.wifi_ssid, "NUOS HOME Automation");
 		// strcpy(wifi_info.wifi_pass, "NUOS@FCSA");
         // wifi_info.ip4 = 119;
@@ -714,9 +685,6 @@ void nuos_enable_ap_mode(){
 }
 
 void nuos_check_nvs_start_commissioning(){
-	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION) 
-		getNVSSensorsCommissioningCounts();
-    #endif
 }
 
 
@@ -860,13 +828,6 @@ void nuos_store_dali_data_to_nvs(uint8_t index){
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-
-#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-#define NVS_KEY_OFFSET "offset_time"
-#define NVS_KEY_CALIBRATION "calibration_time"
-
-
-#endif
 
 void save_nodes_info_to_nvs(uint8_t index) {
     esp_err_t err;
@@ -1239,47 +1200,24 @@ void nuos_get_data_from_nvs() {
     // printf("touchLedsOffAfter1MinuteEnable:%d\n", touchLedsOffAfter1MinuteEnable);
     #ifdef WRITE_NVS_CONFIG
     	write_nvs_configuration();
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-            clear_all_records_in_nvs();
-        #else
             setNVSDaliNodesCommissioningCounts(0);
             for (size_t p = 0; p < 4; p++) {
                 memset(&dali_nvs_stt[p], 0, sizeof(dali_nvs_stt[p]));
                 nuos_store_dali_data_to_nvs(p);
-            }    
-        #endif
+            }
     #endif
     
-	#if( (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI) || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-		
-            
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_GROUP_SWITCH)
-            #ifdef USE_CUSTOM_SCENE
-                for(int index=0; index<TOTAL_ENDPOINTS; index++){
-                    size_t required_length = sizeof(zigbee_zcene_info_t);
-                    readSceneInfoStruct(index, (zigbee_zcene_info_t*)&zb_scene_info[index], &required_length);
-                    
-                    printf("group_id[%d]:%d\n", index, zb_scene_info[index].group_id);
-                    printf("scene_id[%d]:%d\n", index, zb_scene_info[index].scene_id);
-
-                    printf("-----------------------------------\n");                                                 
-                }
-            #endif
-        #else
+	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             // #ifdef USE_WIFI_WEBSERVER
             // nuos_read_wifi_info_data_from_nvs();
             // #endif
-            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_DALI)
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             dali_on_webpage_commissioning_counts = getNVSDaliNodesCommissioningCounts();
             // dali_on_webpage_commissioning_counts = getNVSDaliNodesStartAddrCounts();
-            #ifdef USE_INDIVIDUAL_DALI_ADDRESSING
-            int index=0;    
-            #else
             for(int index=0; index<TOTAL_ENDPOINTS; index++){
-            #endif    
                 size_t required_length = sizeof(dali_device_ids_t);
                 readDaliStruct(index, (dali_device_ids_t*)&dali_nvs_stt[index], &required_length);
-                
+
                 printf("dev_id0:%d\n", dali_nvs_stt[index].device_ids[0]);
                 printf("dev_id1:%d\n", dali_nvs_stt[index].device_ids[1]);
                 printf("dev_id2:%d\n", dali_nvs_stt[index].device_ids[2]);
@@ -1297,26 +1235,22 @@ void nuos_get_data_from_nvs() {
                 }
                 if(dali_nvs_stt[index].selected_scene_id > 254){
                     dali_nvs_stt[index].selected_scene_id = 1;
-                }     
+                }
                 if(dali_nvs_stt[index].scene_id[0] > 254){
                     dali_nvs_stt[index].scene_id[0] = 1;
-                }  
+                }
                 if(dali_nvs_stt[index].total_ids > 254){
                     dali_nvs_stt[index].total_ids = 0;
-                } 
-            #ifndef USE_INDIVIDUAL_DALI_ADDRESSING
+                }
             }
             #endif
-            
-            #endif
-        #endif
 	#endif
 
     uint8_t nvs_store_max = TOTAL_ENDPOINTS;
     #ifdef USE_ZB_ONLY_FAN
         nvs_store_max = TOTAL_ENDPOINTS+1;
     #endif
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX)
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         nvs_store_max = TOTAL_BUTTONS+1;
     #endif
   
@@ -1384,20 +1318,6 @@ void nuos_get_data_from_nvs() {
             if(device_info[index].device_level > 100){
                 device_info[index].device_level = 100;
             }
-            #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN)
-            printf("curtain_motor_start_offset        : %d\n", device_info[index].curtain_motor_start_offset);
-            if(device_info[index].curtain_motor_start_offset > 1000){
-                device_info[index].curtain_motor_start_offset = 0;
-            }
-            
-            printf("curtain_motor_total_time        : %d\n", device_info[index].curtain_motor_total_time);
-            if(device_info[index].curtain_motor_total_time > 120){
-                device_info[index].curtain_motor_total_time = 0;
-            }      
-            if(device_info[index].curtain_state > 2) {
-                device_info[index].curtain_state = 2; //stop
-            }  
-            #endif              
         #elif (USE_ZIGBE_DEVICE_CATEGORY == CATEGORY_ZIGBEE_THERMOSTAT)
         printf("ac_mode             : %d\n", device_info[index].ac_mode);
         printf("ac_decode_type      : %d\n", device_info[index].ac_decode_type);
@@ -1410,7 +1330,7 @@ void nuos_get_data_from_nvs() {
         printf("brightness          : %d\n", device_info[index].device_level);
         printf("color_state         : %d\n", device_info[index].color_or_fan_state);
         printf("color_value         : %d\n", device_info[index].device_val);
-        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DMX || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         printf("color               : %d\n", device_info[index].device_level);
         printf("brightness          : %d\n", device_info[index].device_val); 
         #endif                             
@@ -1420,13 +1340,6 @@ void nuos_get_data_from_nvs() {
         if(device_info[0].fan_speed > 1){
             device_info[0].fan_speed = 1;
         }
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION)  
-        read_motion_disable_timeout_value(); 
-        if(pir_motion_disable_timeout_value<60 || pir_motion_disable_timeout_value>900) 
-            pir_motion_disable_timeout_value = 0;
-
-        read_motion_auto_enable_value();
-        
     #else
 
       
@@ -1515,25 +1428,6 @@ void get_nvs_dali_scene_switch_webpage_data(){
 }
 
 void init_nvs_for_zb_devices(){
-    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_GROUP_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_REMOTE_SWITCH)
-
-    memset(existing_nodes_info, 0, sizeof(existing_nodes_info));  
-      
-    for(int i=0; i<TOTAL_ENDPOINTS; i++){
-        load_nodes_info_from_nvs(i);
-        printf("----------->TOTAL_NODES:0x%0x<-------------\n", existing_nodes_info[i].scene_switch_info.total_records); 
-        for(int k=0; k<existing_nodes_info[i].scene_switch_info.total_records; k++){
-            // printf("SHORT_ADDR:0x%0x\n", existing_nodes_info[i].scene_switch_info.dst_node_info[k].short_addr);
-            // printf("NODE_NAME:%s\n", existing_nodes_info[i].scene_switch_info.dst_node_info[k].node_name);
-            // printf("EP_COUNTS:%0d\n", existing_nodes_info[i].scene_switch_info.dst_node_info[k].endpoint_counts);
-            for(int j=0; j<existing_nodes_info[i].scene_switch_info.dst_node_info[k].endpoint_counts; j++){
-                //printf("EP[%d]  NAME = %s IS_BIND = %d\n", existing_nodes_info[i].scene_switch_info.dst_node_info[k].dst_ep_info.ep_data[j].dst_ep, 
-                // (char*)existing_nodes_info[i].scene_switch_info.dst_node_info[k].dst_ep_info.ep_data[j].ep_name,
-                //     existing_nodes_info[i].scene_switch_info.dst_node_info[k].dst_ep_info.ep_data[j].is_bind); 
-            }                   
-        }
-    }        
-#endif 
 }
 
 void nuos_store_dali_scene_switch_data_to_nvs(const void* str_data){
