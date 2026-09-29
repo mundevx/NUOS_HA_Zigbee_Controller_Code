@@ -239,7 +239,7 @@
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 
-        #define DIMMING_STEPS                                           5
+        #define DIMMING_STEPS                                           2
         #define BRIGHTNESS_SET_CHECKER_COUNTS                           2
         #define DIMMING_LAST_REACH_OFFSET                               50
 

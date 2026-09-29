@@ -590,29 +590,76 @@ void rgb565_to_rgb(uint16_t rgb565, uint8_t *r, uint8_t *g, uint8_t *b) {
 
 uint8_t dali_rx_selected_color_mode = 1; // 0 for CCT, 1 for RGB
 
-static esp_timer_handle_t rgb_send_timer = NULL;
-SemaphoreHandle_t dali_sem = NULL;
+// static esp_timer_handle_t rgb_send_timer = NULL;
+// SemaphoreHandle_t dali_sem = NULL;
 
-static void rgb_send_timer_cb(void *arg)
-{
-    printf("********************************************\n");
-    xSemaphoreGive(dali_sem);
-}
+// static void rgb_send_timer_cb(void *arg)
+// {
+//     printf("********************************************\n");
+//     xSemaphoreGive(dali_sem);
+// }
 
-void init_rgb_timer(void)
-{
-    dali_sem = xSemaphoreCreateBinary();
-    esp_timer_create_args_t timer_args = {
-        .callback = rgb_send_timer_cb,
-        .arg = NULL,
-        .dispatch_method = ESP_TIMER_TASK,
-        .name = "rgb_send"
-    };
+// void init_rgb_timer(void)
+// {
+//     dali_sem = xSemaphoreCreateBinary();
+//     esp_timer_create_args_t timer_args = {
+//         .callback = rgb_send_timer_cb,
+//         .arg = NULL,
+//         .dispatch_method = ESP_TIMER_TASK,
+//         .name = "rgb_send"
+//     };
 
-    ESP_ERROR_CHECK(
-        esp_timer_create(&timer_args, &rgb_send_timer)
-    );
-}
+//     ESP_ERROR_CHECK(
+//         esp_timer_create(&timer_args, &rgb_send_timer)
+//     );
+// }
+// #define DALI_RX_IDLE_TIMEOUT_US   2000000ULL   // 2 seconds
+
+// static void rgb_send_timer_cb(void *arg)
+// {
+//     printf("DALI RX IDLE -> giving dali_sem\n");
+
+//     if (dali_sem != NULL) {
+//         xSemaphoreGive(dali_sem);
+//     }
+// }
+
+// void init_rgb_timer(void)
+// {
+//     dali_sem = xSemaphoreCreateBinary();
+
+//     if (dali_sem == NULL) {
+//         printf("ERROR: Failed to create dali_sem\n");
+//         return;
+//     }
+
+//     esp_timer_create_args_t timer_args = {
+//         .callback = rgb_send_timer_cb,
+//         .arg = NULL,
+//         .dispatch_method = ESP_TIMER_TASK,
+//         .name = "dali_rx_idle"
+//     };
+
+//     ESP_ERROR_CHECK(
+//         esp_timer_create(&timer_args, &rgb_send_timer)
+//     );
+
+//     /*
+//      * IMPORTANT:
+//      * Start the idle timer immediately.
+//      *
+//      * This handles the case where there is only one RGB device
+//      * and no DALI receiver data is coming back.
+//      */
+//     ESP_ERROR_CHECK(
+//         esp_timer_start_once(
+//             rgb_send_timer,
+//             DALI_RX_IDLE_TIMEOUT_US
+//         )
+//     );
+
+//     printf("DALI RX idle timer started: 2 seconds\n");
+// }
 
 void interpret_frame(uint8_t b1, uint8_t b2)
 {
@@ -632,12 +679,20 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     bool is_short = false;
     bool is_command = false;
 
-        esp_timer_stop(rgb_send_timer);
+        // esp_timer_stop(rgb_send_timer);
 
-        esp_timer_start_once(
-            rgb_send_timer,
-            2000000); // restart 2-second timeout
+        // esp_timer_start_once(
+        //     rgb_send_timer,
+        //     2000000); // restart 2-second timeout
+    // if (rgb_send_timer != NULL) {
 
+    //     esp_timer_stop(rgb_send_timer);
+
+    //     esp_timer_start_once(
+    //         rgb_send_timer,
+    //         DALI_RX_IDLE_TIMEOUT_US
+    //     );
+    // }
     // -------------------------------------------------
     // Decode address / frame type first
     // -------------------------------------------------
@@ -938,8 +993,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
                 #ifdef ENABLE_DALI_RECEIVER
                     dali.begin_rx(&isr_service_installed, rxFrameQueue);  
                     xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL);
-                    //dali_rx_group_timer_init();
-                    init_rgb_timer();
+                    //init_rgb_timer();
                 #endif
                 vTaskDelay(10 / portTICK_PERIOD_MS); 
            // }

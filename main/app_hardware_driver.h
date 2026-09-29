@@ -729,6 +729,7 @@ extern void init_sensor_interrupt();
 #ifdef __cplusplus
 extern "C" {
 #endif
+
     DaliNodeList read_dali_addressed_nodes();
     int32_t daliQueryPowerOnLevel(const uint8_t addr);
     int32_t daliQueryFadeTimeFadeRate(uint8_t addr);

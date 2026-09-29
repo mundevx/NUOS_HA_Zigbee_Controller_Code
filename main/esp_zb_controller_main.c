@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-#include "esp_timer.h"
 #include "esp_system.h"
 #include <esp_zigbee_core.h>
 #include "freertos/FreeRTOS.h"
@@ -30,6 +29,10 @@
 #include "esp_zb_controller_main.h"
 #include "switch_driver.h"
 #include "app_hardware_driver.h"
+
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+extern void nuos_direct_switch_up_down(uint8_t button_id);
+#endif
 #include "app_zigbee_clusters.h"
 #include "esp_netif.h"
 #include "esp_event.h"
@@ -165,7 +168,11 @@ void set_time(int year, int mon, int day, int hour, int min, int sec){
 uint8_t bt_index=255;
 static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 {
-    if (!button_func_pair) return;
+    
+    if (!button_func_pair){
+        printf("Button Fxn pair\n");
+        return;
+    } 
 
     ESP_LOGI("APP",
              "button id=%d pin=%d key=%d func=0x%02X",
@@ -173,7 +180,7 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
         
         gpio_num_t pin = button_func_pair->pin;
         uchKeypressed = button_func_pair->keypressed;
-
+         
     if (button_func_pair->func == SWITCH_ONOFF_TOGGLE_CONTROL) {
         switch(uchKeypressed){
             case SINGLE_PRESS:
@@ -187,11 +194,13 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
                 break;    
         }
     }else if (button_func_pair->func == SWITCH_DIMMING_CONTROL) {
+        //printf("SWITCH_DIMMING_CONTROL\n");
         switch(uchKeypressed){
             case LONG_PRESS:
                 nuos_switch_long_press_task(pin); 
                 break;
             case LONG_PRESS_INC_DEC_LEVEL:
+                //printf("LONG_PRESS_INC_DEC_LEVEL\n");
                 nuos_switch_long_press_brightness_task(pin);
                 break;        
             default: 
@@ -252,74 +261,69 @@ static void zb_buttons_handler(switch_func_pair_t *button_func_pair)
 
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-#ifdef USE_COLOR_CONTROL
+
+/*
+ * Physical panel is COLUMN based:
+ *   TOP-LEFT     button 0 = EP1 ON/OFF + double-click
+ *   BOTTOM-LEFT  button 1 = EP2 ON/OFF + double-click
+ *   TOP-RIGHT    button 2 = EP1 DIM/CCT
+ *   BOTTOM-RIGHT button 3 = EP2 DIM/CCT
+ *
+ * This table is intentionally NOT conditional on USE_COLOR_CONTROL.
+ * Otherwise the two ON/OFF buttons lose BTN_EVT_DOUBLE and the driver
+ * falls back to single-click timing/lockout, which is exactly what the
+ * runtime log was showing.
+ */
 switch_func_pair_t g_buttons[] = {
+
+    // SW1 - TOP LEFT - EP1 ON/OFF
     {
         .id = 0,
         .pin = gpio_touch_btn_pins[0],
-        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_DOUBLE | BTN_EVT_COMBO_LONG,
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_SCENE_CHANGE_CONTROL,
         .long_func = SWITCH_DIMMING_CONTROL,
         .multi_func = SWITCH_NOTHING_CONTROL,
         .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
     },
+
+    // SW2 - BOTTOM LEFT - EP2 ON/OFF
     {
         .id = 1,
         .pin = gpio_touch_btn_pins[1],
-        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_DOUBLE | BTN_EVT_COMBO_LONG,
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_SCENE_CHANGE_CONTROL,
         .long_func = SWITCH_DIMMING_CONTROL,
         .multi_func = SWITCH_NOTHING_CONTROL,
         .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
     },
+
+    // SW3 - TOP RIGHT - EP1 DIM
     {
         .id = 2,
         .pin = gpio_touch_btn_pins[2],
         .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_NOTHING_CONTROL,
-        .long_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
         .multi_func = SWITCH_NOTHING_CONTROL,
         .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
     },
+
+    // SW4 - BOTTOM RIGHT - EP2 DIM
     {
         .id = 3,
-        .pin = gpio_touch_btn_pins[3] ,
+        .pin = gpio_touch_btn_pins[3],
         .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_NOTHING_CONTROL,
-        .long_func = SWITCH_NOTHING_CONTROL,
+        .long_func = SWITCH_DIMMING_CONTROL,
         .multi_func = SWITCH_NOTHING_CONTROL,
         .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
     }
 };
-#else
-
-switch_func_pair_t g_buttons[] = {
-    {
-        .id = 0,
-        .pin = gpio_touch_btn_pins[0],
-        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
-        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
-        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
-        .long_func = SWITCH_DIMMING_CONTROL,
-        .multi_func = SWITCH_NOTHING_CONTROL,
-        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
-    },
-    {
-        .id = 1,
-        .pin = gpio_touch_btn_pins[1],
-        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
-        .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
-        .double_func = SWITCH_SCENE_CHANGE_CONTROL,
-        .long_func = SWITCH_DIMMING_CONTROL,
-        .multi_func = SWITCH_NOTHING_CONTROL,
-        .combo_long_func = SWITCH_FACTORY_RESET_CONTROL
-    },
-};
-#endif
 #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 switch_func_pair_t g_buttons[] = {
     {
@@ -583,15 +587,11 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "Start network steering...\n");
                 // store "sig"=sig_type of "err"= "Steering" here in nvs
                 #ifdef USE_RGB_LED
-                    // TEMP DIAG: bracket every call between this log line and the panic so
-                    // the next crash tells us exactly which one never returns.
-                    printf("DIAG: before light_driver_set_power t=%lld\n", (long long)esp_timer_get_time());
                     light_driver_set_power(false);
-                    printf("DIAG: after light_driver_set_power t=%lld\n", (long long)esp_timer_get_time());
                     if(start_commissioning>0){
                         printf("Commissioning Flag True\n");
                         //nuos_start_rgb_led_blink_task(0);
-                    }
+                    }                   
                 #endif
                     if(getNVSPanicAttack() > 0){
                         setNVSPanicAttack(0);
@@ -602,16 +602,13 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                             setNVSCommissioningFlag(1);
                             start_commissioning = true;
                             esp_zb_factory_reset();
-                        }
+                        }                   
                     }else{
-                        printf("DIAG: before setNVSPanicAttack(0) t=%lld\n", (long long)esp_timer_get_time());
                         setNVSPanicAttack(0);
-                        printf("DIAG: after setNVSPanicAttack(0) t=%lld\n", (long long)esp_timer_get_time());
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-                        printf("DIAG: after esp_zb_scheduler_alarm t=%lld\n", (long long)esp_timer_get_time());
-                        network_steering_mode_flag = true;
+                        network_steering_mode_flag = true;  
                     }
-
+                    
             } else {
                 ESP_LOGI(TAG, "Device rebooted");
                 ESP_LOGI(TAG, "My Short Address : 0x%x", esp_zb_get_short_address());
@@ -670,21 +667,19 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     //     }
     //     break;
 
-    // case ESP_ZB_BDB_SIGNAL_STEERING:
-    //     is_steering_in_progress = false; // <-- Clear flag here
-    //     if (err_status == ESP_OK) {
-    //         joining_signal_received = true;
-    //         nuos_zb_find_clusters(user_find_cb);
-    //     } else {
-    //         joining_signal_received = false;
-    //         ESP_LOGI(TAG, "Network steering failed (status: %s)", esp_err_to_name(err_status));
-    //         // Retry with backoff only if not already steering
-    //         // esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, 
-    //         //                     ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-    //         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-
-    //     }
-    //     break;
+    case ESP_ZB_BDB_SIGNAL_STEERING:
+        is_steering_in_progress = false; // <-- Clear flag here
+        if (err_status == ESP_OK) {
+            joining_signal_received = true;
+            nuos_zb_find_clusters(user_find_cb);
+        } else {
+            joining_signal_received = false;
+            ESP_LOGI(TAG, "Network steering failed (status: %s)", esp_err_to_name(err_status));
+            // Retry with backoff only if not already steering
+            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, 
+                                ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
+        }
+        break;
 
     case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
         ESP_LOGW(TAG, "Gateway / Parent Device Unavailable!");

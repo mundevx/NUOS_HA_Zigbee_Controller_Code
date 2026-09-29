@@ -666,7 +666,10 @@ esp_err_t nuos_set_store_scene(esp_zb_zcl_store_scene_message_t* message){
         //#endif
     #endif
     scene_counts = 0;
-    if(ep_cnts == 0) return ESP_OK;
+    if(ep_cnts == 0){
+        printf("RETURN OK!!\n");
+        return ESP_OK;
+    }
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
         if(ep_cnts<=TOTAL_ENDPOINTS){
@@ -1432,9 +1435,14 @@ uint32_t get_backoff_time(){
     }
     return backoff;
 }
-extern SemaphoreHandle_t dali_sem;
+// extern SemaphoreHandle_t dali_sem;
 void print_decoded_scene(decoded_scene_t *scene)
 {
+#ifdef USE_COLOR_CONTROL
+    /* Preserve the endpoint selected before a Zigbee scene is applied. */
+    const uint8_t old_selected_endpoint = ep_selected_index;
+#endif
+
     if (!scene)
         return;
 
@@ -1635,8 +1643,14 @@ void print_decoded_scene(decoded_scene_t *scene)
 
             
             printf("index_1:%d state:%d\n", index_1, device_info[index_1].device_state);
-            if(device_info[index_1].device_state){
-                xSemaphoreTake(dali_sem, pdMS_TO_TICKS(1000));
+            // if(device_info[index_1].device_state){
+            //     xSemaphoreTake(dali_sem, pdMS_TO_TICKS(10000));
+            if (device_info[index_1].device_state) {
+                // if (dali_sem != NULL) {
+                //     if (xSemaphoreTake(dali_sem, pdMS_TO_TICKS(3000)) != pdTRUE) {
+                //         printf("WARNING: DALI RX idle timeout - continuing anyway\n");
+                //     }
+                // }
                 printf("====COLOR MODE: %d COLOR TEMP: %d\n", scene->ep[i].color_mode, scene->ep[i].color_temp);
                 //set color
                 if(scene->ep[i].color_mode == 0){
@@ -1709,10 +1723,27 @@ void print_decoded_scene(decoded_scene_t *scene)
         #endif
     }
     printf("\n========================================\n");
+
+#ifdef USE_COLOR_CONTROL
+    /*
+     * Zigbee scene recall has no physical "last pressed" endpoint.
+     * Preserve the previous selection if that endpoint is still ON.
+     */
+    if (old_selected_endpoint < 2 &&
+        device_info[old_selected_endpoint].device_state) {
+        set_parameter_ep_index_selected(old_selected_endpoint);
+    } else if (device_info[0].device_state) {
+        set_parameter_ep_index_selected(0);
+    } else if (device_info[1].device_state) {
+        set_parameter_ep_index_selected(1);
+    } else {
+        set_parameter_ep_index_selected(0xFF);
+    }
+#endif
 }
 
 
-void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
+void nuos_set_scene(const esp_zb_zcl_recall_scene_message_t *message){
     decoded_scene_t local_scene;
     if(decode_scene_extension_fields(
         message->field_set,

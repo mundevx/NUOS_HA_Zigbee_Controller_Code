@@ -2619,8 +2619,8 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     extern const char index_html_start[] asm("_binary_index_dali_direct_addr_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_direct_addr_html_end");
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-    extern const char index_html_start[] asm("_binary_index_dali_master_html_start");
-    extern const char index_html_end[]   asm("_binary_index_dali_master_html_end");
+    extern const char index_html_start[] asm("_binary_index_dali_master_fallback64_html_start");
+    extern const char index_html_end[]   asm("_binary_index_dali_master_fallback64_html_end");
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM  || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
     extern const char index_html_start[] asm("_binary_index_dali_switch_html_start");
     extern const char index_html_end[]   asm("_binary_index_dali_switch_html_end");

@@ -17,6 +17,21 @@
     #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
     // instantiate global object (adjust constructor args as needed)
     DaliCommands                                               dali(gpio_load_pins[1], gpio_load_pins[0]);
+
+    /*
+     * Compatibility entry point used by esp_wifi_webserver.c.
+     *
+     * The direct-switch build does not provide a separate DALI-driver
+     * factory-reset module.  Keep this symbol available so the webserver
+     * command can link in this configuration.  It is weak intentionally:
+     * if the full project supplies a real implementation elsewhere, that
+     * implementation overrides this fallback automatically.
+     */
+    extern "C" __attribute__((weak)) void esp_dali_factory_reset_all_drivers(void)
+    {
+        ESP_LOGW("DALI_RESET",
+                 "esp_dali_factory_reset_all_drivers(): no separate DALI reset driver in direct-switch build");
+    }
     bool is_init_done                                          = false;
     static bool state                                          = false;
     #define IS_USE_DALI_HARDWARE
@@ -59,8 +74,6 @@
 extern "C" {
 #endif
 
- int find_closest_index(uint16_t value);
- int find_closest_index_2(uint16_t value);
 extern void nuos_store_dali_scene_switch_data_to_nvs(const void *str_data);
 
 #ifdef __cplusplus
@@ -224,7 +237,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     // -------------------------------------------------
     if (b1 == 0xFF && b2 >= 0x10 && b2 <= 0x1F) {
         scene = b2 - 0x10;
-        printf("RECALL SCENE BROADCAST %u\n", scene);
+       // printf("RECALL SCENE BROADCAST %u\n", scene);
 
         bool all_off[2] = {true, true};
         uint8_t max_level[2] = {MIN_DIM_LEVEL_VALUE, MIN_DIM_LEVEL_VALUE};
@@ -294,7 +307,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
 
                     scene_group_switch_info.device_state[b][scene][i] = (dtr0 != 0);
 
-                    printf("=======DATA EP:%d SAVED SUCCESSFULLY=======\n", b + 1);
+                   // printf("=======DATA EP:%d SAVED SUCCESSFULLY=======\n", b + 1);
 
                     //switch_driver_gpios_intr_enabled(false);
                     //dali.dali_rx_intr_enabled(false);
@@ -338,13 +351,13 @@ void interpret_frame(uint8_t b1, uint8_t b2)
     // -------------------------------------------------
     if (is_command) {
         if (is_broadcast) {
-            printf("BROADCAST COMMAND: %02X\n", b2);
+           // printf("BROADCAST COMMAND: %02X\n", b2);
             is_broadcast = false; // Clear broadcast flag to prevent misinterpretation in DAPC fallback
         } else if (is_group) {
-            printf("GROUP COMMAND: Group=%u Cmd=%02X\n", group, b2);
+          //  printf("GROUP COMMAND: Group=%u Cmd=%02X\n", group, b2);
             for(int i=0; i<MAX_TOUCH_BTNS; i++){
                 if(scene_group_switch_info.group_id[i] == group){
-                    printf("==> MATCHED GROUP ID %u at index %d\n", group, i);
+                    //printf("==> MATCHED GROUP ID %u at index %d\n", group, i);
 
                     if(b2 == 0){
                         device_info[i].device_state = false;
@@ -359,7 +372,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
             }
             is_group  = false; // Clear group flag to prevent misinterpretation in DAPC fallback
         } else if (is_short) {
-            printf("SHORT COMMAND: Addr=%u Cmd=%02X\n", addr, b2);
+           // printf("SHORT COMMAND: Addr=%u Cmd=%02X\n", addr, b2);
             is_short = false; // Clear short flag to prevent misinterpretation in DAPC fallback
         }
         return;
@@ -435,7 +448,7 @@ static void receiveDaliFrame(void *arg) {
         } 
         
         dali.begin(&isr_service_installed); 
-      
+        //init_dali_hw();
         is_init_done = true; 
     }
 
@@ -449,18 +462,33 @@ static void receiveDaliFrame(void *arg) {
     void init_dali_hw() {
 
         if(wifi_webserver_active_flag == 0){
-            #ifdef IS_USE_DALI_HARDWARE
-                rxFrameQueue = xQueueCreate(50, sizeof(DaliMessage));
-                if (rxFrameQueue == nullptr) {  
-                }   
-                dali.begin_rx(&isr_service_installed, rxFrameQueue);  
-            #endif
+        #ifdef IS_USE_DALI_HARDWARE
+            rxFrameQueue = xQueueCreate(50, sizeof(DaliMessage));
+            if (rxFrameQueue == nullptr) {  
+            }   
+                 
+            dali.begin_rx(&isr_service_installed, rxFrameQueue);  
+        #endif
             if(wifi_webserver_active_flag == 0){
                 xTaskCreate(receiveDaliFrame, "dali_task_2", TASK_STACK_SIZE_DALI_RX_FRAME, NULL, TASK_PRIORITY_DALI_RX_FRAME, NULL); 
             }
         }         
         is_init_done = true;  
     }
+
+
+    uint8_t nuos_dali_switch_type() {
+        if(scene_group_switch_info.control_type == 0) {  //individual control
+            return 1; 
+        }else if(scene_group_switch_info.control_type == 1) { //group control
+            return 2; 
+        }else if(scene_group_switch_info.control_type == 2) { //scene control
+            return 3; 
+        }else if(scene_group_switch_info.control_type == 3) { //broadcast control
+            return 4; 
+        }
+        return 0;
+    }     
 
     static int get_delay(int total_ids, uint8_t index) {
         int delay_time = 1;
@@ -505,32 +533,12 @@ static void receiveDaliFrame(void *arg) {
     #ifdef USE_COLOR_CONTROL
         void set_parameter_ep_index_selected(uint8_t bt_index){
             if(bt_index < 2){
-                if(bt_index == 0){
-                    if(device_info[0].device_state){
-                        ep_selected_index = 0;
-                    }else{
-                        if(device_info[1].device_state){
-                            ep_selected_index = 1;
-                        }else{
-                            ep_selected_index = bt_index;
-                        }
-                    }
-                }else if(bt_index == 1){
-                     if(device_info[1].device_state){
-                        ep_selected_index = 1;
-                    }else{
-                        if(device_info[0].device_state){
-                            ep_selected_index = 0;
-                        }else{
-                            ep_selected_index = bt_index;
-                        }
-                    }
-                }
-                 
+                //printf("Selected EP index set to %d\n", bt_index);
+                ep_selected_index = bt_index; 
             }
         }
         uint8_t get_parameter_ep_index_selected(){
-            printf("Selected EP index retrieved: %d\n", ep_selected_index);
+            //printf("Selected EP index retrieved: %d\n", ep_selected_index);
             return ep_selected_index;
         }
         void set_parameter_toggle_bt_func_selected(uint8_t enable){
@@ -546,6 +554,14 @@ uint16_t calculate_cct(uint16_t current_cct, uint8_t level)
            (((uint32_t)(max_cct - current_cct) * level) / 254);
 }
 
+
+extern "C" void set_dali_color_temp(uint8_t index, bool is_status_change);
+extern "C" void set_dali_level(uint8_t index);
+extern "C" esp_err_t nuos_set_level_attribute(uint8_t index);
+extern "C" esp_err_t nuos_set_color_temperature_attribute(uint8_t index);
+
+int find_closest_index(uint16_t value);
+int find_closest_index_2(uint16_t value);
 
 uint32_t get_backoff_time(){
     uint32_t backoff = 1;
@@ -564,115 +580,170 @@ uint32_t get_backoff_time(){
 }
 
    
-extern "C" void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene){
-    static bool last_state[2] = {false, false};
-    static uint8_t last_level[2] = {0, 0};
+extern "C" void process_dali_tasks(uint8_t index, uint8_t is_toggle, uint8_t is_scene)
+{
     send_command_flag = true;
     button_pressed_index = index;
 
-    #ifdef USE_COLOR_CONTROL
-    set_parameter_ep_index_selected(index);
-    #endif
+    if (index < TOTAL_ENDPOINTS) {
+        if (is_toggle) {
+            device_info[index].device_state = !device_info[index].device_state;
+        }
 
-    if(index < 2){
-        _state_[index] = (bool)device_info[index].device_state;
-
-        if(is_toggle > 0){
-            device_info[index].device_state = !_state_[index];
-        } 
-        if(!device_info[index].device_state) {
-            last_state[index] = false;
-            #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
-                ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-            #else
-                gpio_set_level(gpio_touch_led_pins[index], 0);
-            #endif
+        if (!device_info[index].device_state) {
+            //uint8_t sind = 0;
+            // if(index == 0) sind = 1;
+            // //printf("======>sind:%d\n", sind);  
+            // if(device_info[sind].device_state){
+            //     set_parameter_ep_index_selected(sind);
+            // }
+#ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+            ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);
+            ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+#else
+            gpio_set_level(gpio_touch_led_pins[index], 0);
+#endif
             dali.set_group_level(scene_group_switch_info.group_id[index], 0);
         } else {
-            #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-                ledc_set_duty(LEDC_MODE, pwm_channels[index], device_info[index].device_level);            
-                ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-            #else
-                gpio_set_level(gpio_touch_led_pins[index], 1);
-            #endif
-            if(is_scene){
-                if(device_info[index].device_state != last_state[index]){
-                    last_state[index] = device_info[index].device_state;
-                    nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
-                } else {  
-                    if(last_level[index] != device_info[index].device_level){
-                        last_level[index] = device_info[index].device_level;
-                        nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);    
-                    }
+#ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+            uint8_t level = device_info[index].device_level;
+            if (level < MIN_DIM_LEVEL_VALUE) level = MIN_DIM_LEVEL_VALUE;
+            if (level > MAX_DIM_LEVEL_VALUE) level = MAX_DIM_LEVEL_VALUE;
+
+            ledc_set_duty(LEDC_MODE, pwm_channels[index], level);
+            ledc_update_duty(LEDC_MODE, pwm_channels[index]);
+#else
+            gpio_set_level(gpio_touch_led_pins[index], 1);
+#endif
+
+            uint8_t mapped_level = map_1_255_to_100_255(device_info[index].device_level);
+            if (is_scene) {
+                if (scene_group_switch_info.control_type == 2) {
+                    nuos_dali_set_group_brightness(
+                        scene_group_switch_info.group_id[index],
+                        index,
+                        device_info[index].device_level);
+                } else {
+                    dali.set_group_level(scene_group_switch_info.group_id[index], mapped_level);
                 }
             } else {
-                if(device_info[index].device_state != last_state[index]){
-                    last_state[index] = device_info[index].device_state;
-                }
-                if(last_level[index] != device_info[index].device_level){
-                    last_level[index] = device_info[index].device_level;
-                }
-                nuos_dali_normal_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
+                dali.set_group_level(
+                    scene_group_switch_info.group_id[index],
+                    mapped_level);
             }
-        }                    
+        }
 
-        #ifdef USE_COLOR_CONTROL
+#ifdef USE_COLOR_CONTROL
         set_color_temp_only_leds_2(index);
-        #endif
-    } else { 
-        if(device_info[ep_selected_index].color_or_fan_state){
-            set_color_temp_leds(button_pressed_index);
+#endif
+    } else if (index == 2 || index == 3) {
+        //printf("=======>ep_selected_index:%d\n", ep_selected_index);
+#ifdef USE_COLOR_CONTROL
+        /* Button 2 (id=1) and Button 4 (id=3) use the selected endpoint. */
+        if (device_info[ep_selected_index].color_or_fan_state) {
+            set_color_temp_leds(index);
         } else {
-            set_dimming_control_leds(button_pressed_index);
-        }  
-    } 
+            set_dimming_control_leds(index);
+        }
+#endif
+    }
 
-   // esp_zb_lock_acquire(portMAX_DELAY);
-    nuos_store_data_to_nvs(ep_selected_index);
-   // esp_zb_lock_release();
+    nuos_store_data_to_nvs((index < TOTAL_ENDPOINTS) ? index : ep_selected_index);
 }
-    // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_, uint16_t color_cct){
-    //     send_command_flag = true;
-    //     button_pressed_index = index;
-    //     if(!_state_) {
-    //         nuso_set_state_attribute_on_dali_rx(index, false);
-    //         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-    //             ledc_set_duty(LEDC_MODE, pwm_channels[index], 0);            
-    //             ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-    //             #ifdef USE_COLOR_CONTROL
-    //                 gpio_set_level(gpio_touch_led_pins[index+2], 0);
-    //             #endif
-    //         #else
-    //             gpio_set_level(gpio_touch_led_pins[index], 0);
-    //         #endif
-    //     } else {
-    //         nuso_set_state_attribute_on_dali_rx(index, true);
-    //         nuos_set_level_attribute_on_dali_rx(index, _level_);
-    //         #ifdef USE_COLOR_CONTROL
-    //         nuos_set_color_temp_command(index, color_cct);
-    //         #endif
-    //         #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-    //             ledc_set_duty(LEDC_MODE, pwm_channels[index], _level_);            
-    //             ledc_update_duty(LEDC_MODE, pwm_channels[index]);
-    //             #ifdef USE_COLOR_CONTROL
-    //                 if(!device_info[0].device_state && device_info[1].device_state){
-    //                     set_parameter_ep_index_selected(1);
-    //                     set_color_temp_only_leds_2(1);
-    //                 }else if(device_info[0].device_state && !device_info[1].device_state){
-    //                     set_parameter_ep_index_selected(0);
-    //                     set_color_temp_only_leds_2(0);
-    //                 }else if(device_info[0].device_state && device_info[1].device_state){
-    //                     set_parameter_ep_index_selected(1);
-    //                     set_color_temp_only_leds_2(1);
-    //                 }
-    //             #endif
-    //         #else
-    //             gpio_set_level(gpio_touch_led_pins[index], 1);
-    //         #endif
-    //     }                    
-    //     nuos_store_data_to_nvs(index);   
-    // }
+
+/*
+ * Direct-switch shared UP/DOWN action.
+ *
+ * button_id:
+ *   1 = UP  (top-right)
+ *   3 = DOWN (bottom-right)
+ *
+ * The selected endpoint is changed, the local LEDs are rendered, the
+ * corresponding DALI command is sent exactly once, and Zigbee state is
+ * updated. This function is deliberately not called from the DALI RX path,
+ * preventing DALI -> state -> DALI feedback.
+ */
+extern "C" void nuos_direct_switch_up_down(uint8_t button_id)
+{
+#ifdef USE_COLOR_CONTROL
+    if (button_id != 1 && button_id != 3) {
+        return;
+    }
+
+    /* Physical mapping: SW1/SW2 -> EP1, SW3/SW4 -> EP2.
+     * button_id 0/1 controls endpoint 0; button_id 2/3 controls endpoint 1.
+     * Never use ep_selected_index for direct-switch output control. */
+    const uint8_t index = (button_id < 2) ? 0 : 1;
+    if (index >= TOTAL_ENDPOINTS || !device_info[index].device_state) {
+        return;
+    }
+
+    const bool up = (button_id == 1);
+
+    if (device_info[index].color_or_fan_state) {
+        uint8_t speed = device_info[index].fan_speed;
+
+        if (speed < 1 || speed >= MAX_CCT_SCENES_VALUES) {
+            speed = find_closest_index(device_info[index].device_val);
+            if (speed < 1) speed = 1;
+            if (speed >= MAX_CCT_SCENES_VALUES) speed = MAX_CCT_SCENES_VALUES - 1;
+        }
+
+        if (up) {
+            if (speed < MAX_CCT_SCENES_VALUES - 1) {
+                ++speed;
+            }
+        } else {
+            if (speed > 1) {
+                --speed;
+            }
+        }
+
+        device_info[index].fan_speed = speed;
+        device_info[index].device_val = cct_values[speed];
+
+        set_color_temp_only_leds_2(index);
+        set_dali_color_temp(index, false);
+
+        if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+            nuos_set_color_temperature_attribute(index);
+        }
+    } else {
+        uint8_t level_index = device_info[index].ac_temperature;
+
+        if (level_index < 1 || level_index >= MAX_DIMMING_VALUES) {
+            level_index = find_closest_index_2(device_info[index].device_level);
+            if (level_index < 1) level_index = 1;
+            if (level_index >= MAX_DIMMING_VALUES) level_index = MAX_DIMMING_VALUES - 1;
+        }
+
+        if (up) {
+            if (level_index < MAX_DIMMING_VALUES - 1) {
+                ++level_index;
+            }
+        } else {
+            if (level_index > 1) {
+                --level_index;
+            }
+        }
+
+        device_info[index].ac_temperature = level_index;
+        device_info[index].device_level = dim_values[level_index];
+
+        set_color_temp_only_leds_2(index);
+        set_dali_level(index);
+
+        if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+            nuos_set_level_attribute(index);
+        }
+    }
+
+    nuos_store_data_to_nvs(index);
+#else
+    (void)button_id;
+#endif
+}
+
 extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_, uint16_t color_cct){
     send_command_flag = true;
     button_pressed_index = index;
@@ -816,8 +887,49 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
         return 0;
     }
 
-    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
-    void nuos_init_hardware_dimming_up_down(uint32_t pin){
+    #if defined(LONG_PRESS_BRIGHTNESS_ENABLE) || (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+    // void nuos_init_hardware_dimming_up_down(uint32_t pin){
+    //     const uint8_t button = nuos_get_button_press_index(pin);
+
+    //     /* Physical panel mapping:
+    //      *   button 0 = top-left    ON/OFF -> EP1
+    //      *   button 1 = bottom-left ON/OFF -> EP2
+    //      *   button 2 = top-right   DIM/CCT -> EP1
+    //      *   button 3 = bottom-right DIM/CCT -> EP2
+    //      *
+    //      * This function is called only for the right-side DIM/CCT buttons.
+    //      * Never derive the endpoint from the selected endpoint.
+    //      */
+    //     if (button != 2 && button != 3) {
+    //         return;
+    //     }
+    //     const uint8_t index = (button == 2) ? 0 : 1;
+
+    //     if (index >= TOTAL_ENDPOINTS) {
+    //         return;
+    //     }
+
+    //     if (device_info[index].color_or_fan_state) {
+    //         if (!device_info[index].device_state) {
+    //             /* Wake-up is handled by nuos_set_hardware_brightness(). */
+    //             device_info[index].level_up = 1;
+    //         } else if (device_info[index].device_val <= MIN_CCT_VALUE + 100) {
+    //             device_info[index].level_up = 1;
+    //         } else if (device_info[index].device_val >= MAX_CCT_VALUE - 100) {
+    //             device_info[index].level_up = 0;
+    //         }
+    //     } else {
+    //         if (!device_info[index].device_state) {
+    //             /* Wake-up is handled by nuos_set_hardware_brightness(). */
+    //             device_info[index].dim_up = 1;
+    //         } else if (device_info[index].device_level <= MIN_DIM_LEVEL_VALUE + 20) {
+    //             device_info[index].dim_up = 1;
+    //         } else if (device_info[index].device_level >= MAX_DIM_LEVEL_VALUE - 20) {
+    //             device_info[index].dim_up = 0;
+    //         }
+    //     }
+    // }
+ void nuos_init_hardware_dimming_up_down(uint32_t pin){
         uint8_t index = nuos_get_button_press_index(pin);
         if(index == 0 || index == 1){
             if(device_info[index].device_state){
@@ -860,7 +972,6 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
         }
         #endif
     }
-
     ////////////////////////////////////////////////////////////////////////////////////////////
     void set_color_temp_leds(uint8_t bt_index){
         uint8_t sindex = ep_selected_index;
@@ -886,7 +997,7 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
                         gpio_set_level(gpio_touch_led_pins[3], 1);
                         gpio_set_level(gpio_touch_led_pins[2], 1);
                         device_info[sindex].fan_speed--;
-                        printf("Decrement color temp, speed:%d\n", device_info[sindex].fan_speed);
+                        //printf("Decrement color temp, speed:%d\n", device_info[sindex].fan_speed);
                     } else {
                         device_info[sindex].fan_speed = 1;
                         gpio_set_level(gpio_touch_led_pins[3], 0);
@@ -937,7 +1048,7 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
                     } 
                     device_info[sindex].device_level = dim_values[device_info[sindex].ac_temperature];
 
-                    printf("Increment level:%d\n", device_info[sindex].device_level);
+                    //printf("Increment level:%d\n", device_info[sindex].device_level);
                     ledc_set_duty(LEDC_MODE, pwm_channels[sindex], device_info[sindex].device_level);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[sindex]);
                 }else if(bt_index == 3) {
@@ -951,7 +1062,7 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
                         gpio_set_level(gpio_touch_led_pins[2], 1);
                     }
                     device_info[sindex].device_level = dim_values[device_info[sindex].ac_temperature];
-                    printf("Decrement level:%d\n", device_info[sindex].device_level);
+                    //printf("Decrement level:%d\n", device_info[sindex].device_level);
                     ledc_set_duty(LEDC_MODE, pwm_channels[sindex], device_info[sindex].device_level);            
                     ledc_update_duty(LEDC_MODE, pwm_channels[sindex]); 
 
@@ -979,169 +1090,166 @@ extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t 
         }
     }
 ////////////////////////////////////////////////////////////////////////////////////////////
-void esp_dali_factory_reset_all_drivers(){
 
-}
-// void set_color_temp_only_leds_2(uint8_t index)
-// {
-//     uint8_t active_index = 0xFF;
-    
-//     // ---------------------------------------------------------
-//     // 1. Selected endpoint is ON
-//     // ---------------------------------------------------------
-//     if (index < 2 && device_info[index].device_state)
-//     {
-//         active_index = index;
-//     }
-//     // ---------------------------------------------------------
-//     // 2. Selected endpoint is OFF
-//     //    Use the other endpoint if it is ON
-//     // ---------------------------------------------------------
-//     else if (index < 2)
-//     {
-//         uint8_t other_index = (index == 0) ? 1 : 0;
+void set_color_temp_only_leds_2(uint8_t index)
+{
+    uint8_t active_index = 0xFF;
 
-//         if (device_info[other_index].device_state)
-//         {
-//             active_index = other_index;
-//         }
-//     }
-//     printf("active_index:%d\n", active_index) ;
-
-//     // ---------------------------------------------------------
-//     // 3. No endpoint is ON
-//     // ---------------------------------------------------------
-//     if (active_index == 0xFF)
-//     {
-//         if (index < 2)
-//         {
-//             ESP_ERROR_CHECK(
-//                 ledc_set_duty(LEDC_MODE, pwm_channels[index], 0)
-//             );
-
-//             ESP_ERROR_CHECK(
-//                 ledc_update_duty(LEDC_MODE, pwm_channels[index])
-//             );
-//         }
-
-//         gpio_set_level(gpio_touch_led_pins[3], 0);
-//         gpio_set_level(gpio_touch_led_pins[2], 0);
-
-//         return;
-//     }
-
-//     // ---------------------------------------------------------
-//     // 4. An endpoint is active.
-//     //    Display its CCT / dimming status.
-//     // ---------------------------------------------------------
-//     if (device_info[active_index].color_or_fan_state)
-//     {
-//         // -----------------------------------------------------
-//         // COLOR / CCT MODE
-//         // -----------------------------------------------------
-//         if (device_info[active_index].fan_speed > 1 &&
-//             device_info[active_index].fan_speed < MAX_CCT_SCENES_VALUES - 1)
-//         {
-//             // Middle CCT range
-//             gpio_set_level(gpio_touch_led_pins[3], 1);
-//             gpio_set_level(gpio_touch_led_pins[2], 1);
-//         }
-//         else if (device_info[active_index].fan_speed >=
-//                  MAX_CCT_SCENES_VALUES - 1)
-//         {
-//             // Maximum CCT
-//             gpio_set_level(gpio_touch_led_pins[3], 1);
-//             gpio_set_level(gpio_touch_led_pins[2], 0);
-//         }
-//         else
-//         {
-//             // Minimum CCT
-//             gpio_set_level(gpio_touch_led_pins[2], 1);
-//             gpio_set_level(gpio_touch_led_pins[3], 0);
-//         }
-//     }
-//     else
-//     {
-//         // -----------------------------------------------------
-//         // DIMMING MODE
-//         // -----------------------------------------------------
-//         if (device_info[active_index].ac_temperature > 1 &&
-//             device_info[active_index].ac_temperature <
-//                 MAX_DIMMING_VALUES - 2)
-//         {
-//             // Middle dimming range
-//             gpio_set_level(gpio_touch_led_pins[3], 1);
-//             gpio_set_level(gpio_touch_led_pins[2], 1);
-//         }
-//         else if (device_info[active_index].ac_temperature >=
-//                  MAX_DIMMING_VALUES - 1)
-//         {
-//             // Maximum dimming
-//             gpio_set_level(gpio_touch_led_pins[3], 1);
-//             gpio_set_level(gpio_touch_led_pins[2], 0);
-//         }
-//         else
-//         {
-//             // Minimum dimming
-//             gpio_set_level(gpio_touch_led_pins[2], 1);
-//             gpio_set_level(gpio_touch_led_pins[3], 0);
-//         }
-//     }
-// }
-    void set_color_temp_only_leds_2(uint8_t index){
-
-        if(device_info[index].device_state){
-            if(device_info[index].color_or_fan_state){
-                if(device_info[index].fan_speed > 1 && device_info[index].fan_speed < MAX_CCT_SCENES_VALUES-1){
-                    gpio_set_level(gpio_touch_led_pins[3], 1);
-                    gpio_set_level(gpio_touch_led_pins[2], 1);
-                }else{
-                    if(device_info[index].fan_speed >= MAX_CCT_SCENES_VALUES-1) {
-                        gpio_set_level(gpio_touch_led_pins[3], 1);
-                        gpio_set_level(gpio_touch_led_pins[2], 0);
-                    } else {
-                        gpio_set_level(gpio_touch_led_pins[2], 1);
-                        gpio_set_level(gpio_touch_led_pins[3], 0);
-                    }
-                }
-            } else {
-                if(device_info[index].ac_temperature > 1 && device_info[index].ac_temperature < MAX_DIMMING_VALUES-2){
-                    gpio_set_level(gpio_touch_led_pins[3], 1);
-                    gpio_set_level(gpio_touch_led_pins[2], 1);
-                }else{
-                    if(device_info[index].ac_temperature >= MAX_DIMMING_VALUES-1) {
-                        gpio_set_level(gpio_touch_led_pins[3], 1);
-                        gpio_set_level(gpio_touch_led_pins[2], 0);
-                    } else {
-                        gpio_set_level(gpio_touch_led_pins[2], 1);
-                        gpio_set_level(gpio_touch_led_pins[3], 0);
-                    }
-                }                            
-            }   
-        }else{
-            if(!device_info[0].device_state && !device_info[1].device_state){
-                ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], 0));
-                ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
-
-                gpio_set_level(gpio_touch_led_pins[3], 0);
-                gpio_set_level(gpio_touch_led_pins[2], 0);   
-            }
-            else if(!device_info[0].device_state){
-                if(device_info[1].device_state)
-                set_color_temp_only_leds_2(1);
-            }else if(!device_info[1].device_state){
-                if(device_info[0].device_state)
-                set_color_temp_only_leds_2(0);
-            }
-        }      
+    // ---------------------------------------------------------
+    // 1. Selected endpoint is ON
+    // ---------------------------------------------------------
+    if (index < 2 && device_info[index].device_state)
+    {
+        active_index = index;
     }
+    // ---------------------------------------------------------
+    // 2. Selected endpoint is OFF
+    //    Use the other endpoint if it is ON
+    // ---------------------------------------------------------
+    else if (index < 2)
+    {
+        uint8_t other_index = (index == 0) ? 1 : 0;
+
+        if (device_info[other_index].device_state)
+        {
+            active_index = other_index;
+        }
+    }
+
+    // ---------------------------------------------------------
+    // 3. No endpoint is ON
+    // ---------------------------------------------------------
+    if (active_index == 0xFF)
+    {
+        if (index < 2)
+        {
+            ESP_ERROR_CHECK(
+                ledc_set_duty(LEDC_MODE, pwm_channels[index], 0)
+            );
+
+            ESP_ERROR_CHECK(
+                ledc_update_duty(LEDC_MODE, pwm_channels[index])
+            );
+        }
+
+        gpio_set_level(gpio_touch_led_pins[3], 0);
+        gpio_set_level(gpio_touch_led_pins[2], 0);
+
+        return;
+    }
+
+    // ---------------------------------------------------------
+    // 4. An endpoint is active.
+    //    Display its CCT / dimming status.
+    // ---------------------------------------------------------
+    if (device_info[active_index].color_or_fan_state)
+    {
+        // -----------------------------------------------------
+        // COLOR / CCT MODE
+        // -----------------------------------------------------
+        if (device_info[active_index].fan_speed > 1 &&
+            device_info[active_index].fan_speed < MAX_CCT_SCENES_VALUES - 1)
+        {
+            // Middle CCT range
+            gpio_set_level(gpio_touch_led_pins[3], 1);
+            gpio_set_level(gpio_touch_led_pins[2], 1);
+        }
+        else if (device_info[active_index].fan_speed >=
+                 MAX_CCT_SCENES_VALUES - 1)
+        {
+            // Maximum CCT
+            gpio_set_level(gpio_touch_led_pins[3], 1);
+            gpio_set_level(gpio_touch_led_pins[2], 0);
+        }
+        else
+        {
+            // Minimum CCT
+            gpio_set_level(gpio_touch_led_pins[2], 1);
+            gpio_set_level(gpio_touch_led_pins[3], 0);
+        }
+    }
+    else
+    {
+        // -----------------------------------------------------
+        // DIMMING MODE
+        // -----------------------------------------------------
+        if (device_info[active_index].ac_temperature > 1 &&
+            device_info[active_index].ac_temperature <
+                MAX_DIMMING_VALUES - 2)
+        {
+            // Middle dimming range
+            gpio_set_level(gpio_touch_led_pins[3], 1);
+            gpio_set_level(gpio_touch_led_pins[2], 1);
+        }
+        else if (device_info[active_index].ac_temperature >=
+                 MAX_DIMMING_VALUES - 1)
+        {
+            // Maximum dimming
+            gpio_set_level(gpio_touch_led_pins[3], 1);
+            gpio_set_level(gpio_touch_led_pins[2], 0);
+        }
+        else
+        {
+            // Minimum dimming
+            gpio_set_level(gpio_touch_led_pins[2], 1);
+            gpio_set_level(gpio_touch_led_pins[3], 0);
+        }
+    }
+}
+    // void set_color_temp_only_leds_2(uint8_t index){
+
+    //     if(device_info[index].device_state){
+    //         if(device_info[index].color_or_fan_state){
+    //             if(device_info[index].fan_speed > 1 && device_info[index].fan_speed < MAX_CCT_SCENES_VALUES-1){
+    //                 gpio_set_level(gpio_touch_led_pins[3], 1);
+    //                 gpio_set_level(gpio_touch_led_pins[2], 1);
+    //             }else{
+    //                 if(device_info[index].fan_speed >= MAX_CCT_SCENES_VALUES-1) {
+    //                     gpio_set_level(gpio_touch_led_pins[3], 1);
+    //                     gpio_set_level(gpio_touch_led_pins[2], 0);
+    //                 } else {
+    //                     gpio_set_level(gpio_touch_led_pins[2], 1);
+    //                     gpio_set_level(gpio_touch_led_pins[3], 0);
+    //                 }
+    //             }
+    //         } else {
+    //             if(device_info[index].ac_temperature > 1 && device_info[index].ac_temperature < MAX_DIMMING_VALUES-2){
+    //                 gpio_set_level(gpio_touch_led_pins[3], 1);
+    //                 gpio_set_level(gpio_touch_led_pins[2], 1);
+    //             }else{
+    //                 if(device_info[index].ac_temperature >= MAX_DIMMING_VALUES-1) {
+    //                     gpio_set_level(gpio_touch_led_pins[3], 1);
+    //                     gpio_set_level(gpio_touch_led_pins[2], 0);
+    //                 } else {
+    //                     gpio_set_level(gpio_touch_led_pins[2], 1);
+    //                     gpio_set_level(gpio_touch_led_pins[3], 0);
+    //                 }
+    //             }                            
+    //         }   
+    //     }else{
+    //         if(!device_info[0].device_state && !device_info[1].device_state){
+    //             ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[index], 0));
+    //             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[index]));
+
+    //             gpio_set_level(gpio_touch_led_pins[3], 0);
+    //             gpio_set_level(gpio_touch_led_pins[2], 0);   
+    //         }
+    //         else if(!device_info[0].device_state){
+    //             if(device_info[1].device_state)
+    //             set_color_temp_only_leds_2(1);
+    //         }else if(!device_info[1].device_state){
+    //             if(device_info[0].device_state)
+    //             set_color_temp_only_leds_2(0);
+    //         }
+    //     }      
+    // }
 
 
     int find_closest_index(uint16_t value) {
         for (int i = 0; i < MAX_CCT_SCENES_VALUES-1; i++) {
             
             if (value <= cct_values[i]) {
-                printf("closest index 0:%d\n", i);
+                //printf("closest index 0:%d\n", i);
                 return i; // Return previous index as the closest lower bound
             }
         }
@@ -1152,7 +1260,7 @@ void esp_dali_factory_reset_all_drivers(){
     int find_closest_index_2(uint16_t value) {
         for (int i = 1; i < MAX_DIMMING_VALUES; i++) {
             if (value < dim_values[i]) {
-                printf("closest index:%d\n", i-1);
+                //printf("closest index:%d\n", i-1);
                 return i - 1; // Return previous index as the closest lower bound
             }
         }
@@ -1228,10 +1336,196 @@ void esp_dali_factory_reset_all_drivers(){
     extern "C" void set_dali_level_to_off(uint8_t index){
         nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, 0);
     }
-    bool nuos_set_hardware_brightness(uint32_t pin) {
+    // bool nuos_set_hardware_brightness(uint32_t pin) {
+    //     call_common_check_auto_off();
+
+    //     const uint8_t button = nuos_get_button_press_index(pin);
+
+    //     /* Right column only: top-right controls EP1, bottom-right controls EP2. */
+    //     if (button != 2 && button != 3) {
+    //         return false;
+    //     }
+    //     const uint8_t index = (button == 2) ? 0 : 1;
+
+    //     if (index >= TOTAL_ENDPOINTS) {
+    //         return false;
+    //     }
+
+    //     /*
+    //      * IMPORTANT:
+    //      * Left-column ON/OFF buttons and right-column DIM/CCT buttons are
+    //      * paired by row: top row -> EP1, bottom row -> EP2.
+    //      * Never derive the endpoint from the button index directly.
+    //      */
+    //     const bool needs_wake =
+    //         !device_info[index].device_state ||
+    //         (device_info[index].color_or_fan_state
+    //             ? (device_info[index].device_val < MIN_CCT_VALUE)
+    //             : (device_info[index].device_level < MIN_DIM_LEVEL_VALUE));
+
+    //     if (needs_wake) {
+    //         /* First long-press repeat wakes the endpoint at MINIMUM only.
+    //          * Do not add DIMMING_STEPS/CCT steps on this first wake. */
+    //         device_info[index].device_state = true;
+
+    //         if (device_info[index].color_or_fan_state) {
+    //             device_info[index].device_val = MIN_CCT_VALUE;
+    //             device_info[index].fan_speed = 1;
+    //             device_info[index].level_up = 1;
+
+    //             set_color_temp_only_leds_2(index);
+    //             set_dali_color_temp(index, false);
+    //             if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+    //                 esp_zb_lock_acquire(portMAX_DELAY);
+    //                 nuos_set_color_temperature_attribute(index);
+    //                 esp_zb_lock_release();
+    //             }
+    //         } else {
+    //             device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
+    //             device_info[index].ac_temperature = 1;
+    //             device_info[index].dim_up = 1;
+
+    //             process_dali_tasks(index, false, false);
+    //             if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+    //                 esp_zb_lock_acquire(portMAX_DELAY);
+    //                 nuos_set_level_attribute(index);
+    //                 esp_zb_lock_release();
+    //             }
+    //         }
+
+    //         nuos_store_data_to_nvs(index);
+    //         return false;
+    //     }
+
+    //     if (device_info[index].color_or_fan_state) {
+    //         /* CCT long-press control. */
+    //         if (device_info[index].level_up) {
+    //             if (device_info[index].device_val + COLOR_STEPS <= MAX_CCT_VALUE) {
+    //                 device_info[index].device_val += COLOR_STEPS;
+    //             } else {
+    //                 device_info[index].device_val = MAX_CCT_VALUE;
+    //             }
+    //         } else {
+    //             if (device_info[index].device_val >= MIN_CCT_VALUE + COLOR_STEPS) {
+    //                 device_info[index].device_val -= COLOR_STEPS;
+    //             } else {
+    //                 device_info[index].device_val = MIN_CCT_VALUE;
+    //             }
+    //         }
+
+    //         device_info[index].fan_speed = find_closest_index(device_info[index].device_val);
+    //         set_color_temp_only_leds_2(index);
+    //         set_dali_color_temp(index, false);
+    //         if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+    //                 esp_zb_lock_acquire(portMAX_DELAY);
+    //                 nuos_set_color_temperature_attribute(index);
+    //                 esp_zb_lock_release();
+    //             }
+    //     } else {
+    //         /* Brightness long-press control. */
+    //         if (device_info[index].dim_up) {
+    //             if (device_info[index].device_level + DIMMING_STEPS <= MAX_DIM_LEVEL_VALUE) {
+    //                 device_info[index].device_level += DIMMING_STEPS;
+    //             } else {
+    //                 device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
+    //             }
+    //         } else {
+    //             if (device_info[index].device_level >= MIN_DIM_LEVEL_VALUE + DIMMING_STEPS) {
+    //                 device_info[index].device_level -= DIMMING_STEPS;
+    //             } else {
+    //                 device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
+    //             }
+    //         }
+
+    //         device_info[index].ac_temperature = find_closest_index_2(device_info[index].device_level);
+    //         process_dali_tasks(index, false, false);
+    //         set_color_temp_only_leds_2(index);
+    //         if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+    //                 esp_zb_lock_acquire(portMAX_DELAY);
+    //                 nuos_set_level_attribute(index);
+    //                 esp_zb_lock_release();
+    //             }
+    //     }
+
+    //     nuos_store_data_to_nvs(index);
+    //     return false;
+    // }
+bool nuos_set_hardware_brightness(uint32_t pin) {
+    call_common_check_auto_off();
+    uint8_t index = nuos_get_button_press_index(pin);
+    
+    if (index < 2) {
+        if (!device_info[index].device_state) {
+            device_info[index].device_state = true;
+            device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
+            device_info[index].dim_up = 1;
+        }
+        if (device_info[index].device_state) {
+            if (device_info[index].dim_up == 1) {
+                if (device_info[index].device_level + DIMMING_STEPS <= MAX_DIM_LEVEL_VALUE) {
+                    device_info[index].device_level += DIMMING_STEPS;
+                } else {
+                    device_info[index].device_level = MAX_DIM_LEVEL_VALUE;
+                }
+            } else {
+                if (device_info[index].device_level >= (MIN_DIM_LEVEL_VALUE + DIMMING_STEPS)) {
+                    device_info[index].device_level -= DIMMING_STEPS;  
+                } else {
+                    device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
+                } 
+            }
+            
+            process_dali_tasks(index, false, false); 
+            convert_dimming_to_index(index, true); // Pass true to process active long press step
+
+            // Thread-safe Zigbee attribute update
+            if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+                esp_zb_lock_acquire(portMAX_DELAY);
+                nuos_set_level_attribute(index);
+                esp_zb_lock_release();
+            }
+        }
+    }
+    #ifdef USE_COLOR_CONTROL
+    else {
+        uint8_t p_index = index - 2;
+        if (device_info[p_index].color_or_fan_state) { 
+            convert_colors_to_index(p_index, true);
+            if (color_backup != device_info[p_index].device_val) {
+                color_backup = device_info[p_index].device_val;
+
+                if (scene_group_switch_info.control_type == 0) { 
+                    dali.set_group_color_cct(scene_group_switch_info.group_id[p_index], device_info[p_index].device_val);
+                } else {
+                    #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
+                    dali.set_color_temperature(global_dali_id[p_index], device_info[p_index].device_val); 
+                    #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
+                    dali.set_group_color_cct(global_group_id[p_index], device_info[p_index].device_val);
+                    #elif(COMMUNICATION_MODE == COMM_MODE_BROADCAST)
+                    dali.set_color_temperature(dali.BROADCAST_C, device_info[p_index].device_val); 
+                    #endif 
+                }
+                if (counts_color++ >= 10) {
+                    counts_color = 0;
+                    if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
+                        esp_zb_lock_acquire(portMAX_DELAY);
+                        nuos_set_color_temperature_attribute(p_index);
+                        esp_zb_lock_release();
+                    }
+                    nuos_dali_set_group_color_temperature(scene_group_switch_info.group_id[p_index], p_index, device_info[p_index].device_val);
+                }                                        
+            }  
+        }
+        nuos_store_data_to_nvs(0);                      
+    }
+    #endif
+    return false;
+}
+    // #endif /* LONG_PRESS_BRIGHTNESS_ENABLE || DEVICE_DALI_DIRECT_SWITCH */
+bool nuos_set_hardware_brightness444(uint32_t pin) {
         call_common_check_auto_off();
         uint8_t index = nuos_get_button_press_index(pin);
-        // printf("brightness index:%d\n", index);
+        //printf("brightness index:%d\n", index);
         if(index < 2){
             if(!device_info[index].device_state){
                 device_info[index].device_state = true;
@@ -1239,7 +1533,7 @@ void esp_dali_factory_reset_all_drivers(){
                 device_info[index].dim_up = 1;
             }
             if(device_info[index].device_state){
-                printf("prev_brightness: %d\n", device_info[index].device_level);
+               // printf("prev_brightness: %d\n", device_info[index].device_level);
                 if(device_info[index].dim_up == 1){
                     if(device_info[index].device_level + DIMMING_STEPS <= (MAX_DIM_LEVEL_VALUE)){
                         device_info[index].device_level += DIMMING_STEPS;
@@ -1253,19 +1547,19 @@ void esp_dali_factory_reset_all_drivers(){
                         device_info[index].device_level = MIN_DIM_LEVEL_VALUE;
                     } 
                 }
-                printf("brightness1: %d\n", device_info[index].device_level);
+                //printf("brightness1: %d\n", device_info[index].device_level);
                 process_dali_tasks(index, false, false); 
-                printf("brightness2: %d\n", device_info[index].device_level);
+                //printf("brightness2: %d\n", device_info[index].device_level);
                     
-                printf("color_or_fan_state:%d\n", device_info[index].color_or_fan_state);
+                //printf("color_or_fan_state:%d\n", device_info[index].color_or_fan_state);
                 // if(device_info[index].color_or_fan_state){ 
                 //     convert_colors_to_index(index, false);  
                 // }else{
                     convert_dimming_to_index(index, false);
                 // }
-                printf("brightness3: %d\n", device_info[index].device_level);
+                //printf("brightness3: %d\n", device_info[index].device_level);
                 nuos_set_level_attribute(index);
-                printf("brightness4: %d\n", device_info[index].device_level);
+               // printf("brightness4: %d\n", device_info[index].device_level);
             }
         }
         #ifdef USE_COLOR_CONTROL
