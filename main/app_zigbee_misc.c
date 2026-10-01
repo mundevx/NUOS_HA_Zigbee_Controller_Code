@@ -31,47 +31,8 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "app_constants.h"
 
 static const char *TAG                          = "ZB_MISC";
-
-/*
- * Switch callbacks execute from SWITCH_DRV's worker task, not from the
- * Zigbee task.  esp_zb_zcl_set_attribute_val() must therefore be protected
- * by the Zigbee lock.  Keep this protection local to switch-originated
- * updates so existing Zigbee callbacks are not changed.
- */
-static inline void nuos_switch_set_level_attribute(uint8_t index)
-{
-#ifndef DONT_USE_ZIGBEE
-    if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
-        esp_zb_lock_acquire(portMAX_DELAY);
-        printf("index:%d\n", index);
-        if(index < TOTAL_ENDPOINTS){
-            nuos_set_level_attribute(index);
-        }
-        //nuos_set_level_command(index, device_info[index].device_level);
-        esp_zb_lock_release();
-    }
-#else
-    (void)index;
-#endif
-}
-
-static inline void nuos_switch_set_color_temperature_attribute(uint8_t index)
-{
-#ifndef DONT_USE_ZIGBEE
-    if (esp_zb_bdb_dev_joined() && !wifi_webserver_active_flag) {
-        esp_zb_lock_acquire(portMAX_DELAY);
-        nuos_set_color_temp_command(index, device_info[index].device_level);
-        //nuos_set_color_temperature_attribute(index);
-        esp_zb_lock_release();
-    }
-#else
-    (void)index;
-#endif
-}
-
 
 //////////////////////////////////
 
@@ -315,6 +276,70 @@ static void unbind_cb_2(esp_zb_zdp_status_t zdo_status, void *user_ctx)
 }
 
 
+
+
+// void nuos_attribute_get_request(uint8_t btn_index, uint8_t ep_index, dst_node_info_t *dst_node_info, uint8_t cl_index){
+//     if(dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count > 0 && dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count < 5){
+//         for(int cluster_index=0; cluster_index<dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count; cluster_index++){
+//             if(cl_index == cluster_index || cl_index == 0xff){
+//                 if(dst_node_info->dst_ep_info.ep_data[ep_index].is_bind) {                 
+//                     //ESP_LOGI(TAG, "Already bind Light\n");
+//                     printf("========SENDING CMD READ ATTR DATA==========\n");
+//                     esp_zb_zcl_read_attr_cmd_t read_req;
+//                     read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
+//                     read_req.zcl_basic_cmd.src_endpoint = ENDPOINTS_LIST[btn_index];
+//                     read_req.zcl_basic_cmd.dst_endpoint = dst_node_info->dst_ep_info.ep_data[ep_index].dst_ep;
+//                     read_req.zcl_basic_cmd.dst_addr_u.addr_short = dst_node_info->short_addr;
+//                     read_req.clusterID = dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]; //dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count
+//                     read_req.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+//                     read_req.dis_default_resp = 0;
+//                     read_req.manuf_code = 0;
+//                     read_req.manuf_specific = 0;
+//                     if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF){
+//                         uint16_t attributes1 = ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID;
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = &attributes1;  
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL){
+//                         uint16_t attributes2[] = {ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID};
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = attributes2;
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index]  == ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL){
+//                         uint16_t attributes3[] = {
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID, 
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_CURRENT_HUE_ID, 
+//                             ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_TEMPERATURE_ID};
+//                         // ESP_ZB_ZCL_ATTR_COLOR_CONTROL_COLOR_MODE_ID   //ESP_ZB_ZCL_ATTR_COLOR_CONTROL_ENHANCED_COLOR_MODE_ID
+//                         read_req.attr_number = 3;
+//                         read_req.attr_field = attributes3; 
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL){
+//                         uint16_t attributes4[] = {ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID};
+//                         read_req.attr_number = 1;
+//                         read_req.attr_field = attributes4;     
+//                     }else if(dst_node_info->dst_ep_info.ep_data[ep_index].cluster_id[cluster_index] == ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT){
+//                         uint16_t attributes5[] = {ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID, ESP_ZB_ZCL_ATTR_THERMOSTAT_OCCUPIED_COOLING_SETPOINT_ID};
+//                         read_req.attr_number = 2;
+//                         read_req.attr_field = attributes5;             
+//                     }
+//                     cb_requests_counts++;
+
+//                     // query_neighbour_task_handle = xTaskGetCurrentTaskHandle();
+//                     esp_zb_zcl_read_attr_cmd_req(&read_req);  
+//                     vTaskDelay(pdMS_TO_TICKS(80));
+//                     // uint32_t is_notified= ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10000));
+//                     // if (is_notified > 0) {
+//                     //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified OK!!");
+//                     // } else {
+//                     //     ESP_LOGI("Zigbee", "esp_zb_zdo_active_ep_req Notified Timeout!!");
+//                     // } 
+//                 } 
+//             } 
+//         } //for
+//     }else{
+//         printf("cluster_counts:%d\n", dst_node_info->dst_ep_info.ep_data[ep_index].clusters_count);
+//     }
+// }
+
+
 uint8_t nuos_get_button_press_index(uint32_t pin){
     for(int index=0; index<TOTAL_BUTTONS; index++){
         if(pin == gpio_touch_btn_pins[index]){
@@ -437,6 +462,23 @@ void setup_reporting_for_thermostat_system_mode_id() {
     report_cmd.record_number = sizeof(records) / sizeof(esp_zb_zcl_config_report_record_t);
     report_cmd.record_field = records;
     esp_zb_zcl_config_report_cmd_req(&report_cmd);
+
+    // /* Config the reporting info  */
+    // esp_zb_zcl_reporting_info_t reporting_info = {
+    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+    //     .ep = 1,
+    //     .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT,
+    //     .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+    //     .dst.profile_id = ESP_ZB_AF_HA_PROFILE_ID,
+    //     .u.send_info.min_interval = 1,
+    //     .u.send_info.max_interval = 0,
+    //     .u.send_info.def_min_interval = 1,
+    //     .u.send_info.def_max_interval = 0,
+    //     .u.send_info.delta.u16 = 100,
+    //     .attr_id = ESP_ZB_ZCL_ATTR_THERMOSTAT_SYSTEM_MODE_ID,
+    //     .manuf_code = ESP_ZB_ZCL_ATTR_NON_MANUFACTURER_SPECIFIC,
+    // };
+    // esp_zb_zcl_update_reporting_info(&reporting_info);
 }
 
 
@@ -464,6 +506,23 @@ void setup_reporting_for_fan_attributes() {
     report_cmd.record_field = records;
 
     esp_zb_zcl_config_report_cmd_req(&report_cmd);
+
+        /* Config the reporting info  */
+    // esp_zb_zcl_reporting_info_t reporting_info = {
+    //     .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
+    //     .ep = 2,
+    //     .cluster_id = ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL,
+    //     .cluster_role = ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+    //     .dst.profile_id = ESP_ZB_AF_HA_PROFILE_ID,
+    //     .u.send_info.min_interval = 1,
+    //     .u.send_info.max_interval = 0,
+    //     .u.send_info.def_min_interval = 1,
+    //     .u.send_info.def_max_interval = 0,
+    //     .u.send_info.delta.u16 = 100,
+    //     .attr_id = ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID,
+    //     .manuf_code = ESP_ZB_ZCL_ATTR_NON_MANUFACTURER_SPECIFIC,
+    // };
+    // esp_zb_zcl_update_reporting_info(&reporting_info);
 }
 
 
@@ -560,6 +619,7 @@ static uint8_t cccounts = 0;
 uint8_t cc_nts = 0;
 
 #ifdef USE_RGB_LED
+static volatile bool uart_link_fault_active = false;
 // Declare the task handle globally
 TaskHandle_t rgb_task_handle = NULL;
 static void rgb_task(void *pvParameters){
@@ -628,7 +688,23 @@ void nuos_rgb_trigger_blink() {
 }
 #endif
 
+void nuos_set_uart_link_fault(bool fault)
+{
+    uart_link_fault_active = fault;
+#ifdef USE_RGB_LED
+    if (fault) {
+        // UART communication fault: steady YELLOW indication.
+        light_driver_set_color_RGB(0xFF, 0xFF, 0x00);
+        light_driver_set_power(true);
+    } else {
+        // UART communication is healthy: do NOT keep the RGB LED on.
+        light_driver_set_power(false);
+    }
+#endif
+}
+
 void nuos_set_rgb_led_normal_functionality(){ 
+    if (uart_link_fault_active) return;
     blink_rgb_led_normal_functionality_flag = true;
     #ifdef USE_RGB_LED
     light_driver_set_color_RGB(0, LED_GREEN_COLOR, 0);
@@ -668,18 +744,21 @@ void nuos_switch_single_click_task(uint32_t io_num) {
     
     button_index = nuos_get_button_press_index(io_num);
     uint8_t sindex = 0;
+    //printf("SINGLE CLICK Detected!!: index:%d  io_num:%ld\n", button_index, io_num);
     brightness_control_flag = false;
+    //recheckTimer();
     #ifndef DONT_USE_ZIGBEE
     if(!is_my_device_commissionned){
         start_commissioning = true;
         #ifdef ZB_COMMISSIONING_WITHOUT_TIMER
             nuos_start_mode_change_task();
-        #else
+        #else //start commissioning timer
             init_timer();
             esp_start_timer();    
         #endif
     }
     #endif
+    
         // Added by Nuos
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
 
@@ -773,25 +852,44 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #endif
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
-                /* Direct-switch physical mapping:
-                 *   LEFT TOP  (0) -> EP1 (device_info[0])
-                 *   LEFT BOTTOM (1) -> EP2 (device_info[1])
-                 * Right-side DIM/CCT buttons do not reach this path.
-                 */
-                set_parameter_ep_index_selected(button_index);
-                // printf("direct switch: button=%d -> endpoint=%d\n", button_index, sindex);
-                nuos_zb_set_hardware(button_index, true);
-                #ifdef USE_COLOR_CONTROL
-                    
-                    sindex = get_parameter_ep_index_selected();
-                #endif
-                if(device_info[sindex].device_state){
-                    if(device_info[sindex].color_or_fan_state){
-                        set_dali_color_temp(sindex, false);
-                    } else {
-                        set_dali_level(sindex);
+                if(button_index < 2){ 
+                    #ifdef USE_COLOR_CONTROL
+                        set_parameter_ep_index_selected(button_index);
+                        sindex = get_parameter_ep_index_selected();
+                        set_parameter_ep_index_selected(button_index);
+                    #endif
+                    nuos_zb_set_hardware(button_index, true);
+                    #ifdef USE_COLOR_CONTROL
+                        set_parameter_ep_index_selected(button_index);
+                        sindex = get_parameter_ep_index_selected();
+                        set_parameter_ep_index_selected(button_index);
+                    #endif
+                    //printf("button_index<2: %d\n", sindex);
+                    if(device_info[sindex].device_state){
+                        set_dali_level(sindex);  
                     }
                 }
+                #ifdef USE_COLOR_CONTROL
+                else{
+                    sindex = get_parameter_ep_index_selected();
+                    // printf("sindex_2_3: %d\n", sindex);
+                    if(sindex > 1) return;
+                    if(device_info[sindex].device_state){
+                        nuos_zb_set_hardware(button_index, false);
+                        if(device_info[sindex].device_state){
+                            set_dali_level(sindex);
+                            if(device_info[sindex].color_or_fan_state){
+                                set_dali_color_temp(sindex, false);
+                            }else{
+                                set_dali_level(sindex); 
+                            }  
+                        }
+                        
+                    }
+                }
+                #endif 
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+                nuos_zb_set_hardware(button_index, true);
             #else
                 nuos_zb_set_hardware(button_index, true);
             #endif    
@@ -802,112 +900,49 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 nuos_set_zigbee_attribute(0);
 
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+               
                 nuos_set_zigbee_attribute(0);
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)   
+                nuos_set_zigbee_attribute(button_index); 
             #else
-                #ifdef USE_COLOR_CONTROL
-                    //set_parameter_ep_index_selected(button_index);
-                    sindex = get_parameter_ep_index_selected();
-                    // set_parameter_ep_index_selected(button_index);
-                    uint8_t sind = 0;
-                    if(sindex == 0) sind = 1;
-                    //printf("======>sind:%d\n", sind);  
-                    if(device_info[sindex].device_state){
-                        set_parameter_ep_index_selected(sindex);
-                    }else if(device_info[sind].device_state){
-                        set_parameter_ep_index_selected(sind);  
-                    }
-                    sindex = get_parameter_ep_index_selected();   
-                #endif
-                if(device_info[sindex].device_state){
-                    nuos_set_state_attribute(sindex);
-                    nuos_switch_set_level_attribute(sindex);
-                }else{
-                    nuos_set_state_attribute(sindex);
-                }
+                nuos_set_zigbee_attribute(button_index);
             #endif
         }
         #endif
 }
 
 void nuos_switch_double_click_task(uint32_t io_num){
+    
     button_index = nuos_get_button_press_index(io_num);
-
-#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-    /* Direct-switch physical mapping:
-     *   TOP-LEFT    button 0 -> EP1
-     *   BOTTOM-LEFT button 1 -> EP2
-     *   TOP-RIGHT / BOTTOM-RIGHT do not support double-click.
-     */
-    if (button_index > 1) {
-        return;
-    }
-
-    const uint8_t sindex = button_index;
-
-#ifdef USE_COLOR_CONTROL
-    set_parameter_ep_index_selected(sindex);
-#endif
-
-    double_press_click_enable[sindex] = !double_press_click_enable[sindex];
-
-#ifdef USE_COLOR_CONTROL
-    set_parameter_toggle_bt_func_selected(double_press_click_enable[sindex]);
-#endif
-
-    printf("direct switch double-click: button=%d -> endpoint=%d mode=%d\n",
-           button_index, sindex, double_press_click_enable[sindex]);
-
-    if (device_info[sindex].device_state) {
-        nuos_zb_set_hardware(sindex, false);
-
-        if (device_info[sindex].color_or_fan_state) {
-            set_dali_color_temp(sindex, false);
-#ifdef USE_COLOR_CONTROL
-            nuos_switch_set_color_temperature_attribute(sindex);
-#endif
-        } else {
-            set_dali_level(sindex);
-            nuos_switch_set_level_attribute(sindex);
-        }
-    }
-    return;
-
-#elif defined(USE_COLOR_CONTROL)
-    /* Existing color-control behavior for non-direct-switch devices. */
-    if (button_index != 0 && button_index != 1) {
-        return;
-    }
-
-    const uint8_t sindex = button_index;
-    set_parameter_ep_index_selected(sindex);
-    double_press_click_enable[sindex] = !double_press_click_enable[sindex];
-    set_parameter_toggle_bt_func_selected(double_press_click_enable[sindex]);
-
-    if (device_info[sindex].device_state) {
-        nuos_zb_set_hardware(sindex, false);
-        if (device_info[sindex].color_or_fan_state) {
-            set_dali_color_temp(sindex, false);
-            nuos_set_color_temperature_attribute(sindex);
-        } else {
-            set_dali_level(sindex);
-            nuos_set_level_attribute(sindex);
-        }
-    }
-#else
-    change_cw_ww_color_flag = !change_cw_ww_color_flag;
-    double_press_click_enable[0] = !double_press_click_enable[0];
-#endif
+        #ifdef USE_COLOR_CONTROL
+            uint8_t sindex = 0;
+            if(button_index > 1) sindex = button_index - 2;
+            else sindex = button_index;
+            set_parameter_ep_index_selected(sindex);
+            double_press_click_enable[sindex] = !double_press_click_enable[sindex];
+            set_parameter_toggle_bt_func_selected(double_press_click_enable[sindex]);
+            if(device_info[sindex].device_state){
+                nuos_zb_set_hardware(button_index, false);
+                if(device_info[sindex].color_or_fan_state){
+                    set_dali_color_temp(sindex, false);  //set dali color temp to default value when double press click happens, as per tuya requirement
+                    nuos_set_color_temperature_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
+                }else{
+                    set_dali_level(sindex); //set dali level to default value when double press click happens, as per tuya requirement
+                    nuos_set_level_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
+                }
+            }
+        #else
+            change_cw_ww_color_flag = !change_cw_ww_color_flag;
+            double_press_click_enable[0] = !double_press_click_enable[0];
+        #endif
 }
+
 
 void nuos_switch_long_press_task(uint32_t io_num){
     brightness_count = 0;
-#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-    /* Direct-switch DIM/CCT is a mandatory feature of this device.
-     * Do not make it depend on the legacy global build flag. */
-    nuos_init_hardware_dimming_up_down(io_num);
-#elif defined(LONG_PRESS_BRIGHTNESS_ENABLE)
-    nuos_init_hardware_dimming_up_down(io_num);
-#endif
+    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+        nuos_init_hardware_dimming_up_down(io_num);
+    #endif
 }
 
 void nuos_switch_long_press_brightness_task123(uint32_t io_num){
@@ -945,12 +980,7 @@ void nuos_switch_long_press_brightness_task123(uint32_t io_num){
             //switch_driver_gpios_intr_enabled(true);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
-            /* Right-side dim/CCT buttons: 2 -> EP1, 3 -> EP2. */
-            if (button_index == 2) {
-                nuos_switch_set_level_attribute(0);
-            } else if (button_index == 3) {
-                nuos_switch_set_level_attribute(1);
-            }
+            nuos_set_level_attribute(button_index);
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
 
         #else
@@ -966,57 +996,84 @@ void nuos_switch_long_press_brightness_task123(uint32_t io_num){
 
 
 void nuos_switch_long_press_brightness_task(uint32_t io_num){
-#if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-    /* Right-side controls only: SW3/button 2 -> EP1, SW4/button 3 -> EP2.
-     * Every repeat performs one brightness/CCT step. The first repeat wakes
-     * an OFF/zero-level endpoint at the minimum value without adding a step. */
-    const uint8_t btn_index = nuos_get_button_press_index(io_num);
-    //if (btn_index == 2 || btn_index == 3) {
-        is_long_press_brightness = true;
-        printf("nuos_set_hardware_brightness\n");
-        nuos_set_hardware_brightness(io_num);
-    //}
-#elif defined(LONG_PRESS_BRIGHTNESS_ENABLE)
-    // Original implementation for the other device types.
-    #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
-        if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
-            if(change_cw_ww_color_flag){
+    #ifdef LONG_PRESS_BRIGHTNESS_ENABLE
+        // Original implementation from user code
+        #if (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            if(scene_group_switch_info.control_type == 0 || (scene_group_switch_info.control_type == 1)){
+                if(change_cw_ww_color_flag){
+                    if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    } 
+                }else{
+                    if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    }                                                
+                }  
+            } 
+        #elif (USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+            uint8_t btn_index = nuos_get_button_press_index(io_num);
+            //printf("===btn_index:%d\n", btn_index);
+            if(btn_index < 2){
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    
+                    nuos_set_hardware_brightness(io_num);
+                } 
+            }else{
+                if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    
+                    nuos_set_hardware_brightness(io_num);
+                    
+                }                                                
+            }  
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
+            if(io_num == gpio_touch_btn_pins[0]){
+                if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                    is_long_press_brightness = true;
+                    nuos_set_hardware_brightness(io_num);
+                }                                            
+            }else{
                 if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
                     is_long_press_brightness = true;
                     nuos_set_hardware_brightness(io_num);
                 }
+            }
+        #else
+            if(io_num == gpio_touch_btn_pins[3]){
+                if(selected_color_mode != 0){
+                    selected_color_mode = 0;
+                    nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                    store_color_mode_value(selected_color_mode);
+                }
+                if(change_cw_ww_color_flag){
+                    if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    } 
+                }else{
+                    if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
+                        is_long_press_brightness = true;
+                        nuos_set_hardware_brightness(io_num);
+                    }                                                
+                }
             }else{
                 if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
                     is_long_press_brightness = true;
+                    if(selected_color_mode == 0){
+                        selected_color_mode = 1;
+                        printf("Switching to RGB mode\n");
+                        nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
+                        store_color_mode_value(selected_color_mode);
+                    }                                                
                     nuos_set_hardware_brightness(io_num);
                 }
-            }
-        }
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
-        if(io_num == gpio_touch_btn_pins[0]){
-            if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-                is_long_press_brightness = true;
-                nuos_set_hardware_brightness(io_num);
-            }
-        }else{
-            if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
-                is_long_press_brightness = true;
-                nuos_set_hardware_brightness(io_num);
-            }
-        }
-    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-        if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-            is_long_press_brightness = true;
-            nuos_set_hardware_brightness(io_num);
-        }
-    #else
-        if(brightness_count % BRIGHTNESS_SET_CHECKER_COUNTS == 0){
-            is_long_press_brightness = true;
-            nuos_set_hardware_brightness(io_num);
-        }
+            }                                        
+        #endif
+        brightness_count++;
     #endif
-    brightness_count++;
-#endif
 }
 
 void blink_single_ep_led(){

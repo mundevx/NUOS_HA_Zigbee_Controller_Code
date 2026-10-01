@@ -28,6 +28,7 @@
     extern "C" {
     #endif
     void nuos_init_rgb_led();
+    void nuos_set_uart_link_fault(bool fault);
     void nuos_blink_rgb_led(const uint32_t delay);
     void nuos_toggle_rgb_led();
     void nuos_set_rgb_led_normal_functionality();

@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 
 #include "esp_event.h"
@@ -33,6 +35,11 @@
 #define MAX_HTTP_RECV_BUFFER 			4096
 
 static const char *TAG                  = "WEBSERVER";
+#ifdef USE_C3_ADAPTER_UART_HW
+extern void nuos_set_uart_link_fault(bool fault);
+extern volatile TickType_t c6_last_uart_heartbeat;
+extern volatile bool c6_uart_link_fault;
+#endif
 //extern wifi_info_handle_t wifi_info;
 static int decode_type                  = 0;
 bool state                              = false;
@@ -177,6 +184,42 @@ void parse_json(const char *json_string) {
         }
     }
     //printf("Function: %d\n", fxnInt);
+    /* UART link supervision frames are handled before normal application commands. */
+    if (cJSON_IsNumber(fxn)) {
+        int uart_fxn = fxn->valueint;
+        #ifdef USE_C3_ADAPTER_UART_HW
+        if (uart_fxn == 250) {
+            c6_last_uart_heartbeat = xTaskGetTickCount();
+            c6_uart_link_fault = false;
+            nuos_set_uart_link_fault(false);
+            cJSON *seq = cJSON_GetObjectItem(root, "seq");
+            char ack[128];
+            snprintf(ack, sizeof(ack),
+                     "{\"fxn\":251,\"type\":\"uart_heartbeat_ack\",\"side\":\"C6\",\"seq\":%d}",
+                     (seq && cJSON_IsNumber(seq)) ? seq->valueint : 0);
+            #ifdef USE_C3_ADAPTER_UART_HW         
+            send_serial(ack);
+            #endif
+            cJSON_Delete(root);
+            return;
+        }
+        if (uart_fxn == 251) {
+            c6_last_uart_heartbeat = xTaskGetTickCount();
+            c6_uart_link_fault = false;
+            nuos_set_uart_link_fault(false);
+            cJSON_Delete(root);
+            return;
+        }
+        if (uart_fxn == 252) {
+            c6_uart_link_fault = true;
+            nuos_set_uart_link_fault(true);
+            ESP_LOGE(TAG, "C3 reports UART link fault");
+            cJSON_Delete(root);
+            return;
+        }
+        #endif
+    }
+
     switch(fxnInt){ 
         case 14:
             wifi_webserver_active_flag = true;
@@ -224,8 +267,7 @@ void parse_json(const char *json_string) {
                 } 
 
                 int index = sindex->valueint;
-                printf("sindex: %d\n", index);
-
+                // printf("sindex: %d\n", index);
                 // Get the values array
                 cJSON *valuesArray = cJSON_GetObjectItem(root, "values");
                 if (!cJSON_IsArray(valuesArray))
@@ -465,7 +507,7 @@ void parse_json(const char *json_string) {
                     cJSON_Delete(root);
                     return;
                 }     
-                printf("sindex: %d\n", sindex->valueint);
+                // printf("sindex: %d\n", sindex->valueint);
                 index = sindex->valueint;
                 if(dali_nvs_stt[index].state == 0) dali_nvs_stt[index].state = 1;
                 else dali_nvs_stt[index].state = 0;
@@ -481,7 +523,7 @@ void parse_json(const char *json_string) {
                     return;
                 }   
                 index = sindex->valueint;  
-                printf("sindex: %d\n", index);
+                // printf("sindex: %d\n", index);
                 cJSON *svalue = cJSON_GetObjectItem(root, "value");
                 if (svalue == NULL) {
                     printf("Missing JSON keys sinput\n");
@@ -507,14 +549,14 @@ void parse_json(const char *json_string) {
                     return;
                 }     
                 index = sindex->valueint;
-                printf("sindex: %d\n", index);
+                // printf("sindex: %d\n", index);
                 svalue = cJSON_GetObjectItem(root, "value");
                 if (svalue == NULL) {
                     printf("Missing JSON keys sinput\n");
                     cJSON_Delete(root);
                     return;
                 }
-                printf("svalue: %d\n", svalue->valueint);
+                //printf("svalue: %d\n", svalue->valueint);
                 dali_nvs_stt[index].color_value = (uint16_t)svalue->valueint;
                 nuos_dali_set_group_color_temperature(dali_nvs_stt[index].group_id, index, dali_nvs_stt[index].color_value);
                 nuos_store_dali_data_to_nvs(index);

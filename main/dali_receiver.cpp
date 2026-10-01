@@ -62,7 +62,14 @@ esp_err_t Receiver::begin(gpio_num_t rx_pin, callback_t cb, bool inverted, bool*
         }
     
 
-    // Add ISR handler
+    /* Create the edge queue before enabling the GPIO ISR. */
+    edge_queue_ = xQueueCreate(64, sizeof(RxEdgeEvent));
+    if (edge_queue_ == nullptr) {
+        ESP_LOGE(TAG, "Failed to create DALI RX edge queue");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // Add ISR handler only after the queue is ready.
     ESP_ERROR_CHECK(gpio_isr_handler_add(pin_, gpio_isr_handler, this));
 
     // Create a periodic timer to count idle TE periods (fires every TE)
@@ -78,8 +85,6 @@ esp_err_t Receiver::begin(gpio_num_t rx_pin, callback_t cb, bool inverted, bool*
     ESP_ERROR_CHECK(esp_timer_start_periodic(idle_timer_, DALI_TE));
 
     ESP_LOGI(TAG, "Receiver started on GPIO %d", pin_);
-
-    edge_queue_ = xQueueCreate(64, sizeof(RxEdgeEvent));
 
     xTaskCreate(
         [](void* arg) {
@@ -111,9 +116,14 @@ void Receiver::end() {
         idle_timer_ = nullptr;
     }
     if (pin_ != GPIO_NUM_NC) {
+        gpio_intr_disable(pin_);
         gpio_isr_handler_remove(pin_);
         gpio_reset_pin(pin_);
         pin_ = GPIO_NUM_NC;
+    }
+    if (edge_queue_) {
+        vQueueDelete(edge_queue_);
+        edge_queue_ = nullptr;
     }
 }
 
@@ -258,7 +268,9 @@ void IRAM_ATTR Receiver::handle_pin_change_isr() {
     // ev.t_us = now;
     //ev.bus_low = false;   // fill later in task, or use a low-level read here
 
-    xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
+    if (edge_queue_ != nullptr) {
+        xQueueSendFromISR(edge_queue_, &ev, &hp_task_woken);
+    }
     if (hp_task_woken == pdTRUE) {
         portYIELD_FROM_ISR();
     }

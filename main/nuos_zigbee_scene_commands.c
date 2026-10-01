@@ -1438,11 +1438,6 @@ uint32_t get_backoff_time(){
 // extern SemaphoreHandle_t dali_sem;
 void print_decoded_scene(decoded_scene_t *scene)
 {
-#ifdef USE_COLOR_CONTROL
-    /* Preserve the endpoint selected before a Zigbee scene is applied. */
-    const uint8_t old_selected_endpoint = ep_selected_index;
-#endif
-
     if (!scene)
         return;
 
@@ -1723,27 +1718,10 @@ void print_decoded_scene(decoded_scene_t *scene)
         #endif
     }
     printf("\n========================================\n");
-
-#ifdef USE_COLOR_CONTROL
-    /*
-     * Zigbee scene recall has no physical "last pressed" endpoint.
-     * Preserve the previous selection if that endpoint is still ON.
-     */
-    if (old_selected_endpoint < 2 &&
-        device_info[old_selected_endpoint].device_state) {
-        set_parameter_ep_index_selected(old_selected_endpoint);
-    } else if (device_info[0].device_state) {
-        set_parameter_ep_index_selected(0);
-    } else if (device_info[1].device_state) {
-        set_parameter_ep_index_selected(1);
-    } else {
-        set_parameter_ep_index_selected(0xFF);
-    }
-#endif
 }
 
 
-void nuos_set_scene(const esp_zb_zcl_recall_scene_message_t *message){
+void nuos_set_scene(esp_zb_zcl_recall_scene_message_t *message){
     decoded_scene_t local_scene;
     if(decode_scene_extension_fields(
         message->field_set,

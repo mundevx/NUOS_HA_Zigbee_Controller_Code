@@ -564,7 +564,12 @@ static void receiveDaliFrame(void *arg) {
         dali.set_group_color_rgb(group_id, r, g, b, 255, false);
     } 
     
-
+    extern "C" void set_dali_level(uint8_t index){
+        nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
+    }
+    extern "C" void set_dali_level_to_off(uint8_t index){
+        nuos_dali_set_group_brightness(scene_group_switch_info.group_id[index], index, 0);
+    }
     extern "C" void nuos_dali_set_group_brightness(uint8_t group_id, uint8_t index, uint8_t value) {
         
         dali.set_group_level(group_id, map_1_255_to_100_255(value));
@@ -829,7 +834,7 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
 }
     int total_nodes_assigned = 0;
     void esp_dali_factory_reset_all_drivers(){
-        dali.factoryResetDaliDrivers();
+       dali.factoryResetDaliDrivers();
     }
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;

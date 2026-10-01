@@ -180,6 +180,7 @@
             #define TUYA_ATTRIBUTES
         #endif
 
+        #define ENABLE_PWM_DIMMING
         #define LONG_PRESS_BRIGHTNESS_ENABLE
         #define DIMMING_STEPS                                       5
         #define BRIGHTNESS_SET_CHECKER_COUNTS                       15
@@ -239,7 +240,7 @@
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 
-        #define DIMMING_STEPS                                           2
+        #define DIMMING_STEPS                                           5
         #define BRIGHTNESS_SET_CHECKER_COUNTS                           2
         #define DIMMING_LAST_REACH_OFFSET                               50
 
@@ -253,7 +254,7 @@
         #define MAX_DIM_LEVEL_VALUE                                     254   
         
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1
-        #define ENABLE_PWM_DIMMING
+        //#define ENABLE_PWM_DIMMING
 
   
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)

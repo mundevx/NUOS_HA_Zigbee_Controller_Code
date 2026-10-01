@@ -482,6 +482,7 @@ int DALI::commissionNewNodes() {
     return assigned;
 }
 
+
 void DALI::factoryResetDaliDrivers(){
 
     // Reset modules
@@ -664,28 +665,36 @@ bool DALI::waitBusIdleStable(uint32_t stable_us, uint32_t timeout_us) {
     return false;
 }
 
-#define QUERY_STATUS_2 0xBB
+#define DALI_DISCOVERY_RETRIES       3
 
 int DALI::scanAssignedShortAddresses(uint8_t* foundAddresses, uint8_t maxAddresses) {
-    int found = 0;
-    for (uint8_t addr = 0; addr < 64; ++addr) {
-        vTaskDelay(1 / portTICK_PERIOD_MS);
-        sendCommand(addr, QUERY_STATUS_2);
-        for (uint32_t n = 0; n < 100000; n++) {
-#ifdef IS_INVERTED
-            if (!gpio_get_level(rxPin))
-#else
-            if ( gpio_get_level(rxPin))
-#endif
-            { foundAddresses[found++] = addr; break; }
-            task_delayMicroseconds(1);
-        }
+    if (!foundAddresses || maxAddresses == 0) return 0;
+    if (dali_mutex && xSemaphoreTake(dali_mutex, pdMS_TO_TICKS(5000)) != pdTRUE) {
+        ESP_LOGE(TAG, "DALI discovery: bus mutex timeout");
+        return 0;
     }
+    int found = 0;
+    for (uint8_t addr = 0; addr < 64 && found < maxAddresses; ++addr) {
+        bool present = false;
+        for (int attempt = 0; attempt < DALI_DISCOVERY_RETRIES; ++attempt) {
+            uint8_t response = 0;
+            uint8_t daliAddr = (uint8_t)((addr << 1) | 0x01);
+            if (!sendCommand(daliAddr, QUERY_CONTROL_GEAR_PRESENT)) continue;
+            if (waitForResponseValue(&response) == 0 && response == 0xFF) {
+                present = true;
+                break;
+            }
+            task_delay(3);
+        }
+        if (present) foundAddresses[found++] = addr;
+        task_delay(3);
+    }
+    if (dali_mutex) xSemaphoreGive(dali_mutex);
+    ESP_LOGI(TAG, "DALI discovery complete: %d assigned short addresses", found);
     return found;
 }
 
 #define QUERY_STATUS                0x90
-#define QUERY_CONTROL_GEAR_PRESENT  0x91
 
 bool DALI::waitForResponse() {
     for (uint32_t i = 0; i < 50000; i++) {
@@ -774,18 +783,8 @@ int32_t DALI::queryDeviceInGroupB(uint8_t shortAddr) {
 }
 
 int DALI::readExistingDrivers(uint8_t *addressList, int maxDevices) {
-    int count = 0;
-    for (uint8_t shortAddr = 0; shortAddr < 64; shortAddr++) {
-        uint8_t daliAddr = (shortAddr << 1) | 0x01;
-        sendCommand(daliAddr, QUERY_CONTROL_GEAR_PRESENT);
-
-        if (waitForResponse()) {
-            if (count < maxDevices)
-                addressList[count] = shortAddr;
-            count++;
-        }
-        task_delay(10);
-    }
+    if (!addressList || maxDevices <= 0) return 0;
+    int count = scanAssignedShortAddresses(addressList, (uint8_t)maxDevices);
     printf("Total Devices Found = %d\n", count);
     return count;
 }
