@@ -143,6 +143,11 @@ public:
     void set_broadcast_color_rgb_2(uint8_t r, uint8_t g, uint8_t b, uint8_t dim);
     void set_broadcast_color_cct(uint16_t color_temp_kelvin);
     void set_cct_dimming(uint8_t addr, uint8_t dim);
+    // void DaliCommands::fade_rgb(
+    // uint8_t addr,
+    // uint8_t startR, uint8_t startG, uint8_t startB,
+    // uint8_t targetR, uint8_t targetG, uint8_t targetB,
+    // uint32_t duration_ms);
 
     // Group functions
     bool add_to_group(uint8_t addr, uint8_t group);

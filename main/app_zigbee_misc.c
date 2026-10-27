@@ -806,6 +806,8 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                     last_selected_color_mode = 1;
                 }
                 if(last_selected_color_mode != selected_color_mode){
+                    printf("last_selected_color_mode:%d  selected_color_mode:%d\n", last_selected_color_mode, selected_color_mode);
+                    selected_color_mode = last_selected_color_mode;
                     if(selected_color_mode == 0){
                         if(!device_info[3].device_state){
                             device_info[3].device_state = true;
@@ -815,7 +817,7 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                             device_info[4].device_state = true;
                         }
                     }  
-                    selected_color_mode = last_selected_color_mode;
+                    
                     mode_change_flag = true;
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
@@ -846,10 +848,11 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                             set_dali_color_temp(0, false);
                             
                         }
-                        printf("set_state(3) button_index:%d\n", button_index);
+                        // printf("set_state(3) button_index:%d\n", button_index);
                         set_state(3);
                     }
                 #endif
+                mode_change_flag = false;
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
                 if(button_index < 2){ 
@@ -872,17 +875,21 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 #ifdef USE_COLOR_CONTROL
                 else{
                     sindex = get_parameter_ep_index_selected();
-                    // printf("sindex_2_3: %d\n", sindex);
+                    printf("sindex_2_3: %d\n", sindex);
                     if(sindex > 1) return;
                     if(device_info[sindex].device_state){
                         nuos_zb_set_hardware(button_index, false);
                         if(device_info[sindex].device_state){
                             set_dali_level(sindex);
+                            #ifdef USE_DOUBLE_CLICK_MODE
                             if(device_info[sindex].color_or_fan_state){
                                 set_dali_color_temp(sindex, false);
                             }else{
                                 set_dali_level(sindex); 
                             }  
+                            #else
+                                set_dali_color_temp(sindex, false);
+                            #endif
                         }
                         
                     }
@@ -904,8 +911,10 @@ void nuos_switch_single_click_task(uint32_t io_num) {
                 nuos_set_zigbee_attribute(0);
             #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)   
                 nuos_set_zigbee_attribute(button_index); 
+            #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
+                nuos_set_zigbee_attribute(sindex);
             #else
-                nuos_set_zigbee_attribute(button_index);
+                nuos_set_zigbee_attribute(button_index);    
             #endif
         }
         #endif
@@ -923,6 +932,7 @@ void nuos_switch_double_click_task(uint32_t io_num){
             set_parameter_toggle_bt_func_selected(double_press_click_enable[sindex]);
             if(device_info[sindex].device_state){
                 nuos_zb_set_hardware(button_index, false);
+                #ifdef USE_DOUBLE_CLICK_MODE
                 if(device_info[sindex].color_or_fan_state){
                     set_dali_color_temp(sindex, false);  //set dali color temp to default value when double press click happens, as per tuya requirement
                     nuos_set_color_temperature_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
@@ -930,9 +940,14 @@ void nuos_switch_double_click_task(uint32_t io_num){
                     set_dali_level(sindex); //set dali level to default value when double press click happens, as per tuya requirement
                     nuos_set_level_attribute(sindex); //set zigbee attribute to update the value in zigbee side, as per tuya requirement
                 }
+                #else
+                    set_dali_color_temp(sindex, false);  //set dali color temp to default value when double press click happens, as per tuya requirement
+                    nuos_set_color_temperature_attribute(sindex);
+                #endif
             }
         #else
             change_cw_ww_color_flag = !change_cw_ww_color_flag;
+            printf("change_cw_ww_color_flag:%d\n", change_cw_ww_color_flag);
             double_press_click_enable[0] = !double_press_click_enable[0];
         #endif
 }
@@ -946,7 +961,7 @@ void nuos_switch_long_press_task(uint32_t io_num){
 }
 
 void nuos_switch_long_press_brightness_task123(uint32_t io_num){
-    //printf("LONG PRESS BRIGHTNESS Detected!!\n");
+    printf("LONG PRESS BRIGHTNESS Detected!!\n");
     button_index = nuos_get_button_press_index(io_num);
     //recheckTimer();
     #ifdef LONG_PRESS_BRIGHTNESS_ENABLE 
@@ -1048,6 +1063,7 @@ void nuos_switch_long_press_brightness_task(uint32_t io_num){
                     nuos_set_color_rgb_mode_attribute(0, selected_color_mode);
                     store_color_mode_value(selected_color_mode);
                 }
+                //printf("selected_color_mode:%d change_cw_ww_color_flag:%d\n", selected_color_mode, change_cw_ww_color_flag);
                 if(change_cw_ww_color_flag){
                     if(brightness_count % COLOR_SET_CHECKER_COUNTS == 0){
                         is_long_press_brightness = true;

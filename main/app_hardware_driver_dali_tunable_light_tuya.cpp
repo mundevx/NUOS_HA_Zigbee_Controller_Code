@@ -53,13 +53,13 @@
     static bool state = false;
     uint8_t level = 0;
 
-    #define MAX_CCT_SCENES_VALUES    6
+    #define MAX_CCT_SCENES_VALUES    4
 
-    uint16_t cct_values[MAX_CCT_SCENES_VALUES] = {MIN_CCT_VALUE, MIN_CCT_VALUE_1, MIN_CCT_VALUE_2, MIN_CCT_VALUE_3, MIN_CCT_VALUE_4, MAX_CCT_VALUE};
+    uint16_t cct_values[MAX_CCT_SCENES_VALUES] = {MIN_CCT_VALUE, MIN_CCT_VALUE_1, MIN_CCT_VALUE_2, MAX_CCT_VALUE};
 
-    #define MAX_DIMMING_VALUES      15
+    #define MAX_DIMMING_VALUES      5
 
-    uint16_t dim_values[MAX_DIMMING_VALUES] = {0, MIN_DIM_LEVEL_VALUE, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, MAX_DIM_LEVEL_VALUE};
+    uint16_t dim_values[MAX_DIMMING_VALUES] = {0, 65, 130, 190, MAX_DIM_LEVEL_VALUE};
 
     static uint8_t last_dali_level = 0; 
     static uint16_t last_color_temp = 0;

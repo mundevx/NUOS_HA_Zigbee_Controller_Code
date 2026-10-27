@@ -29,6 +29,7 @@
     // extern "C" void process_dali_receive_tasks(uint8_t index, bool _state_, uint8_t _level_);
     int start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses);
     void esp_dali_factory_reset_all_drivers();
+    int esp_dali_init_nodes(const uint8_t* addresses, uint8_t numAddresses);
 
     #define LEDC_TIMER              		                    LEDC_TIMER_0
     #define LEDC_MODE               		                    LEDC_LOW_SPEED_MODE
@@ -835,6 +836,11 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
     int total_nodes_assigned = 0;
     void esp_dali_factory_reset_all_drivers(){
        dali.factoryResetDaliDrivers();
+    }
+    uint8_t dali_addresses[64] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
+    int esp_dali_init_nodes(const uint8_t* addresses, uint8_t numAddresses)
+    {
+        return dali.initNodes(dali_addresses, numAddresses);
     }
     static void esp_dali_init_node_task(void *pvParameters) {
         uint16_t addr = *(uint16_t*)pvParameters;

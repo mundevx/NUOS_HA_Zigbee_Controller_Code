@@ -172,11 +172,6 @@ public:
     void sendData(uint8_t value);
     void sendBit(bool bit);
 
-    // int commissionNewNodes();
-    // bool clearShortAddress(uint8_t shortAddr);
-   // bool resetDriver(uint8_t shortAddr);
-  //  void sendData(uint8_t value);
-
     int32_t queryGear(uint8_t shortAddr, uint8_t query_cmd);
     int waitForResponseValue(uint8_t *outputByte);
     int32_t queryPowerOnLevel(uint8_t shortAddr);
@@ -187,8 +182,6 @@ public:
     int32_t queryDeviceInGroupB(uint8_t shortAddr);
     int32_t queryGearFeatures(uint8_t shortAddr);
 
-   // int getNextFreeShortAddress();
-  //  bool isShortAddressUsed(uint8_t shortAddr);
 
 private:
     volatile bool tx_in_progress_ = false;

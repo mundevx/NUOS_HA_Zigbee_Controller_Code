@@ -257,7 +257,11 @@ switch_func_pair_t g_buttons[] = {
     {
         .id = 0,
         .pin = gpio_touch_btn_pins[0],
+        #ifdef USE_DOUBLE_CLICK_MODE
         .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        #else
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        #endif
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_SCENE_CHANGE_CONTROL,
         .long_func = SWITCH_DIMMING_CONTROL,
@@ -267,7 +271,11 @@ switch_func_pair_t g_buttons[] = {
     {
         .id = 1,
         .pin = gpio_touch_btn_pins[1],
+        #ifdef USE_DOUBLE_CLICK_MODE
         .enabled_events = BTN_EVT_SINGLE | BTN_EVT_DOUBLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        #else
+        .enabled_events = BTN_EVT_SINGLE | BTN_EVT_LONG | BTN_EVT_COMBO_LONG,
+        #endif
         .single_func = SWITCH_ONOFF_TOGGLE_CONTROL,
         .double_func = SWITCH_SCENE_CHANGE_CONTROL,
         .long_func = SWITCH_DIMMING_CONTROL,
@@ -522,6 +530,47 @@ static void user_find_cb(esp_zb_zdp_status_t zdo_status, uint16_t addr, uint8_t 
 }
 
 static bool is_steering_in_progress = false;
+static bool gateway_discovery_retry_active = false;
+#define GATEWAY_DISCOVERY_RETRY_MS 10000
+
+static void gateway_discovery_retry_cb(uint8_t param)
+{
+    (void)param;
+
+    if (!esp_zb_bdb_dev_joined()) {
+        gateway_discovery_retry_active = false;
+        ESP_LOGW(TAG, "Gateway discovery retry stopped: device is not joined");
+        return;
+    }
+
+    if (found_clusters_flag) {
+        gateway_discovery_retry_active = false;
+        ESP_LOGI(TAG, "Gateway already discovered; discovery retry stopped");
+        return;
+    }
+
+    ESP_LOGW(TAG, "Gateway discovery not completed - retrying Matching Clusters.....");
+    nuos_zb_find_clusters(user_find_cb);
+
+    /* Keep retrying until user_find_cb() finds the gateway. */
+    esp_zb_scheduler_alarm(
+        (esp_zb_callback_t)gateway_discovery_retry_cb,
+        0,
+        GATEWAY_DISCOVERY_RETRY_MS);
+}
+
+static void gateway_discovery_start_retry(void)
+{
+    if (gateway_discovery_retry_active || found_clusters_flag) {
+        return;
+    }
+
+    gateway_discovery_retry_active = true;
+    esp_zb_scheduler_alarm(
+        (esp_zb_callback_t)gateway_discovery_retry_cb,
+        0,
+        GATEWAY_DISCOVERY_RETRY_MS);
+}
 
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
@@ -571,7 +620,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         ESP_LOGI(TAG, "Initialize Zigbee stack");
         // stack_initialised = true;
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
-        // esp_zb_nwk_set_link_status_period(15);  //forcefully 
+        esp_zb_nwk_set_link_status_period(15);  //forcefully 
         network_steering_mode_flag = false;
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
@@ -583,15 +632,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "Start network steering...\n");
                 // store "sig"=sig_type of "err"= "Steering" here in nvs
                 #ifdef USE_RGB_LED
-                    // TEMP DIAG: bracket every call between this log line and the panic so
-                    // the next crash tells us exactly which one never returns.
-                    printf("DIAG: before light_driver_set_power t=%lld\n", (long long)esp_timer_get_time());
                     light_driver_set_power(false);
-                    printf("DIAG: after light_driver_set_power t=%lld\n", (long long)esp_timer_get_time());
-                    if(start_commissioning>0){
-                        printf("Commissioning Flag True\n");
-                        //nuos_start_rgb_led_blink_task(0);
-                    }
                 #endif
                     if(getNVSPanicAttack() > 0){
                         setNVSPanicAttack(0);
@@ -601,7 +642,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                         if(!start_commissioning){
                             setNVSCommissioningFlag(1);
                             start_commissioning = true;
-                            esp_zb_factory_reset();
+                            //tesp_zb_factory_reset();
                         }
                     }else{
                         printf("DIAG: before setNVSPanicAttack(0) t=%lld\n", (long long)esp_timer_get_time());
@@ -617,7 +658,9 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "My Short Address : 0x%x", esp_zb_get_short_address());
                 network_steering_mode_flag = false;
 
-               
+                #ifdef USE_RGB_LED
+                    light_driver_set_power(false);
+                #endif
                 if(getNVSPanicAttack() > 5){
                     setNVSPanicAttack(0);
                     setNVSCommissioningFlag(1);
@@ -634,6 +677,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                     
                     if (esp_zb_bdb_dev_joined()) {
                         nuos_zb_find_clusters(user_find_cb);
+                        gateway_discovery_start_retry();
                     }else{   
                         printf("BDB not joined!!.....\n");
                         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 2000);
@@ -649,42 +693,21 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                                    ESP_ZB_BDB_MODE_INITIALIZATION, 1000);
         }
         break;       
-    // case ESP_ZB_BDB_SIGNAL_STEERING:
-    //     if (err_status == ESP_OK) {
-    //         esp_zb_ieee_addr_t extended_pan_id;
-    //         esp_zb_get_extended_pan_id(extended_pan_id);
-    //         ESP_LOGI(TAG, "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
-    //                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
-    //                  extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
-    //                  esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
-    //         //esp_zb_zdo_pim_set_long_poll_interval(ED_KEEP_ALIVE);
-    //         //Added by Nuos  
-    //         joining_signal_received = true;
-    //         nuos_zb_find_clusters(user_find_cb);
-    //     } else {
-    //         joining_signal_received = false;
-    //         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
-    //         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-            
-            
-    //     }
-    //     break;
 
-    // case ESP_ZB_BDB_SIGNAL_STEERING:
-    //     is_steering_in_progress = false; // <-- Clear flag here
-    //     if (err_status == ESP_OK) {
-    //         joining_signal_received = true;
-    //         nuos_zb_find_clusters(user_find_cb);
-    //     } else {
-    //         joining_signal_received = false;
-    //         ESP_LOGI(TAG, "Network steering failed (status: %s)", esp_err_to_name(err_status));
-    //         // Retry with backoff only if not already steering
-    //         // esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, 
-    //         //                     ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
-    //         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
 
-    //     }
-    //     break;
+    case ESP_ZB_BDB_SIGNAL_STEERING:
+        is_steering_in_progress = false; // <-- Clear flag here
+        if (err_status == ESP_OK) {
+            joining_signal_received = true;
+            nuos_zb_find_clusters(user_find_cb);
+            gateway_discovery_start_retry();
+        } else {
+            joining_signal_received = false;
+            ESP_LOGI(TAG, "Network steering failed (status: %s)", esp_err_to_name(err_status));
+            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 5000);
+
+        }
+        break;
 
     case ESP_ZB_ZDO_DEVICE_UNAVAILABLE:
         ESP_LOGW(TAG, "Gateway / Parent Device Unavailable!");
@@ -2093,11 +2116,11 @@ static void enter_safe_mode_and_factory_reset(void)
 void app_main(void) {
     //Init GPIOs pin
     nuos_zb_init_hardware();
- // 2. Check Startup Safe Mode Condition before starting Zigbee/Tasks
-    if (check_startup_dual_key_safe_mode()) {
-        enter_safe_mode_and_factory_reset();
-        return; // Will not reach here because of esp_restart()
-    }
+    // // 2. Check Startup Safe Mode Condition before starting Zigbee/Tasks
+    // if (check_startup_dual_key_safe_mode()) {
+    //     enter_safe_mode_and_factory_reset();
+    //     return; // Will not reach here because of esp_restart()
+    // }
     gpio_config_t io_conf = {};
     uint64_t pin_bit_mask = 0;
     /* set up button func pair pin mask */

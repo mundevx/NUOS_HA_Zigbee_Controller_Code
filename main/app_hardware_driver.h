@@ -739,6 +739,7 @@ extern "C" {
     int32_t daliQueryDeviceInGroupB(uint8_t addr);
     uint16_t daliQueryGear(uint8_t addr);
     void esp_dali_factory_reset_all_drivers();
+    int esp_dali_init_nodes(const uint8_t* addresses, uint8_t numAddresses);
     void dali_enable_query_mode();
     void dali_disable_query_mode();
     void dali_query_send(uint8_t id, uint8_t command);
@@ -748,6 +749,8 @@ extern "C" {
     void set_dali_color_temp(uint8_t index, bool is_color_change);
     void set_color_temp_args(uint16_t color);
     esp_err_t nuos_set_state_attribute(uint8_t index);
+    void nuos_set_state_command_nl(uint8_t index, uint8_t state);
+    void nuos_set_level_command_nl(uint8_t index, uint8_t level);
     void nuos_set_state_command(uint8_t dpid, uint8_t state);
     void nuos_set_level_command(uint8_t dpid, uint8_t state);
     void nuos_set_color_temp_command(uint8_t dpid, uint16_t color);

@@ -15,11 +15,10 @@
     //#define DONT_USE_ZIGBEE                                       // For Expo or Demo Only   
     #define NEW_SDK_6
     //#define USE_OTA
-
     #define USE_TUYA_BRDIGE
 
-    //#define WRITE_NVS_CONFIG
-   // #define ZB_FACTORY_RESET
+    // #define WRITE_NVS_CONFIG
+    // #define ZB_FACTORY_RESET
     #define USE_TRIPLE_CLICK
     #define USE_DOUBLE_CLICK
 

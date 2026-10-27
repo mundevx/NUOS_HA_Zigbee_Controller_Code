@@ -37,11 +37,16 @@
     #define TIMER_COMMISSIONING_LED_BLINK_COUNTS                    5   //500 msec
     #define COMMISSIONING_TIMEOUT                                   600 //60 seconds
 
+    // #define MAX_CCT_VALUE                                           6500
+    // #define MIN_CCT_VALUE_4                                         5500
+    // #define MIN_CCT_VALUE_3                                         5000
+    // #define MIN_CCT_VALUE_2                                         4000  
+    // #define MIN_CCT_VALUE_1                                         3000
+    // #define MIN_CCT_VALUE                                           2000
+
     #define MAX_CCT_VALUE                                           6500
-    #define MIN_CCT_VALUE_4                                         5500
-    #define MIN_CCT_VALUE_3                                         5000
-    #define MIN_CCT_VALUE_2                                         4000  
-    #define MIN_CCT_VALUE_1                                         3000
+    #define MIN_CCT_VALUE_2                                         5500  
+    #define MIN_CCT_VALUE_1                                         3500
     #define MIN_CCT_VALUE                                           2000
     ///////////////////////////////////////////////////////////////////////////////////
  
@@ -221,7 +226,7 @@
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
         #define USE_COLOR_CONTROL
-
+        //#define USE_DOUBLE_CLICK_MODE
         #define TOTAL_ENDPOINTS                                         2
         #ifdef USE_COLOR_CONTROL 
         #define TOTAL_BUTTONS                                           4
@@ -292,8 +297,8 @@
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 
-        #define BRIGHTNESS_SET_CHECKER_COUNTS                       1
-        #define DIMMING_STEPS                                       5
+        #define BRIGHTNESS_SET_CHECKER_COUNTS                       10
+        #define DIMMING_STEPS                                       20
         //#define DIMMING_RGB_STEPS                                   20
 
         #define COLOR_SET_CHECKER_COUNTS                            2

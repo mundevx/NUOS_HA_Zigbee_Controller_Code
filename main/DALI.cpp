@@ -507,6 +507,7 @@ void DALI::factoryResetDaliDrivers(){
     sendCommand(RANDOMISE, 0);
     task_delay(200);
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 int DALI::initNodes(const uint8_t* addresses, uint8_t numAddresses) {
     uint32_t searchLower;

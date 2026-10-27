@@ -570,6 +570,35 @@ void DaliCommands::set_cct_dimming(uint8_t addr, uint8_t dim) {
     send_command_standard(COLOR_ACTIVATE, group_addr);
 }
 
+// void DaliCommands::fade_rgb(
+//     uint8_t addr,
+//     uint8_t startR, uint8_t startG, uint8_t startB,
+//     uint8_t targetR, uint8_t targetG, uint8_t targetB,
+//     uint32_t duration_ms)
+// {
+//     const uint32_t interval_ms = 100;
+
+//     uint32_t steps = duration_ms / interval_ms;
+//     if (steps == 0) {
+//         steps = 1;
+//     }
+
+//     for (uint32_t i = 1; i <= steps; i++) {
+//         uint8_t r = startR +
+//             ((int32_t)targetR - startR) * (int32_t)i / (int32_t)steps;
+
+//         uint8_t g = startG +
+//             ((int32_t)targetG - startG) * (int32_t)i / (int32_t)steps;
+
+//         uint8_t b = startB +
+//             ((int32_t)targetB - startB) * (int32_t)i / (int32_t)steps;
+
+//         set_rgb_3X(addr, r, g, b, 254, false);
+
+//         vTaskDelay(pdMS_TO_TICKS(interval_ms));
+//     }
+// }
+
 void DaliCommands::set_color_rgb(uint8_t addr, uint8_t r, uint8_t g, uint8_t b, uint8_t dim, bool mode_change_flag) {
     
     // if(on_scene_attribute_reporting_cb_flag){
@@ -610,38 +639,30 @@ void DaliCommands::set_color_rgb_WAF(uint8_t addr, uint8_t dim) {
 }
 
 void DaliCommands::set_color_cct_waf_dim(uint8_t addr, uint8_t dim) {
-    
     set_cct_channel_4_5_dim(addr, dim, dim);
     // Enable device type 8
     send_command_special(ENABLE_DEVICE_TYPE, 0x08);
     send_command_standard(COLOR_ACTIVATE, addr);
-    //send_command_special_standard32(ENABLE_DEVICE_TYPE, 0x08, COLOR_ACTIVATE, addr);
 }
 
 void DaliCommands::set_mode(uint8_t addr, uint8_t mode){
-    
     daliCore.sendCommandPublic(SET_DTR0, mode);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, 0x23);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, 0x23);
-    
 }
 
 /**********Set Dali Device Power On Level value***********/
-void DaliCommands::set_power_on_level(uint8_t addr, uint8_t power_on_level){
-    
+void DaliCommands::set_power_on_level(uint8_t addr, uint8_t power_on_level){  
     daliCore.sendCommandPublic(SET_DTR0, power_on_level);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_POWER_ON_LEVEL);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_POWER_ON_LEVEL);
-    
 }
 
 /**********Set Dali Device Min Level value***********/
 void DaliCommands::set_min_level(uint8_t addr, uint8_t value){
-    
     daliCore.sendCommandPublic(DALI_CMD_STORE_DTR, value);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MIN_LEVEL);
-    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MIN_LEVEL);
-    
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MIN_LEVEL);  
 }
 
 /**********Set DALI Device Max Level value***********/
@@ -649,150 +670,115 @@ void DaliCommands::set_max_level(uint8_t addr, uint8_t value){
     
     daliCore.sendCommandPublic(DALI_CMD_STORE_DTR, value);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MAX_LEVEL);
-    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MAX_LEVEL);
-    
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, DALI_CMD_STORE_DTR_MAX_LEVEL); 
 }
 
 /**********Set DALI Device fade time value***********/
-void DaliCommands::set_ext_fade_time(uint8_t addr, uint8_t time)
-{
-    
+void DaliCommands::set_ext_fade_time(uint8_t addr, uint8_t time){
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, time);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_EXT_FADE_TIME);
     //delay(DELAY_COMMAND_SEND);
-    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_EXT_FADE_TIME);
-      
+    daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_EXT_FADE_TIME);    
 }
 
-void DaliCommands::set_fade_time(uint8_t addr, uint8_t time)
-{
-    
+void DaliCommands::set_fade_time(uint8_t addr, uint8_t time){ 
     daliCore.sendCommandPublic(SET_DTR0, time);
     vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
     send_command_standard(SET_FADE_TIME, addr); 
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_TIME);
-    send_command_standard(SET_FADE_TIME, addr);
-    
+    send_command_standard(SET_FADE_TIME, addr); 
 }
 
 /**********Set DALI Device fade rate value***********/
-void DaliCommands::set_fade_rate(uint8_t addr, uint8_t rate)
-{
-    
+void DaliCommands::set_fade_rate(uint8_t addr, uint8_t rate){ 
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, rate);
     vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
     vTaskDelay(DELAY_COMMAND_SEND / portTICK_PERIOD_MS);
     daliCore.sendCommandPublic(SHORT_POWER | ((addr << 1) & 0x7e) | 0x01, SET_FADE_RATE);
-    send_command_standard(SET_FADE_RATE, addr);
-    
+    send_command_standard(SET_FADE_RATE, addr);  
 }
 
 #define BROADCAST_DP 0b11111110
-void DaliCommands::set_broadcast_fade_time(uint8_t time)
-{
-    
+void DaliCommands::set_broadcast_fade_time(uint8_t time){ 
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, time);
     send_command_standard(SET_FADE_TIME, BROADCAST_DP);
-    send_command_standard(SET_FADE_TIME, BROADCAST_DP);     
-         
+    send_command_standard(SET_FADE_TIME, BROADCAST_DP);            
 }
 
 /**********Set DALI Device fade rate value***********/
-void DaliCommands::set_broadcast_fade_rate( uint8_t rate)
-{
-    
+void DaliCommands::set_broadcast_fade_rate( uint8_t rate){  
     // Send twice command
     daliCore.sendCommandPublic(SET_DTR0, rate);
     send_command_standard(SET_FADE_RATE, BROADCAST_DP);
     send_command_standard(SET_FADE_RATE, BROADCAST_DP);
-    
 }
 
- 
-
 ///////////////////////////Dali group Functions////////////////////////
-bool DaliCommands::add_to_group(uint8_t addr, uint8_t group)
-{
-    
+bool DaliCommands::add_to_group(uint8_t addr, uint8_t group){
     // Send the command to add to group
     send_command_standard(ADD_TO_GROUP + group, addr);
     vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(ADD_TO_GROUP + group, addr);
     vTaskDelay(10 / portTICK_PERIOD_MS);
-    
     return true;
 }
 
-void DaliCommands::remove_from_group(uint8_t addr, uint8_t group)
-{
-    
+void DaliCommands::remove_from_group(uint8_t addr, uint8_t group){ 
     // Send the command to remove from group
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
     vTaskDelay(10 / portTICK_PERIOD_MS);
     send_command_standard(REMOVE_FROM_GROUP + group, addr);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-    
+    vTaskDelay(10 / portTICK_PERIOD_MS); 
 }
 
-void DaliCommands::set_group_fade_time(uint8_t addr, uint8_t time)
-{
-    
+void DaliCommands::set_group_fade_time(uint8_t addr, uint8_t time){
     daliCore.sendCommandPublic(SET_DTR0, time);
     send_command_standard(SET_FADE_TIME, addr);
     send_command_standard(SET_FADE_TIME, addr);
-    
 }
 
-void DaliCommands::set_group_fade_rate(uint8_t addr, uint8_t rate)
-{
-    
+void DaliCommands::set_group_fade_rate(uint8_t addr, uint8_t rate){
     daliCore.sendCommandPublic(SET_DTR0, rate);
     send_command_standard(SET_FADE_RATE, addr);
     send_command_standard(SET_FADE_RATE, addr);
-    
 }
 
 
 
-void DaliCommands::set_group_power_on_level(uint8_t addr, uint8_t power_on_level){
-    
+void DaliCommands::set_group_power_on_level(uint8_t addr, uint8_t power_on_level){ 
     daliCore.sendCommandPublic(SET_DTR0, power_on_level);
     send_command_standard(SET_POWER_ON_LEVEL, addr);
-    send_command_standard(SET_POWER_ON_LEVEL, addr);
-    
+    send_command_standard(SET_POWER_ON_LEVEL, addr); 
 }
 
-void DaliCommands::set_group_off(uint8_t group_id)
-{
+void DaliCommands::set_group_off(uint8_t group_id){
     //daliCore.sendCommandPublic(0x80 | (group_id << 1), 0x00);
     send_command_standard(OFF, group_id | (1<<7));
     send_command_standard(OFF, group_id | (1<<7));
     group_state = 0;
 }
 
-void DaliCommands::set_group_on(uint8_t group_id)
-{
+void DaliCommands::set_group_on(uint8_t group_id){
     send_command_standard(GO_TO_LAST_ACTIVE_LEVEL, group_id | (1<<7));
     //send_command_standard(ON_AND_STEP_UP, group_id | (1<<7)); 
     group_state = 1;
 }
 
 
-uint8_t DaliCommands::get_group_addr(uint8_t group_id)
-{
+uint8_t DaliCommands::get_group_addr(uint8_t group_id){
     uint8_t mask = 1 << 7;
     // Make MSb a 1 to signify >1 device being addressed
     return mask | (group_id<<1);
 }
 
 void DaliCommands::set_group_level(uint8_t group_id, uint8_t value){
-    daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
     // daliCore.sendCommandPublic(0x80 | (group_id << 1), value);
+    daliCore.sendCommandNormalPublic(0x80 | (group_id << 1), value);
 }
 
 void DaliCommands::set_group_color_cct(uint8_t group_id, uint16_t color_temp_kelvin){
@@ -811,8 +797,12 @@ void DaliCommands::set_group_color_rgb(uint8_t group_id, uint8_t r, uint8_t g, u
     if((r==0) && (g==0) && (b==0)) {
         if(group_state) set_group_off(group_id);
     }else {
-        printf("==> R:%d G:%d B:%d dim:%d mode:%d\n",r,g,b, dim, mode_change_flag);
-        set_color_rgb(group_addr, r, g, b, dim, mode_change_flag);      
+        // printf("==> R:%d G:%d B:%d dim:%d mode:%d\n",r,g,b, dim, mode_change_flag);
+        set_color_rgb(group_addr, r, g, b, dim, mode_change_flag);     
+    //     fade_rgb(group_addr,
+    // uint8_t startR, uint8_t startG, uint8_t startB,
+    // uint8_t targetR, uint8_t targetG, uint8_t targetB,
+    // uint32_t duration_ms) 
     }
 }
 
@@ -968,7 +958,7 @@ void DaliCommands::factoryResetDaliDrivers(){
 
 int DaliCommands::initNodes(const uint8_t* addresses, uint8_t numAddresses)
 {
-return daliCore.initNodes(addresses, numAddresses);
+    return daliCore.initNodes(addresses, numAddresses);
 }
 
 int DaliCommands::commissionNewNodes(){

@@ -346,7 +346,7 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = !wifi_webserver_active_flag;
+            wifi_webserver_active_flag = true;//!wifi_webserver_active_flag;
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -360,7 +360,7 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = !wifi_webserver_active_flag;
+            wifi_webserver_active_flag = true;//!wifi_webserver_active_flag;
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -535,9 +535,9 @@ static void emit_event(uint8_t button_id,
                        uint32_t combo_mask,
                        int64_t ts_us)
 {
-    printf("emit_event1\n");
+    //printf("emit_event1\n");
     if (!switch_action_queue) return;
-    printf("emit_event2\n");
+    //printf("emit_event2\n");
     switch_action_t act;
     memset(&act, 0, sizeof(switch_action_t));
     act.button_id = button_id;

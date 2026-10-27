@@ -158,6 +158,53 @@ void dali_state_worker_task(void *pvParameters) {
     }
 }
 
+
+/*
+ * Send an asynchronous operation-completion frame to the C3.
+ *
+ * The C6 is the controller that actually performs fxn 73/74.  The C3
+ * must NOT assume that receiving the original command means the operation
+ * is complete.  It waits for this frame and then completes the HTTP request.
+ */
+static void send_uart_operation_complete(cJSON *request_root,
+                                         int fxn,
+                                         const char *operation,
+                                         const char *status,
+                                         int result)
+{
+    cJSON *response = cJSON_CreateObject();
+    if (response == NULL) {
+        ESP_LOGE(TAG, "Failed to create UART operation-complete JSON");
+        return;
+    }
+
+    cJSON_AddNumberToObject(response, "fxn", fxn);
+    cJSON_AddStringToObject(response, "type", "operation_complete");
+    cJSON_AddStringToObject(response, "status", status ? status : "success");
+    cJSON_AddStringToObject(response, "operation", operation ? operation : "unknown");
+    cJSON_AddNumberToObject(response, "result", result);
+
+    /*
+     * Echo requestId when the C3 supplied one.  This lets the C3 match the
+     * completion to the exact browser request when multiple operations are
+     * introduced later.
+     */
+    cJSON *request_id = cJSON_GetObjectItem(request_root, "requestId");
+    if (cJSON_IsString(request_id) && request_id->valuestring != NULL) {
+        cJSON_AddStringToObject(response, "requestId", request_id->valuestring);
+    }
+
+    char *response_text = cJSON_PrintUnformatted(response);
+    if (response_text != NULL) {
+        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        send_serial(response_text);
+        #endif
+        cJSON_free(response_text);
+    }
+
+    cJSON_Delete(response);
+}
+
 void parse_json(const char *json_string) {
     // Parse JSON string
     cJSON *root = cJSON_Parse(json_string);
@@ -236,7 +283,67 @@ void parse_json(const char *json_string) {
             esp_restart();
         break;
         case 73:
+            /*
+             * C6 performs the actual DALI factory reset.
+             * Do NOT send completion before this function returns.
+             */
             esp_dali_factory_reset_all_drivers();
+
+            /* The C3/browser is waiting for this UART completion frame. */
+            send_uart_operation_complete(root,
+                                         73,
+                                         "dali_factory_reset",
+                                         "success",
+                                         1);
+        break;
+
+        case 74:
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+            {
+                cJSON *addressesJson = cJSON_GetObjectItem(root, "addresses");
+                cJSON *numAddressesJson = cJSON_GetObjectItem(root, "numAddresses");
+
+                if (!cJSON_IsNumber(addressesJson) || !cJSON_IsNumber(numAddressesJson)) {
+                    ESP_LOGE(TAG, "fxn 74: missing/invalid addresses or numAddresses");
+                    send_uart_operation_complete(root,
+                                                 74,
+                                                 "dali_addressing",
+                                                 "error",
+                                                 -1);
+                    break;
+                }
+
+                uint8_t addresses = (uint8_t)addressesJson->valueint;
+                uint8_t numAddresses = (uint8_t)numAddressesJson->valueint;
+
+                ESP_LOGI(TAG,
+                         "DALI ID addressing command: start address=%d, numAddresses=%d",
+                         addresses,
+                         numAddresses);
+
+                /*
+                 * This call does not return until the DALI addressing
+                 * operation has completed.
+                 */
+                int assigned = esp_dali_init_nodes(&addresses, numAddresses);
+
+                ESP_LOGI(TAG,
+                         "DALI ID addressing completed, assigned=%d",
+                         assigned);
+
+                send_uart_operation_complete(root,
+                                             74,
+                                             "dali_addressing",
+                                             "success",
+                                             assigned);
+            }
+            #else
+                send_uart_operation_complete(root,
+                                             74,
+                                             "dali_addressing",
+                                             "error",
+                                             -1);
+            #endif
         break;
         case 9:
         //"{\"fxn\": 9, \"webserver\": 0"
