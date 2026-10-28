@@ -268,6 +268,8 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
             #ifdef USE_WIFI_WEBSERVER
             if (ready_commisioning_flag) {
                 wifi_webserver_active_flag = true;  
+                printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+                vTaskDelay(pdMS_TO_TICKS(500));
                 setNVSCommissioningFlag(0);
                 setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
                 esp_restart();
@@ -305,6 +307,8 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         if (ready_commisioning_flag) {
             
             wifi_webserver_active_flag = true;  
+            printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+            vTaskDelay(pdMS_TO_TICKS(500));
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -469,9 +473,15 @@ static void combo_status_led_update(uint32_t combo_mask, bool enable)
 static void log_combo_hold_message(uint32_t combo_mask)
 {
     if (combo_mask == 0x05 || combo_mask == 0x03) {
-        printf("Zigbee Comissioning Buttons(%d) Detected!!\n", combo_led_toggle_counts_1);
+        #ifdef USE_C3_ADAPTER_UART_HW
+            printf("{\"time\":%d}\n", combo_led_toggle_counts_1);
+        #else  
+            printf("Zigbee Comissioning Buttons(%d) Detected!!\n", combo_led_toggle_counts_1);  
+        #endif
+        
         if (combo_led_toggle_counts_1++ < 10) {
             combo_status_led_update(combo_mask, combo_led_toggle_1 = !combo_led_toggle_1);
+
         } else {
             if (combo_led_toggle_1) {
                 combo_led_toggle_1 = false;

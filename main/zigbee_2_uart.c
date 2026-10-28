@@ -3,7 +3,7 @@
 #if(defined(USE_IR_UART_WS4_HW) || defined(USE_C3_ADAPTER_UART_HW))
 
     #include <string.h>
-#include <stdio.h>
+    #include <stdio.h>
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
     #include "esp_system.h"
@@ -14,8 +14,8 @@
     #include "parson.h"
     #include "driver/uart.h"
     #include "light_driver.h"
-#include "app_zigbee_misc.h"
-#include "freertos/semphr.h"
+    #include "app_zigbee_misc.h"
+    #include "freertos/semphr.h"
 
 #define UART_HEARTBEAT_FXN             250
 #define UART_HEARTBEAT_ACK_FXN         251
@@ -26,13 +26,10 @@
 
 
     #define UART_PORT_NUM                                           UART_NUM_0
-    #ifdef USE_C3_ADAPTER_UART_HW
+
     #define UART_TX_PIN                                             TOUCH_5_PIN
     #define UART_RX_PIN                                             TOUCH_6_PIN
-    #else
-    #define UART_TX_PIN                                             TOUCH_5_PIN
-    #define UART_RX_PIN                                             TOUCH_6_PIN
-    #endif
+
     #define UART_BAUD_RATE                                          115200
     #define UART_BUF_SIZE                                           2048
     #define RX_ACC_BUF_SIZE                                         4096

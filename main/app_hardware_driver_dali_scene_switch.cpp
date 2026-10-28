@@ -14,7 +14,7 @@
     #include "DaliCommands.h"
     #include "DALI.h"
     #include "zigbee_2_uart.h" 
-    #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
+    // #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
     // instantiate global object (adjust constructor args as needed)
     // DALI                                                       dali(gpio_load_pins[1], gpio_load_pins[0]);
     DaliCommands                                               dali(gpio_load_pins[1], gpio_load_pins[0]);

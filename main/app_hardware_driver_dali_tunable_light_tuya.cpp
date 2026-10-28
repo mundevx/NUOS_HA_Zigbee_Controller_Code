@@ -12,7 +12,6 @@
     #include <esp_log.h>
     #include "driver/ledc.h"
     #include "DaliCommands.h"
-    #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
 
     
     DaliCommands 										        dali(gpio_load_pins[1], gpio_load_pins[0]);
@@ -206,7 +205,7 @@
         if(index == 0){
             //esp_zb_lock_acquire(portMAX_DELAY);
             if(!device_info[index].device_state) {
-                if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type == 0) { 
 
                     #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                     dali.turn_off(global_dali_id[0]); 
@@ -222,7 +221,7 @@
                 }
             
             } else {
-                if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type == 0) { 
                     #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                     // dali.turn_on_to_last_level(global_dali_id[0]);
                     // vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -246,7 +245,7 @@
         nuos_set_state_attribute(0);
     }
     extern "C" void set_dali_level(uint8_t index){
-        if(scene_group_switch_info.control_type != 0) { 
+        if(scene_group_switch_info.control_type == 0) { 
             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
             dali.set_dim_value(global_dali_id[0], device_info[index].device_level);
             #elif(COMMUNICATION_MODE == COMM_MODE_GROUP_CTRL)
@@ -265,7 +264,7 @@
     }
 
     extern "C" void set_dali_color_temp(uint8_t index, bool status){
-        if(scene_group_switch_info.control_type != 0) { 
+        if(scene_group_switch_info.control_type == 0) { 
             dali.set_color_temperature(dali.BROADCAST_C, device_info[index].device_val); 
         }else{
             dali.set_group_color_cct(scene_group_switch_info.group_id[index], device_info[index].device_val);  
@@ -896,7 +895,7 @@
                         ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[0], device_info[0].device_level));                
                         ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[0]));
 
-                        if(scene_group_switch_info.control_type == 0) { 
+                        if(scene_group_switch_info.control_type != 0) { 
                             nuos_dali_normal_set_group_brightness(scene_group_switch_info.group_id[index], index, device_info[index].device_level);
                         }else{
                             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
@@ -923,7 +922,7 @@
                     if(color_backup != device_info[0].device_val){
                         color_backup = device_info[0].device_val;
 
-                        if(scene_group_switch_info.control_type == 0) { 
+                        if(scene_group_switch_info.control_type != 0) { 
                             dali.set_group_color_cct(scene_group_switch_info.group_id[0], device_info[0].device_val);
                         }else{
                             #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
@@ -975,7 +974,7 @@
                                 ESP_ERROR_CHECK(ledc_set_duty(LEDC_MODE, pwm_channels[1], map_cct_k_to_level(MAX_CCT_VALUE)));                   
                             }
                             ESP_ERROR_CHECK(ledc_update_duty(LEDC_MODE, pwm_channels[1]));
-                            if(scene_group_switch_info.control_type == 0) { 
+                            if(scene_group_switch_info.control_type != 0) { 
                                 // for(int i=0; i<scene_group_switch_info.total_ids[0]; i++){
                                 //     dali.set_color_temperature(scene_group_switch_info.device_ids[0][i], device_info[0].device_val);
                                 // }
@@ -1314,7 +1313,7 @@
         
         // // Pause WiFi to reduce interference
         #ifdef USE_WIFI_WEBSERVER
-        esp_wifi_stop();
+        //esp_wifi_stop();
         vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
         #endif
         

@@ -305,7 +305,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                   
                 #if(USE_COLOR_DEVICE == COLOR_RGBW || USE_COLOR_DEVICE == COLOR_RGB_CW_WW) 
                     #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL) 
-                    if(scene_group_switch_info.control_type != 0) { 
+                    if(scene_group_switch_info.control_type == 0) { 
                         if(!device_info[3].device_state) dali.send_broadcast(dali.OFF_C);
                         else dali.set_broadcast_level(map_1_255_to_100_255(device_info[3].device_level));   
                     }else{
@@ -341,7 +341,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
             }else{
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
                 if(device_info[4].device_level == 0xff) device_info[4].device_level = 0xfe;
-                if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type == 0) { 
                     if(!device_info[4].device_state) dali.send_broadcast(dali.OFF_C);
                     else {
                         dali.set_broadcast_level(map_1_255_to_100_255(device_info[4].device_level));
@@ -373,7 +373,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
         if(is_init_done){
                 if(selected_color_mode == 0){
                     #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                    if(scene_group_switch_info.control_type != 0) { 
+                    if(scene_group_switch_info.control_type == 0) { 
                         if(!device_info[3].device_state) dali.set_broadcast_level(0);
                         else{ 
                             dali.set_broadcast_level(map_1_255_to_100_255(device_info[3].device_level));
@@ -400,7 +400,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                                     
                 }else{ 
                     // #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                    // if(scene_group_switch_info.control_type != 0) { 
+                    // if(scene_group_switch_info.control_type == 0) { 
                     //     if(!device_info[4].device_state) dali.set_broadcast_level(0);
                     //     else dali.set_broadcast_level(map_1_255_to_100_255(device_info[4].device_level));
                     // }else{
@@ -429,7 +429,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
 
             if(selected_color_mode == 0){
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type == 0) { 
                     //printf("Broadcast color set to 0 for all channels\n");
                     if(mode_change_flag){
                         printf("==============Broadcast color set to 0 for all channels\n");
@@ -477,7 +477,7 @@ uint8_t map_1_255_to_100_255(uint8_t in)
                 nuos_set_color_temp_attribute(3);            
             } else {
                 #if(COMMUNICATION_MODE == COMM_MODE_ADDR_CTRL)
-                if(scene_group_switch_info.control_type != 0) { 
+                if(scene_group_switch_info.control_type == 0) { 
                     #if(USE_COLOR_DEVICE == COLOR_RGBW || USE_COLOR_DEVICE == COLOR_RGB_CW_WW)
                         if(mode_change_flag){
                             dali.set_off_waf_channels(dali.BROADCAST_C);

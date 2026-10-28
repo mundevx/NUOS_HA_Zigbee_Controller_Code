@@ -71,9 +71,9 @@ void esp_start_timer(){
 			timer_started_flag = true;
 			// Start the timer
 			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle, 100000)); // 100 milli second period	
-			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+			//#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 			printf("{\"fxn\":14}\n");
-			#endif
+			//#endif
 		}
 	}
     timer_led_blink_counts = 0;
@@ -141,9 +141,9 @@ void start_wifi_webserver_timer_task(){
             //save record in nvs
 			setNVSWebServerEnableFlag(wifi_webserver_active_flag);
 
-			#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
+			//#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI) 
 			printf("{\"mode\":0}\n");
-			#endif
+			//#endif
 			vTaskDelay(pdMS_TO_TICKS(200));
 			//restart devices
 			esp_restart();

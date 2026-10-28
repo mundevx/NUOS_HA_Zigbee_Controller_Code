@@ -274,9 +274,9 @@
         bool is_reporting[MAX_DST_EP][MAX_NODES];
          
         #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-        const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" }; 
+        const char* switch_ctrl_type[2] = { "Broadcast Control", "Individual Control" }; 
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
-        const char* switch_ctrl_type[2] = { "Individual Control", "Broadcast Control" };
+        const char* switch_ctrl_type[2] = {  "Individual Control", "Broadcast Control" };
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             const char* switch_ctrl_type[2] = { "Group Control", "Scene Control"};
         #else

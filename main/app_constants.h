@@ -129,7 +129,7 @@
         #endif
         #define TOTAL_LOADS                                         2  //dali pins Tx, Rx
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    4      
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
         #define FAN_INDEX                                           1 
         #define ENABLE_PWM_DIMMING
         #define USE_RGB_LED
@@ -138,9 +138,9 @@
         // #define USE_CCT_TIME_SYNC
         // #endif
         #define USE_ADD_GROUP_SCENE_CLUSTERS 
-
+        #define USE_WIFI_WEBSERVER
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
-            #define USE_WIFI_WEBSERVER
+            
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
             #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
 
@@ -152,6 +152,16 @@
             
             #define ESP_WIFI_SSID                                       "NUOS DALI CCT SWITCH"
             #define ESP_WIFI_PASS                                       "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW   
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600 
         #endif 
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE   
@@ -197,14 +207,14 @@
         #define MAX_CCT_VALUE                                       6500
 
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                               USE_ESP32H2_MINI1_V5
         #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                     254
 
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1
-
+        #define USE_WIFI_WEBSERVER
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
-            #define USE_WIFI_WEBSERVER
+            
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
 
 
@@ -222,6 +232,16 @@
             #define ESP_WIFI_SSID                                       "NUOS DALI SCENE SWITCH"
             #endif
             #define ESP_WIFI_PASS                                       "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW
+                        #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600    
         #endif
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH)
 
@@ -254,16 +274,16 @@
         #define COLOR_LAST_REACH_OFFSET                                 500     
 
         #define USE_ADD_GROUP_SCENE_CLUSTERS
-        #define CHIP_INFO                                               USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                               USE_ESP32H2_MINI1_V5
         #define MIN_DIM_LEVEL_VALUE                                     10 // (0 to 255)
         #define MAX_DIM_LEVEL_VALUE                                     254   
         
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                        1
         //#define ENABLE_PWM_DIMMING
 
-  
+        #define USE_WIFI_WEBSERVER
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
-            #define USE_WIFI_WEBSERVER
+            
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
             
 
@@ -278,6 +298,16 @@
 
             #define ESP_WIFI_SSID                                       "NUOS DALI DIRECT SWITCH"
             #define ESP_WIFI_PASS                                       "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW    
+                        #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
         #endif                
     #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         #define TOTAL_ENDPOINTS                                     1
@@ -293,7 +323,7 @@
         #define USE_RGB_LED
         #define USE_ADD_GROUP_SCENE_CLUSTERS
         #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
-        #define CHIP_INFO                                           USE_ESP32C6_MINI1_V5
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
 
         #define LONG_PRESS_BRIGHTNESS_ENABLE
 
@@ -308,8 +338,9 @@
         #define MAX_DIM_LEVEL_VALUE                                 254
 
         #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_DMX_LIGHT
+        #define USE_WIFI_WEBSERVER
         #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
-            #define USE_WIFI_WEBSERVER
+            
             #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
 
 
@@ -325,6 +356,16 @@
             #define ESP_WIFI_SSID                                       "NUOS DALI RGB LIGHT"
 
             #define ESP_WIFI_PASS                                       "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW   
+                        #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600 
         #endif
     #endif
 

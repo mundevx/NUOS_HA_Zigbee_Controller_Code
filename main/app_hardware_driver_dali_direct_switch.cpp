@@ -14,7 +14,7 @@
     #include "DaliCommands.h"
     #include "DALI.h"
     #include "esp_random.h"
-    #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
+    // #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
     // instantiate global object (adjust constructor args as needed)
     DaliCommands                                               dali(gpio_load_pins[1], gpio_load_pins[0]);
     bool is_init_done                                          = false;
@@ -1353,7 +1353,7 @@ void esp_dali_factory_reset_all_drivers(){
         
         // // Pause WiFi to reduce interference
         #ifdef USE_WIFI_WEBSERVER
-        esp_wifi_stop();
+        //esp_wifi_stop();
         printf("WiFi stopped for DALI commissioning\n");
         vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
         #endif
