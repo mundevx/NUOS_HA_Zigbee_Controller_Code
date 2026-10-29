@@ -16,7 +16,7 @@
 #include <esp_log.h>
 #include "driver/ledc.h"
 #include "esp_rom_sys.h"
-#include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
+// #include "esp_wifi.h"  // For esp_wifi_stop() and esp_wifi_start()
 
 #include <inttypes.h>
 
@@ -1618,7 +1618,7 @@ void interpret_frame(uint8_t b1, uint8_t b2)
         
         // // Pause WiFi to reduce interference
         #ifdef USE_WIFI_WEBSERVER
-        esp_wifi_stop();
+        //esp_wifi_stop();
         vTaskDelay(pdMS_TO_TICKS(100));  // Let WiFi fully stop
         #endif
         

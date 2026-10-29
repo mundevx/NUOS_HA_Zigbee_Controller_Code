@@ -3893,6 +3893,7 @@ void nuos_init_privilege_commands(){
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, 0XF0); //brightness
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xF1); //scene data
             esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL, 0xE0); // set color temperature
+        
         #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH) 
             // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[0], 0xE000, 0Xe0);
             // esp_zb_zcl_add_privilege_command(ENDPOINTS_LIST[1], 0xE000, 0Xe0);

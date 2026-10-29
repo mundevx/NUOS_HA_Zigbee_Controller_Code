@@ -208,6 +208,7 @@ static void send_uart_operation_complete(cJSON *request_root,
     cJSON_Delete(response);
 }
 
+uint8_t dali_addresses[64] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
 void parse_json(const char *json_string) {
     // Parse JSON string
     cJSON *root = cJSON_Parse(json_string);
@@ -328,7 +329,8 @@ void parse_json(const char *json_string) {
                  * This call does not return until the DALI addressing
                  * operation has completed.
                  */
-                int assigned = esp_dali_init_nodes(&addresses, numAddresses);
+                
+                int assigned = esp_dali_init_nodes(&dali_addresses[addresses], numAddresses);
 
                 ESP_LOGI(TAG,
                          "DALI ID addressing completed, assigned=%d",
@@ -695,7 +697,15 @@ void parse_json(const char *json_string) {
                     start_address = sstartAddr->valueint;
                 }
 
-                esp_stop_timer();
+
+                if (start_address < 0 || start_address > 63 ||
+                    max_address < 1 || max_address > 64 ||
+                    start_address + max_address > 64) {
+                    ESP_LOGE(TAG, "Invalid DALI addressing range");
+                    break;
+                }
+
+                //esp_stop_timer();
                 
                 setNVSDaliNodesCommissioningCounts(max_address);
                 
@@ -1151,11 +1161,6 @@ case 40:
                 //nuos_dali_set_state_group(group, state);
                 if(state) nuos_dali_set_group_brightness(group, 0, 254);
                 else nuos_dali_set_state_group(group, false);
-
-                // if(state) {
-                //     uint8_t val = map(value, 0, 100, 0, 255);
-                //     nuos_dali_set_group_brightness(group, 0, val);
-                // }
             }else{
                 if (dali_id) {
                     
@@ -1178,12 +1183,12 @@ case 40:
             if (g_id) {
                 int group = g_id ? g_id->valueint : 0;
                 printf("Immediate toggle level:%d group:%d\n", level, group);
-                uint8_t val = map(level, 0, 100, 0, 255);
+                uint8_t val = map(level, 0, 100, 0, 254);
                 nuos_dali_set_group_brightness(group, 0, val);
             }else{
                 if (dali_id) {
                     int did = dali_id ? dali_id->valueint : 0;
-                    uint8_t val = map(level, 0, 100, 0, 255);
+                    uint8_t val = map(level, 0, 100, 0, 254);
                     printf("Immediate toggle level:%d did:%d\n", val, did);
                     nuos_dali_set_brightness(did, val);
                 }              
@@ -1490,7 +1495,7 @@ case 40:
 
                     int power = (j_power && cJSON_IsNumber(j_power)) ? j_power->valueint : 0;
                     int brightness = (j_brightness && cJSON_IsNumber(j_brightness)) ? j_brightness->valueint : 0;
-                    uint8_t brightness_1 = map(brightness, 0, 100, 0, 255);
+                    uint8_t brightness_1 = map(brightness, 0, 100, 0, 254);
 
                     if (power == 0) {
                         brightness_1 = 0;
@@ -1577,25 +1582,28 @@ case 40:
                 cJSON_Delete(root);
                 return;
             }
-
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             const char * query1 = squery->valuestring;
             //printf(query1);
-            // const char* response1 = parse_query(query1);
-            // if (response1) {
-            //     printf("%s\n", response1);
-            //     free((void*)response1);
-            // } 
+            const char* response1 = parse_query(query1);
+            if (response1) {
+                printf("%s\n", response1);
+                free((void*)response1);
+            } 
+            #endif
         break;
 
         case 420: //{"fxn":420,"query":"init=0"}
             squery  = cJSON_GetObjectItem(root, "query");
             if (!squery) { cJSON_Delete(root); return; }
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             const char *query2 = squery->valuestring;
-            // const char* response2 = parse_query_2(query2); 
-            // if (response2) {
-            //     printf("%s\n", response2);
-            //     free((void*)response2);
-            // }
+            const char* response2 = parse_query_2(query2); 
+            if (response2) {
+                printf("%s\n", response2);
+                free((void*)response2);
+            }
+            #endif
         break;
 
         case 430: //{"fxn":430,"query":"{"dali_id":1,"power_on_value":0,"fade_rate":12,"fade_time":2,"group":0}"}
@@ -1801,12 +1809,12 @@ void json_worker_task(void *arg) {
             //switch_driver_gpios_intr_enabled(false);
             parse_json(msg.json);
             //switch_driver_gpios_intr_enabled(true);
-            #if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
+            //#if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
             // Notify the waiting HTTP task
             if (msg.http_task != NULL) {
                 xTaskNotifyGive(msg.http_task);
             }
-            #endif
+            //#endif
         }
     }
 }
@@ -1873,6 +1881,7 @@ esp_err_t submit_post_handler(httpd_req_t *req) {
     cb_response_counts = 0;
     return ESP_OK;
 }
+
 
 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
 
@@ -1998,12 +2007,135 @@ esp_err_t http_get_config_handler(httpd_req_t *req) {
     return ESP_OK;
 
 }
+    esp_err_t http_get_items_handler(httpd_req_t *req) {
 
+        char query[128];
+        // char value_fxn[32];
+        // char value_data[32];
+        // uint8_t scene_id = 0xff;
+        // int erase_data = 0;
+
+        char *response  = "[]";
+        int index = 0;
+        // Retrieve the query string from the URL
+        if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
+            ESP_LOGI(TAG, "Found URL query => %s", query);
+            // Retrieve specific query parameter value
+            response = parse_query(query);
+        }
+        // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
+        httpd_resp_set_type(req, "application/json");
+
+        // Enable CORS header if your frontend is hosted on a different port/device during development
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+        free((void*)response);
+        return ESP_OK;
+    }
+#endif
+#endif
 const char* response_error_1 = "{\"error\":\"DALI Bus Error!!\"}";
 const char* response_error_2 = "{\"error\":\"JSON creation failed!!\"}";
 const char* response_error_3 = "{\"error\":\"JSON memory allocation failed!!\"}";
 const char* response_error_4 = "{\"error\":\"JSON printing failed\"}";
 const char* response_error_5 = "{\"error\":\"JSON memory allocation failed\"}";
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+
+/* Compatible return codes */
+#ifndef ESP_OK
+#define ESP_OK 0
+#endif
+
+#ifndef ESP_FAIL
+#define ESP_FAIL -1
+#endif
+
+#ifndef ESP_ERR_HTTPD_RESULT_TRUNC
+#define ESP_ERR_HTTPD_RESULT_TRUNC 0x103
+#endif
+
+#ifndef ESP_ERR_NOT_FOUND
+#define ESP_ERR_NOT_FOUND 0x105
+#endif
+
+/*
+ * Replacement for ESP-IDF httpd_query_key_value()
+ *
+ * query:  Query string, e.g. "fxn=light_on&ep=1"
+ * key:    Parameter name, e.g. "fxn"
+ * value:  Output buffer
+ * value_len: Size of output buffer
+ */
+int httpd_query_key_value(const char *query,
+                          const char *key,
+                          char *value,
+                          size_t value_len)
+{
+    if (query == NULL || key == NULL ||
+        value == NULL || value_len == 0)
+    {
+        return ESP_FAIL;
+    }
+
+    value[0] = '\0';
+
+    size_t key_len = strlen(key);
+    const char *p = query;
+
+    /* Skip an optional '?' at the start */
+    if (*p == '?')
+    {
+        p++;
+    }
+
+    while (*p != '\0')
+    {
+        const char *pair_end = strchr(p, '&');
+
+        if (pair_end == NULL)
+        {
+            pair_end = p + strlen(p);
+        }
+
+        const char *equals = memchr(p, '=', pair_end - p);
+
+        if (equals != NULL &&
+            (size_t)(equals - p) == key_len &&
+            memcmp(p, key, key_len) == 0)
+        {
+            const char *value_start = equals + 1;
+            size_t len = (size_t)(pair_end - value_start);
+
+            if (len >= value_len)
+            {
+                memcpy(value, value_start, value_len - 1);
+                value[value_len - 1] = '\0';
+                return ESP_ERR_HTTPD_RESULT_TRUNC;
+            }
+
+            memcpy(value, value_start, len);
+            value[len] = '\0';
+
+            return ESP_OK;
+        }
+
+        if (*pair_end == '\0')
+        {
+            break;
+        }
+
+        p = pair_end + 1;
+    }
+
+    return ESP_ERR_NOT_FOUND;
+}
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
 char * parse_query_2(const char *req_query) {
 
     char value_fxn[32];
@@ -2293,6 +2425,8 @@ label0:
     return response;
 }
 
+
+
 char * parse_query(const char *req_query) {
 
     char value_fxn[64];
@@ -2538,33 +2672,12 @@ char * parse_query(const char *req_query) {
 
 }
 
-    esp_err_t http_get_items_handler(httpd_req_t *req) {
 
-        char query[128];
-        // char value_fxn[32];
-        // char value_data[32];
-        // uint8_t scene_id = 0xff;
-        // int erase_data = 0;
-
-        char *response  = "[]";
-        int index = 0;
-        // Retrieve the query string from the URL
-        if (httpd_req_get_url_query_str(req, query, sizeof(query)) == ESP_OK) {
-            ESP_LOGI(TAG, "Found URL query => %s", query);
-            // Retrieve specific query parameter value
-            response = parse_query(query);
-        }
-        // 4. Set Content-Type to JSON so the browser fetch API understands it automatically
-        httpd_resp_set_type(req, "application/json");
-
-        // Enable CORS header if your frontend is hosted on a different port/device during development
-        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-
-        httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
-        free((void*)response);
-        return ESP_OK;
-    }
 #endif
+// #endif /* !USE_C3_ADAPTER_UART_HW: HTTP-only handlers */
+
+#ifndef USE_C3_ADAPTER_UART_HW
+
 // Modify your http_get_handler to serve the embedded HTML
 esp_err_t http_get_handler(httpd_req_t *req) {
     // Add these external declarations for the embedded HTML
@@ -2587,9 +2700,6 @@ esp_err_t http_get_handler(httpd_req_t *req) {
     // httpd_resp_set_hdr(req, "Content-Type", "text/html; charset=utf-8");
     return httpd_resp_send(req,  (const char*)index_html_start, html_size);
 }
-#endif /* !USE_C3_ADAPTER_UART_HW: HTTP-only handlers */
-
-#ifndef USE_C3_ADAPTER_UART_HW
 static httpd_handle_t server = NULL;
 void start_webserver() {
     #ifndef USE_C3_ADAPTER_UART_HW

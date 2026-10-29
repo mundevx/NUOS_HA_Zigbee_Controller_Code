@@ -42,12 +42,12 @@
     extern char * parse_query(const char *query);
 
     void json_parse_data_light(const char* data) {
-        #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
+        //#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI)
             #ifdef USE_C3_ADAPTER_UART_HW
                 wifi_webserver_active_counts = 0;
                 parse_json(data);
             #endif
-        #endif
+        //#endif
     }
 
     static void esp_zb_callback2(uint8_t param) {
@@ -159,7 +159,7 @@
         /* Keep existing UART0 pin/console routing unchanged. */
         uart_tx_mutex = xSemaphoreCreateMutex();
         xTaskCreate(uart_receiver_task, "uart_receiver_task", 8192, NULL, TASK_PRIORITY_UART_RECEIVER, NULL);
-        xTaskCreate(uart_heartbeat_task, "uart_heartbeat_task", 3072, NULL, TASK_PRIORITY_UART_RECEIVER - 1, NULL);
+        //xTaskCreate(uart_heartbeat_task, "uart_heartbeat_task", 3072, NULL, TASK_PRIORITY_UART_RECEIVER - 1, NULL);
         ESP_LOGI("C6_UART", "UART initialized with heartbeat monitor");
     }
 

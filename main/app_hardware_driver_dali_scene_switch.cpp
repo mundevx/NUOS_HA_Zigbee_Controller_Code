@@ -837,20 +837,28 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
     void esp_dali_factory_reset_all_drivers(){
        dali.factoryResetDaliDrivers();
     }
-    uint8_t dali_addresses[64] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63};
+    
     int esp_dali_init_nodes(const uint8_t* addresses, uint8_t numAddresses)
     {
-        return dali.initNodes(dali_addresses, numAddresses);
+        return dali.initNodes(addresses, numAddresses);
     }
     static void esp_dali_init_node_task(void *pvParameters) {
-        uint16_t addr = *(uint16_t*)pvParameters;
-        
+        uint16_t addr = *(uint16_t *)pvParameters;
+        vPortFree(pvParameters);
+
         uint8_t numAddresses = (uint8_t)(addr & 0xff);
         uint8_t startAddresses = (uint8_t)((addr >> 8) & 0xff);
-        if(numAddresses > 63) return;
-        if(startAddresses > 63) return;
 
-        ESP_LOGI("DALI", "=== Starting DALI addressing from %d to %d of total=%d ===", startAddresses, numAddresses, numAddresses-startAddresses);
+        if (numAddresses == 0 || numAddresses > 64 ||
+            startAddresses > 63 ||
+            ((uint16_t)startAddresses + numAddresses) > 64) {
+            if (recordsSemaphore != NULL) {
+                xSemaphoreGive(recordsSemaphore);
+            }
+            vTaskDelete(NULL);
+            return;
+        }
+        //ESP_LOGI("DALI", "=== Starting DALI addressing from %d to %d of total=%d ===", startAddresses, numAddresses, numAddresses-startAddresses);
         
         // // Pause WiFi to reduce interference
         #ifdef USE_WIFI_WEBSERVER
@@ -861,40 +869,13 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
         #endif
         #endif
         switch_driver_gpios_intr_enabled(false); 
-        //printf("Starting DALI addressing...\n");
-        // Perform DALI addressing with increased priority
-        //vTaskPrioritySet(NULL, DALI_TASK_PRIORITY);
-        uint8_t total_addr = (numAddresses-startAddresses)+1;
-        printf("Initialize %d DALI nodes...\n", total_addr);
 
-      //  dali.commissionNewNodes();
-
-        // uint8_t addresses[64];
-
-        // int total = dali.readExistingDrivers(addresses, 64);
-
-        // for (int i = 0; i < total; i++)
-        // {
-        //     printf("Address[%d] = %d\n", i, addresses[i]);
-            
-        //    //dali.resetDriver(addresses[i]);
-
-        //   // dali.clearShortAddress(addresses[i]);
-        // }
         total_nodes_assigned = dali.commissionNewNodes();   
-        // int totalfoundnodes = dali.initNodes(&global_dali_id[startAddresses], total_addr);
-
-        // printf("Found nodes: %d\n", totalfoundnodes);
-        // for (int i = 0; i < totalfoundnodes; i++) {
-        //     printf("Node number %d, node address %d\n", i, global_dali_id[startAddresses+i]);
-        // }
-        
         // Signal completion
         if (recordsSemaphore != NULL) {
             xSemaphoreGive(recordsSemaphore);
         }
         switch_driver_gpios_intr_enabled(true); 
-        ESP_LOGI("DALI", "=== DALI addressing complete ===");
         #ifndef USE_C3_ADAPTER_UART_HW
         wifi_webserver_active_flag = true;           
         setNVSCommissioningFlag(0);
@@ -912,12 +893,29 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
             //printf("Failed to create semaphore!\n");
            return 0;
         }    
-        uint16_t  addr = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
-        xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, &addr, 11, NULL);
-        start_dali_led_commissioning_task_flag = true;
+        //uint16_t  addrPlusTotal = (numAddresses & 0xff) | ((startAddresses & 0xff) << 8);
 
+        uint16_t *taskArg = (uint16_t *)pvPortMalloc(sizeof(uint16_t));
+
+        if (taskArg == NULL) {
+            vSemaphoreDelete(recordsSemaphore);
+            recordsSemaphore = NULL;
+            return 0;
+        }
+
+        *taskArg = (uint16_t)numAddresses |
+                ((uint16_t)startAddresses << 8);
+
+        BaseType_t result = xTaskCreate(esp_dali_init_node_task, "dali_task", 8192, taskArg, TASK_PRIORITY_DALI_TASK, NULL);
+        start_dali_led_commissioning_task_flag = true;
+        if (result != pdPASS) {
+            vPortFree(taskArg);
+            vSemaphoreDelete(recordsSemaphore);
+            recordsSemaphore = NULL;
+            return 0;
+        }
         if (recordsSemaphore != NULL) {
-            // Wait for the semaphore to be given by thaddre records task
+            // Wait for the semaphore to be given by the records task
             xSemaphoreTake(recordsSemaphore, portMAX_DELAY);
         }
 
@@ -933,16 +931,16 @@ int32_t daliQueryDeviceInGroupB(uint8_t addr){
         #endif
         #endif
         
-        for(int i=0; i<TOTAL_ENDPOINTS; i++){
-            if(scene_group_switch_info.control_type == 1) { //scene control
-                if(scene_group_switch_info.selected_id == i){
-                    nuos_zb_set_hardware(i, false);
-                    break;
-                }
-            }else{
-                nuos_zb_set_hardware(i, false);
-            }
-        }
+        // for(int i=0; i<TOTAL_ENDPOINTS; i++){
+        //     if(scene_group_switch_info.control_type == 1) { //scene control
+        //         if(scene_group_switch_info.selected_id == i){
+        //             nuos_zb_set_hardware(i, false);
+        //             break;
+        //         }
+        //     }else{
+        //         nuos_zb_set_hardware(i, false);
+        //     }
+        // }
         return total_nodes_assigned;
     }  //end extern "C" void start_dali_addressing(uint8_t startAddresses, uint8_t numAddresses)
 
