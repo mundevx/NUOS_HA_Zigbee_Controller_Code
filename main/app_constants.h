@@ -69,6 +69,7 @@
     #define TASK_PRIORITY_ZIGBEE                                    5
     #define TASK_PRIORITY_DALI_TASK                                 5   //9   //used when in WiFi mode and zigbee off 
     #define TASK_PRIORITY_SWITCH                                    10  //dont change it ever
+    #define TASK_PRIORITY_IR_BLASTER                                12  //dont change it ever
     #define TASK_PRIORITY_SCENE_RECALL                              15  //Not in use
     #define TASK_PRIORITY_ATTR                                      9   //dont change it ever
     #define TASK_PRIORITY_RGB                                       18  //dont change it ever
@@ -116,6 +117,15 @@
     #define LED_GREEN_COLOR                                         0x02
     #define LED_BLUE_COLOR                                          0x02
     #define LED_ORANGE_COLOR                                        0x01
+
+
+    #define GATEWAY_ZIGBEE_TUYA                 0
+    #define GATEWAY_ZIGBEE_SONOFF               1
+    #define GATEWAY_ZIGBEE_HOME_ASSISTANT       2
+    #define GATEWAY_ZIGBEE_HOME_BRIDGE          3
+    #define GATEWAY_ZIGBEE_SMART_THINGS         4
+    #define GATEWAY_ZIGBEE_NUOS                 5
+    #define GATEWAY_ZIGBEE_OTHERS               6
 
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM)
         //#define USE_TWO_SWITCH_MODE
@@ -367,6 +377,109 @@
             #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
             #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600 
         #endif
+
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+        //#define USE_FAN_SPEED
+        #ifdef USE_FAN_SPEED
+            #define TOTAL_ENDPOINTS                                     4
+        #else
+            #ifdef USE_HOME_ASSISTANT
+                #define TOTAL_ENDPOINTS                                     1
+            #else
+            #define TOTAL_ENDPOINTS                                     3
+            #endif
+        #endif
+
+        #define TOTAL_BUTTONS                                       1
+        #define TOTAL_LEDS                                          1
+        #define TOTAL_LOADS                                         0
+        #define USE_RGB_LED
+
+        #define USE_ADD_GROUP_SCENE_CLUSTERS
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
+        #define TEMPERATURE_MULTIPLICATION_FACTOR                  100
+        #define USE_WIFI_WEBSERVER
+        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000/TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
+        
+            #define ESP_WIFI_SSID      				                    "NUOS IR BLASTER"
+            #define ESP_WIFI_PASS      				                    "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW   
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600 
+        #endif
+        #define MIN_DIM_LEVEL_VALUE                                 25 // (0 to 255)
+        #define MAX_DIM_LEVEL_VALUE                                 254        
+        //#define USE_HEATING_PIPES
+        //#define USE_TEMPERATURE_MESAUREMENT
+        #ifdef USE_TUYA_BRDIGE
+            #define TUYA_ATTRIBUTES
+            //#define USE_LOCAL_TEMPERATURE
+            //#define USE_WEEKLY_TRANSITION
+            //#define USE_FAN_CTRL
+        #endif             
+        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT
+
+    #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+        //#define USE_FAN_SPEED
+        #ifdef USE_FAN_SPEED
+        #define TOTAL_ENDPOINTS                                     2
+        #else
+        #define TOTAL_ENDPOINTS                                     1
+        #endif
+        #define TOTAL_BUTTONS                                       1
+        #define TOTAL_LEDS                                          1
+        #define TOTAL_LOADS                                         0
+        #define USE_RGB_LED
+        
+        #define USE_ADD_GROUP_SCENE_CLUSTERS
+        #define CHIP_INFO                                           USE_ESP32H2_MINI1_V5
+        #define MIN_DIM_LEVEL_VALUE                                 25
+        #define MAX_DIM_LEVEL_VALUE                                 254    
+        #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+        #define FAN_INDEX                                           1
+        #define USE_WIFI_WEBSERVER
+        #if(CHIP_INFO == USE_ESP32C6_MINI1_V2 || CHIP_INFO == USE_ESP32C6_MINI1_V3 || CHIP_INFO == USE_ESP32C6_MINI1_V4 || CHIP_INFO == USE_ESP32C6_MINI1_V5 || CHIP_INFO == USE_ESP32C6_MINI1)
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES  	                    10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600
+            #define TOTAL_LEDS_SHOW_ON_COMMISSIONING                    1
+        
+            #define ESP_WIFI_SSID      				                    "NUOS IR BLASTER"
+            #define ESP_WIFI_PASS      				                    "NUOS1234"
+        #else
+            #define USE_C3_ADAPTER_UART_HW   
+            #define TEMPERATURE_MULTIPLICATION_FACTOR                   100
+            #define WIFI_REMAIN_ACTIVE_IN_MINUTES                       10 //Change this value
+
+            #define TIME_PERIOD_IN_MS                                   100
+            #define TIME_COUNTS_FOR_1_SEC                               (1000 / TIME_PERIOD_IN_MS)
+
+            #define WIFI_REMAIN_ACTIVE_IN_SECONDS                       (60 * WIFI_REMAIN_ACTIVE_IN_MINUTES)
+            #define WIFI_REMAIN_ACTIVE_IN_COUNTS                        600 
+        #endif
+
+        #define USE_ZIGBE_DEVICE_CATEGORY                           CATEGORY_ZIGBEE_THERMOSTAT   
+
     #endif
 
                        

@@ -234,7 +234,6 @@ void parse_json(const char *json_string) {
             fxnInt = atoi(fxn->valuestring);
         }
     }
-    //printf("Function: %d\n", fxnInt);
     /* UART link supervision frames are handled before normal application commands. */
     if (cJSON_IsNumber(fxn)) {
         int uart_fxn = fxn->valueint;
@@ -249,7 +248,7 @@ void parse_json(const char *json_string) {
                      "{\"fxn\":251,\"type\":\"uart_heartbeat_ack\",\"side\":\"C6\",\"seq\":%d}",
                      (seq && cJSON_IsNumber(seq)) ? seq->valueint : 0);
             #ifdef USE_C3_ADAPTER_UART_HW         
-            send_serial(ack);
+                send_serial(ack);
             #endif
             cJSON_Delete(root);
             return;
@@ -272,6 +271,30 @@ void parse_json(const char *json_string) {
     }
 
     switch(fxnInt){ 
+        case 3:
+            cJSON *cobj_ac_model = cJSON_GetObjectItem(root, "model");
+            if (cobj_ac_model == NULL) {
+                printf("Missing JSON keys\n");
+                cJSON_Delete(root);
+                return;
+            }
+            device_info[0].ac_decode_type = (uint8_t)cobj_ac_model->valueint;
+            printf("ac_decode_type:%d\n", device_info[0].ac_decode_type);
+            nuos_try_ac(device_info[0].ac_decode_type, device_info[0].device_state);
+            nuos_store_data_to_nvs(0);
+        break;
+        
+        case 2:
+            cJSON *cobj_ac_state = cJSON_GetObjectItem(root, "ac_state");
+            if (cobj_ac_state == NULL) {
+                printf("Missing JSON keys\n");
+                cJSON_Delete(root);
+                return;
+            }
+            device_info[0].device_state  = (uint8_t)cobj_ac_state->valueint;
+            nuos_store_data_to_nvs(0);
+            nuos_try_ac(device_info[0].ac_decode_type, device_info[0].device_state);
+        break;
         case 14:
             wifi_webserver_active_flag = true;
             setNVSWebServerEnableFlag(true);
@@ -291,8 +314,10 @@ void parse_json(const char *json_string) {
              * C6 performs the actual DALI factory reset.
              * Do NOT send completion before this function returns.
              */
+            #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER_CUSTOM && USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER)
+           
             esp_dali_factory_reset_all_drivers();
-
+            #endif
             /* The C3/browser is waiting for this UART completion frame. */
             send_uart_operation_complete(root,
                                          73,
@@ -1611,7 +1636,10 @@ case 40:
             squery  = cJSON_GetObjectItem(root, "query");
             if (!squery) { cJSON_Delete(root); return; }
             const char *query3 = squery->valuestring;
-            parse_json_3(query3);   
+            #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER_CUSTOM && USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER)
+           
+            parse_json_3(query3); 
+            #endif  
         break;
         //#endif
         #endif       
@@ -1668,11 +1696,14 @@ void parse_json_3(const char *json_str)
                 vTaskDelay(pdMS_TO_TICKS(100));
                 bool gstate = (bool)((group >> i) & 0x01);
                 printf("group:%d at gstate:%d\n", i, gstate);
+                #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER_CUSTOM && USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER)
+           
                 if (gstate) {
                     nuos_dali_add_light_to_group(dali_id, i);
                 } else {
                     nuos_dali_remove_light_from_group(dali_id, i);
                 }
+                #endif
             }
         }
         save_dali_config_to_nvs(&storage_data);
@@ -1809,12 +1840,12 @@ void json_worker_task(void *arg) {
             //switch_driver_gpios_intr_enabled(false);
             parse_json(msg.json);
             //switch_driver_gpios_intr_enabled(true);
-            //#if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
+            #if( USE_NUOS_ZB_DEVICE_TYPE != DEVICE_SCENE_DALI)
             // Notify the waiting HTTP task
             if (msg.http_task != NULL) {
                 xTaskNotifyGive(msg.http_task);
             }
-            //#endif
+            #endif
         }
     }
 }

@@ -16,6 +16,7 @@
 #endif
 #include "app_hardware_driver.h"
 
+
 static const char *TAG = "ESP_ZB_NVS_STORE";
 static const char *TAG_NVS = "TAG_NVS"; 
 
@@ -30,6 +31,7 @@ nvs_handle_t my_handle;
 const char* nvram_struct_device_overall_keys = "ep_overall";
 
 const char* nvram_struct_scene_sw_key = "scene_sw";
+const char* nvram_gateway_type_keys = "zb_gw_key";
 // const char* nvram_struct_keys[5] = {"ep1", "ep2", "ep3", "ep4", "all"};
 // const char* nvram_struct_dali_keys[4] = {"dali1", "dali2", "dali3", "dali4"};
 
@@ -68,7 +70,6 @@ const char* nvram_dali_off_keys = "dali_off_key";
 const char* nvram_dali_ft_keys = "dali_ft_key";
 const char* nvram_dali_fr_keys = "dali_fr_key";
 const char* nvram_nvs_panic_attack = "panic";
-const char* nvram_gateway_type_keys = "gway_key";
 
 #define MAX_DALI_FADE_TIME                  10
 #define DEFAULT_DALI_FADE_TIME              1
@@ -415,15 +416,6 @@ uint8_t read_color_mode_value() {
 }
 
 
-
-
-uint8_t getNVSCoordinatorType(){
-	return (uint8_t)readKeyValueFromNVRAM(nvram_gateway_type_keys);
-}
-void setNVSCoordinatorType(uint8_t value){
-    gateway_type = value;
-	writeKeyValueToNVRAM(nvram_gateway_type_keys, value);
-}
 
 
 // void store_curtain_cal_time(uint32_t time) {
@@ -1196,6 +1188,8 @@ esp_err_t update_binding_data_in_nvs(uint16_t target_short_addr, uint8_t scene_i
 bool panic_toggle = false;
 
 void nuos_get_data_from_nvs() { 
+
+    printf("------------>READ NVS DATA<---------------\n");
     touchLedsOffAfter1MinuteEnable = getNVSAllLedsOff();
     // printf("touchLedsOffAfter1MinuteEnable:%d\n", touchLedsOffAfter1MinuteEnable);
     #ifdef WRITE_NVS_CONFIG
@@ -1253,7 +1247,9 @@ void nuos_get_data_from_nvs() {
     #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
         nvs_store_max = TOTAL_BUTTONS+1;
     #endif
-  
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+        nvs_store_max = TOTAL_BUTTONS+1;
+    #endif  
     zb_network_bdb_steering_count = getNVSZbNwSteeringCrashCounts();
     printf("zb_network_bdb_steering_count:%d\n", zb_network_bdb_steering_count);
  	esp_reset_reason_t reset_reason = esp_reset_reason();
@@ -2197,4 +2193,13 @@ int nuos_read_selected_dali_address_from_nvs(void) {
     nvs_close(my_handle);
     #endif
     return val;
+}
+
+
+uint8_t getNVSCoordinatorType(){
+	return (uint8_t)readKeyValueFromNVRAM(nvram_gateway_type_keys);
+}
+void setNVSCoordinatorType(uint8_t value){
+    zigbee_gateway_type = value;
+	writeKeyValueToNVRAM(nvram_gateway_type_keys, value);
 }

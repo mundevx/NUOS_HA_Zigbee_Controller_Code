@@ -350,7 +350,9 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = true;//!wifi_webserver_active_flag;
+            wifi_webserver_active_flag = true;  
+            printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+            vTaskDelay(pdMS_TO_TICKS(500));
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -364,7 +366,8 @@ static void detect_6_click_pattern(uint8_t button_id, int64_t now)
         
         #ifdef USE_WIFI_WEBSERVER
         if (ready_commisioning_flag) {
-            wifi_webserver_active_flag = true;//!wifi_webserver_active_flag;
+            printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+            vTaskDelay(pdMS_TO_TICKS(500));
             setNVSCommissioningFlag(0);
             setNVSWebServerEnableFlag(wifi_webserver_active_flag);                    
             esp_restart();
@@ -1573,7 +1576,7 @@ void button_click_handler(TimerHandle_t xTimer)
                 (switch_num_pressed[6] == gpio_touch_btn_pins[0]) &&
                 (switch_num_pressed[7] == gpio_touch_btn_pins[0]);
             #endif
-
+            #if(USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER_CUSTOM && USE_NUOS_ZB_DEVICE_TYPE != DEVICE_IR_BLASTER)
             if(is_11221122 || is_22112211){
                 touchLedsOffAfter1MinuteEnable = !touchLedsOffAfter1MinuteEnable;
                 setNVSAllLedsOff(touchLedsOffAfter1MinuteEnable);
@@ -1590,6 +1593,7 @@ void button_click_handler(TimerHandle_t xTimer)
                         vTaskDelay(pdMS_TO_TICKS(50));
                     }
             }
+            #endif
         } else if (local_clicks == 5) {
             #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
             // Double click: check if any button was pressed twice
@@ -1743,14 +1747,24 @@ static void create_timers_at_init(void)
 //     }
 // }
 void check_long_press_tasks(uint32_t sw_pressed_cnts, const uint16_t compare_time_in_secs){
-    if (sw_pressed_cnts == 2) {   
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)                              
+    if (sw_pressed_cnts == 1) {  
+    #else
+    if (sw_pressed_cnts == 2) { 
+    #endif
         if(get_button_pressed_mode() == 1){
             if(total_press_in_secs == compare_time_in_secs){
                 #ifdef USE_RGB_LED
                     light_driver_set_power(false);
                 #endif 
             }else if(total_press_in_secs > compare_time_in_secs){  
-
+                #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)                              
+                #ifdef USE_RGB_LED
+                    toggle_status_led_long_press = !toggle_status_led_long_press;
+                    if(toggle_status_led_long_press) light_driver_set_color_RGB(0, 0xff, 0x00);  //green
+                    light_driver_set_power(toggle_status_led_long_press);
+                #endif 
+                #endif
             }else{
                 #ifdef USE_RGB_LED
                     toggle_status_led_long_press = !toggle_status_led_long_press;
@@ -1945,6 +1959,12 @@ static void switch_driver_button_detected(void *arg) {
                                 brightness_control_tasks(io_num);
                                 switch_pressed_cnts = IdentifyTwoSwitchPressed();
                                 if (!two_switch_pressed_flag) {
+                                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)
+                                        if (switch_pressed_cnts >= 1) {
+                                            two_switch_pressed_flag = true;
+                                            nuos_set_rgb_led_commissioning_functionality();
+                                        }
+                                    #else
                                         if (switch_pressed_cnts >= 2) {
                                             two_switch_pressed_flag = true;
                                             nuos_set_rgb_led_commissioning_functionality();
@@ -1954,6 +1974,7 @@ static void switch_driver_button_detected(void *arg) {
                                             printf("2 switch pressed!!\n");
                                             #endif
                                         }
+                                    #endif        
                                 }
 
                                 if (current_time - double_release_time >= 1000) {

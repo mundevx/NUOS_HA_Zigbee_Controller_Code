@@ -1,4 +1,10 @@
 dependencies:
+  IRremoteIDF:
+    dependencies: []
+    source:
+      path: C:\esp\esp-zigbee-sdk\examples\esp_zigbee_HA_sample\NUOS_HA_Zigbee_Controller_Code\components\IRremoteIDF
+      type: local
+    version: 1.0.2
   espressif/esp-zboss-lib:
     dependencies:
     - name: idf
@@ -36,6 +42,7 @@ direct_dependencies:
 - espressif/esp-zigbee-lib
 - espressif/led_strip
 - idf
-manifest_hash: dcdbc505a17be8ab35307fc09b4d6e0fccfa9195c3dede923f421c0b8cc0cda3
+- jorgecis/IRremoteIDF
+manifest_hash: 940b86c0109bc4a4b9a676d177b23ba564cbc68d0fd7ef05275f7124a5f6c3ed
 target: esp32h2
 version: 2.0.0

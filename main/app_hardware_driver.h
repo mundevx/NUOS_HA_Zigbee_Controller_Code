@@ -214,6 +214,8 @@
 ////////////////////////////////////////////////////////////////////////
     #define MAX_BINDINGS                                                        40  // adjust this based on how many you expect
     #ifdef DECLARE_MAIN
+        uint8_t zigbee_gateway_type                                             = 0;
+        uint8_t zigbee_gateway_change                                           = 0;
         uint8_t ep_selected_index                                                  = 0;
         bool isr_service_installed                                              = false;
         bool rgb_led_blink_flag                                                 = false;
@@ -562,6 +564,88 @@
                 const gpio_num_t gpio_load_pins[TOTAL_LOADS]                    = { DALI_RX_PIN, DALI_TX_PIN};
                 const gpio_num_t gpio_touch_btn_pins[TOTAL_BUTTONS]             = { HW_TOUCH_BTN_PIN_1, HW_TOUCH_BTN_PIN_2, HW_TOUCH_BTN_PIN_3, HW_TOUCH_BTN_PIN_4};
 
+
+
+/*************IR BLASTER************* */ 
+        #elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+            
+
+            #ifdef USE_HOME_ASSISTANT
+                const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1};
+                const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID};
+                          
+                const char modelid[]                                            = {10, 'N', 'U', 'O', 'S', '-', 'Z', 'B', '-', 'I', 'R'};
+                const char manufname[]                                          = {4, 'N', 'U', 'O', 'S'};
+            #else
+                #ifdef USE_TUYA_BRDIGE 
+
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+                        #ifdef USE_FAN_SPEED
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID, ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1, 2};
+                        #else
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_DIMMABLE_LIGHT_DEVICE_ID};
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                   = {1};
+                        #endif
+                    #else
+                        #ifdef USE_FAN_SPEED
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2, 3, 4};
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_CUSTOM_ATTR_DEVICE_ID, ESP_ZB_HA_THERMOSTAT_DEVICE_ID};
+                        #else
+                        const uint8_t ENDPOINTS_LIST[TOTAL_ENDPOINTS]                       = {1, 2, 3};
+                        const uint32_t ENDPOINTS_TYPE[TOTAL_ENDPOINTS]                  = {ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_THERMOSTAT_DEVICE_ID, ESP_ZB_HA_CUSTOM_ATTR_DEVICE_ID};
+                        #endif  
+                    #endif
+                    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+                        ////56lfhvvn  -->testing
+                        ////char manufname[]                                      = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', '5', '6', 'l', 'f', 'h', 'v', 'v', 'n'};
+                        //jl268nxf   -->working with issues
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'j', 'l', '2', '6', '8', 'n', 'x', 'f'};
+                        #ifdef USE_FAN_SPEED
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'b', 'z', 'c', 'v', '6', 'p', 's', 'l'}; 
+                        #else
+                        //cftyjrak   -->working with no issue
+                        char manufname[]                                        = {16, '_', 'T', 'Z', '3', '0', '0', '0', '_', 'c', 'f', 't', 'y', 'j', 'r', 'a', 'k'};
+                        #endif
+                        const char modelid[]                                    = {6, 'T', 'S', '1', '1', '0', '1'};
+                    #else
+                        //tzzpjnbr
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 't', 'z', 'z', 'p', 'j', 'n', 'b', 'r'};
+
+                        //nwpaggmi
+                        //char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'n', 'w', 'p', 'a', 'g', 'g', 'm', 'i'};
+
+                        // //n4qc9fg7
+                        // char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '4', '_', 'n', '4', 'q', 'c', '9', 'f', 'g', '7'};//dev_id=smartplug
+
+                        char manufname[]                                        = {16, '_', 'T', 'Z', 'E', '2', '0', '0', '_', 'n', '4', 'q', 'c', '9', 'f', 'g', '7'}; //dev_id=thermopstat
+                      
+                        const char modelid[]                                    = {6, 'T', 'S', '0', '6', '0', '1'};    
+                        //TS0308
+                        //const char modelid[]                                    = {6, 'T', 'S', '0', '3', '0', '8'};
+                    #endif
+                    //NUOSIRAC
+                #endif
+            #endif
+
+            const uint32_t gpio_touch_led_pins[TOTAL_LEDS]                      = { HW_TOUCH_LED_PIN_2};
+            #if(TOTAL_LOADS > 0)
+            const uint32_t gpio_load_pins[TOTAL_LOADS]                          = { HW_TOUCH_LED_PIN_2};
+            #else
+            const uint32_t gpio_load_pins[TOTAL_LOADS];
+            #endif
+            const uint32_t gpio_touch_btn_pins[TOTAL_BUTTONS]                   = { HW_TOUCH_LED_PIN_1 };
+            const gpio_num_t gpio_ir_led_pins[TOTAL_LEDS]                       = { HW_TOUCH_LED_PIN_4 };
+            #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+            #ifdef USE_FAN_SPEED
+            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL};
+            #else
+            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL};
+            #endif
+            #else
+            uint16_t ENDPOINT_CLUSTERS[TOTAL_ENDPOINTS]                         = {ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT, 0xFC31};
+            #endif
+
         #endif
         bool bCalMode = false;
         uint64_t start_time = 0;
@@ -575,6 +659,8 @@
         uint8_t gateway_type = 0;
     #else
         extern uint8_t gateway_type;
+        extern uint8_t zigbee_gateway_type;
+        extern uint8_t zigbee_gateway_change;
         extern uint8_t ep_selected_index;
         extern bool isr_service_installed;
         extern bool on_scene_attribute_reporting_cb_flag;
@@ -723,12 +809,22 @@
 
     #endif     
 //app_hardware_driver_on_off.c  
-extern void nuos_set_hardware_fan_ctrl(uint8_t index);
+
 extern void init_sensor_interrupt();
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+
+        extern void nuos_init_ir_ac(uint8_t index);
+        extern void set_decode_type(int decode_type);
+        extern void nuos_try_ac(int decode_type, bool state);
+        extern void nuos_set_hardware_fan_ctrl(uint8_t index);
+        extern void nuos_zb_set_hardware_led(uint8_t index, uint8_t is_toggle);
+#endif
+    // extern void nuos_set_hardware_fan_ctrl(uint8_t index);
     DaliNodeList read_dali_addressed_nodes();
     int32_t daliQueryPowerOnLevel(const uint8_t addr);
     int32_t daliQueryFadeTimeFadeRate(uint8_t addr);

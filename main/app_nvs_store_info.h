@@ -103,8 +103,6 @@
     }
     #endif
 
-    
-
 
     extern void writeSceneInfoStruct(uint8_t index, void * strt);
     extern void readSceneInfoStruct(uint8_t index, void* my_data, size_t* length);

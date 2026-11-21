@@ -116,10 +116,11 @@ void nuos_stop_commissioning(unsigned char timeout){
 		#endif
 
 		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
-
-		init_timer();
-		esp_start_timer();	
-		
+			init_timer();
+			esp_start_timer();	
+		#elif(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_1CH_CURTAIN || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_WIRELESS_SCENE_SWITCH )
+			init_timer();
+			esp_start_timer();			
 		#else
 			esp_stop_timer();
 			///printf("##############STOP_TIMER###########\n");			
@@ -222,11 +223,11 @@ void start_zb_commissioning_timer_task(){
 void timer_callback(void* arg) {
     /*START COMMISSIONING TASK*/   
 	#ifndef ZB_COMMISSIONING_WITHOUT_TIMER
-		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+		#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
 			if(wifi_webserver_active_flag==0){
 		#endif
 			start_zb_commissioning_timer_task();
-		 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI)
+		 #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SCENE_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_DALI_DIRECT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_CCT_DALI_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_RGB_DALI || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
 		 	}else{
 		 		start_wifi_webserver_timer_task();
 		 	}
@@ -311,6 +312,9 @@ uint8_t get_button_pressed_mode(){
 			}	
 		#endif
 	#else
+	    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_MOTION || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_CONTACT_SWITCH || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_GAS_LEAK || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_TEMPERATURE_HUMIDITY || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_SENSOR_LUX)                              
+			return 1;
+		#else
 		if(first_button_pressed && second_button_pressed){
 			return 1;
 		}else if(third_button_pressed && fourth_button_pressed){
@@ -318,6 +322,7 @@ uint8_t get_button_pressed_mode(){
 		}else if(second_button_pressed){
 			return 0;
 		}
+		#endif
 	#endif
 	return 0xff;
 }
@@ -383,6 +388,28 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
         }
 	}
 
+	
+
+	#if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER || USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER_CUSTOM)
+		if(timeout >= LONG_PRESS_ENABLE_WIFI_WEB_SERVER_TIME_IN_SECS && timeout < LONG_PRESS_SET_COMMISSIONING_TIME_IN_SECS){  //start web server
+			// if(wifi_webserver_active_flag){
+			// 	wifi_webserver_active_flag = false;
+			// }else{
+			wifi_webserver_active_flag = true;  
+			printf("{\"mode\":%d}\n", wifi_webserver_active_flag);
+			// }
+			setNVSCommissioningFlag(false);
+			setNVSWebServerEnableFlag(wifi_webserver_active_flag);                        
+			esp_restart();	
+		}else if(timeout >= LONG_PRESS_SET_COMMISSIONING_TIME_IN_SECS){  //start commissioning
+			//printf("set_commissioning\n");
+			setNVSCommissioningFlag(1);
+			if (esp_zb_bdb_dev_joined()) {
+				esp_zb_bdb_reset_via_local_action();
+			}
+			esp_zb_factory_reset();
+		}
+    #else
 	if(timeout >= MAX_TIME_TO_START_COMMISSIONING_ON_2_BUTTONS_PRESSED){
 		if(switch_pressed_counts_to_enter_commissioning >= 2){  //if any switch pressed by mistake!!
 				switch_pressed_counts_to_enter_commissioning = 0;
@@ -444,54 +471,8 @@ void actionOnTwoSwitchPressed(int64_t timeout) {
 		}else{
 			nuos_set_rgb_led_normal_functionality();
 		}
+	#endif		
 }
-
-// void timer_callback_3(void* arg) {  
-// 	if(touchLedsOffAfter1MinuteEnable){
-// 		if(timer_3_counts++ >= TOUCH_LEDS_ALL_OFF_TIMEOUT){   //1 minute count-up
-// 			timer_3_counts = 0;
-// 			timer3_running_flag = false;
-// 			printf("TIMER3 STOP!!\n");
-			
-// 			nuos_set_state_touch_leds(false);
-		
-// 			esp_stop_timer_3();  
-// 		}
-// 	}
-// }
-
-// void init_timer_3() {
-// 	// Create a timer
-// 	const esp_timer_create_args_t timer_args = {
-// 		.callback = &timer_callback_3,
-// 		.name = "timer_3"
-// 	};
-// 	ESP_ERROR_CHECK(esp_timer_create(&timer_args, &my_timer_handle_3));
-// 	start_timer3_flag = false;
-	
-// }
-
-// void esp_start_timer_3(){
-// 	if(touchLedsOffAfter1MinuteEnable){
-// 		// Start the timer
-// 		if(!start_timer3_flag){
-// 			start_timer3_flag = true;
-// 			if(my_timer_handle_3 != NULL)
-// 			ESP_ERROR_CHECK(esp_timer_start_periodic(my_timer_handle_3, 1000000)); // 1 second period
-// 		}
-// 		timer_3_counts = 0;	
-// 	}
-// }
-
-// void esp_stop_timer_3(){
-// 	if(touchLedsOffAfter1MinuteEnable){
-// 		if(start_timer3_flag){
-// 			start_timer3_flag = false;
-// 			if(my_timer_handle_3 != NULL)
-// 				esp_timer_stop(my_timer_handle_3);	
-// 		}	
-// 	}
-// }
 
 void recheckTimer(){
 	timer_3_counts = 0;	

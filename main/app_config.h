@@ -5,9 +5,10 @@
     #define DEVICE_RGB_DALI                                         2 // SW1=DALI RED, SW2=DALI GREEN, SW3=DALI BLUE, SW4=DALI WHITE
     #define DEVICE_SCENE_DALI                                       4 // SW1=SCENE1, SW2=SCENE2, SW3=SCENE3, SW4=SCENE4
     #define DEVICE_DALI_DIRECT_SWITCH                               5 // SW1=ON/OFF, SW2=ON/OFF for 2 endpoints 2 buttons, 2 leds
-
+    #define DEVICE_IR_BLASTER                                       6 // IR Blaster for TV, AC, etc.
+    #define DEVICE_IR_BLASTER_CUSTOM                                7 // IR Blaster for TV, AC, etc. with custom clusters
     // TS004F (instead of TS0044) buttons has only Single Tap
-    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_RGB_DALI
+    #define USE_NUOS_ZB_DEVICE_TYPE                                 DEVICE_IR_BLASTER
 
     #define SETUP_LONG_PRESS_TIME_IN_SECS                           10
 
@@ -15,8 +16,11 @@
     //#define DONT_USE_ZIGBEE                                       // For Expo or Demo Only   
     #define NEW_SDK_6
     //#define USE_OTA
+    #if(USE_NUOS_ZB_DEVICE_TYPE == DEVICE_IR_BLASTER)
+    #define USE_HOME_ASSISTANT
+    #else
     #define USE_TUYA_BRDIGE
-
+    #endif
     // #define WRITE_NVS_CONFIG
     // #define ZB_FACTORY_RESET
     #define USE_TRIPLE_CLICK

@@ -34052,6 +34052,2632 @@
             {
                 "children": [
                     {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Internal marker so the library knows the Kconfig options\nwere applied. Not user selectable.",
+                        "id": "IRREMOTE_KCONFIG_PRESENT",
+                        "name": "IRREMOTE_KCONFIG_PRESENT",
+                        "range": null,
+                        "title": null,
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Use an LEDC channel to produce the 30-60 kHz carrier instead of\ntoggling the GPIO from the CPU. This frees the CPU during a\ntransmission and gives a cleaner duty cycle, at the cost of one\nLEDC channel and timer per IRsend instance.",
+                        "id": "IRREMOTE_TX_HW_CARRIER",
+                        "name": "IRREMOTE_TX_HW_CARRIER",
+                        "range": null,
+                        "title": "Generate the transmit carrier in hardware (LEDC)",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Enables the library's DPRINT/DPRINTLN tracing on stdout.",
+                        "id": "IRREMOTE_DEBUG",
+                        "name": "IRREMOTE_DEBUG",
+                        "range": null,
+                        "title": "Print library debug output",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_DE_CH",
+                                "name": "IRREMOTE_LOCALE_DE_CH",
+                                "range": null,
+                                "title": "de-CH",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_DE_DE",
+                                "name": "IRREMOTE_LOCALE_DE_DE",
+                                "range": null,
+                                "title": "de-DE",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_EN_AU",
+                                "name": "IRREMOTE_LOCALE_EN_AU",
+                                "range": null,
+                                "title": "en-AU",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_EN_IE",
+                                "name": "IRREMOTE_LOCALE_EN_IE",
+                                "range": null,
+                                "title": "en-IE",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_EN_UK",
+                                "name": "IRREMOTE_LOCALE_EN_UK",
+                                "range": null,
+                                "title": "en-UK",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_EN_US",
+                                "name": "IRREMOTE_LOCALE_EN_US",
+                                "range": null,
+                                "title": "en-US",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_ES_ES",
+                                "name": "IRREMOTE_LOCALE_ES_ES",
+                                "range": null,
+                                "title": "es-ES",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_FR_FR",
+                                "name": "IRREMOTE_LOCALE_FR_FR",
+                                "range": null,
+                                "title": "fr-FR",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_IT_IT",
+                                "name": "IRREMOTE_LOCALE_IT_IT",
+                                "range": null,
+                                "title": "it-IT",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_NL_NL",
+                                "name": "IRREMOTE_LOCALE_NL_NL",
+                                "range": null,
+                                "title": "nl-NL",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_PT_BR",
+                                "name": "IRREMOTE_LOCALE_PT_BR",
+                                "range": null,
+                                "title": "pt-BR",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_RU_RU",
+                                "name": "IRREMOTE_LOCALE_RU_RU",
+                                "range": null,
+                                "title": "ru-RU",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_SK_SK",
+                                "name": "IRREMOTE_LOCALE_SK_SK",
+                                "range": null,
+                                "title": "sk-SK",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_SV_SE",
+                                "name": "IRREMOTE_LOCALE_SV_SE",
+                                "range": null,
+                                "title": "sv-SE",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": "<choice IRREMOTE_LOCALE>",
+                                "help": null,
+                                "id": "IRREMOTE_LOCALE_ZH_CN",
+                                "name": "IRREMOTE_LOCALE_ZH_CN",
+                                "range": null,
+                                "title": "zh-CN",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "help": "Selects which include/locale/<tag>.h file supplies the text\nused by toString() and friends.",
+                        "id": "component-config-irremote-infrared-send-receive--language-locale-for-human-readable-output",
+                        "name": "IRREMOTE_LOCALE",
+                        "title": "Language/locale for human readable output",
+                        "type": "choice"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": null,
+                        "help": "Every protocol is compiled in. Turn this off to pick protocols\nindividually and shrink the firmware.",
+                        "id": "IRREMOTE_ENABLE_ALL_PROTOCOLS",
+                        "name": "IRREMOTE_ENABLE_ALL_PROTOCOLS",
+                        "range": null,
+                        "title": "Enable every supported protocol",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HASH",
+                                "name": "IRREMOTE_DECODE_HASH",
+                                "range": null,
+                                "title": "HASH: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_RAW",
+                                "name": "IRREMOTE_SEND_RAW",
+                                "range": null,
+                                "title": "RAW: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_NEC",
+                                "name": "IRREMOTE_DECODE_NEC",
+                                "range": null,
+                                "title": "NEC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_NEC",
+                                "name": "IRREMOTE_SEND_NEC",
+                                "range": null,
+                                "title": "NEC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SHERWOOD",
+                                "name": "IRREMOTE_SEND_SHERWOOD",
+                                "range": null,
+                                "title": "SHERWOOD: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_RC5",
+                                "name": "IRREMOTE_DECODE_RC5",
+                                "range": null,
+                                "title": "RC5: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_RC5",
+                                "name": "IRREMOTE_SEND_RC5",
+                                "range": null,
+                                "title": "RC5: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_RC6",
+                                "name": "IRREMOTE_DECODE_RC6",
+                                "range": null,
+                                "title": "RC6: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_RC6",
+                                "name": "IRREMOTE_SEND_RC6",
+                                "range": null,
+                                "title": "RC6: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_RCMM",
+                                "name": "IRREMOTE_DECODE_RCMM",
+                                "range": null,
+                                "title": "RCMM: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_RCMM",
+                                "name": "IRREMOTE_SEND_RCMM",
+                                "range": null,
+                                "title": "RCMM: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SONY",
+                                "name": "IRREMOTE_DECODE_SONY",
+                                "range": null,
+                                "title": "SONY: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SONY",
+                                "name": "IRREMOTE_SEND_SONY",
+                                "range": null,
+                                "title": "SONY: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_PANASONIC",
+                                "name": "IRREMOTE_DECODE_PANASONIC",
+                                "range": null,
+                                "title": "PANASONIC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_PANASONIC",
+                                "name": "IRREMOTE_SEND_PANASONIC",
+                                "range": null,
+                                "title": "PANASONIC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_JVC",
+                                "name": "IRREMOTE_DECODE_JVC",
+                                "range": null,
+                                "title": "JVC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_JVC",
+                                "name": "IRREMOTE_SEND_JVC",
+                                "range": null,
+                                "title": "JVC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SAMSUNG",
+                                "name": "IRREMOTE_DECODE_SAMSUNG",
+                                "range": null,
+                                "title": "SAMSUNG: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SAMSUNG",
+                                "name": "IRREMOTE_SEND_SAMSUNG",
+                                "range": null,
+                                "title": "SAMSUNG: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SAMSUNG36",
+                                "name": "IRREMOTE_DECODE_SAMSUNG36",
+                                "range": null,
+                                "title": "SAMSUNG36: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SAMSUNG36",
+                                "name": "IRREMOTE_SEND_SAMSUNG36",
+                                "range": null,
+                                "title": "SAMSUNG36: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SAMSUNG_AC",
+                                "name": "IRREMOTE_DECODE_SAMSUNG_AC",
+                                "range": null,
+                                "title": "SAMSUNG_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SAMSUNG_AC",
+                                "name": "IRREMOTE_SEND_SAMSUNG_AC",
+                                "range": null,
+                                "title": "SAMSUNG_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_WHYNTER",
+                                "name": "IRREMOTE_DECODE_WHYNTER",
+                                "range": null,
+                                "title": "WHYNTER: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_WHYNTER",
+                                "name": "IRREMOTE_SEND_WHYNTER",
+                                "range": null,
+                                "title": "WHYNTER: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_AIWA_RC_T501",
+                                "name": "IRREMOTE_DECODE_AIWA_RC_T501",
+                                "range": null,
+                                "title": "AIWA_RC_T501: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_AIWA_RC_T501",
+                                "name": "IRREMOTE_SEND_AIWA_RC_T501",
+                                "range": null,
+                                "title": "AIWA_RC_T501: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_LG",
+                                "name": "IRREMOTE_DECODE_LG",
+                                "range": null,
+                                "title": "LG: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_LG",
+                                "name": "IRREMOTE_SEND_LG",
+                                "range": null,
+                                "title": "LG: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SANYO",
+                                "name": "IRREMOTE_DECODE_SANYO",
+                                "range": null,
+                                "title": "SANYO: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SANYO",
+                                "name": "IRREMOTE_SEND_SANYO",
+                                "range": null,
+                                "title": "SANYO: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SANYO_AC",
+                                "name": "IRREMOTE_DECODE_SANYO_AC",
+                                "range": null,
+                                "title": "SANYO_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SANYO_AC",
+                                "name": "IRREMOTE_SEND_SANYO_AC",
+                                "range": null,
+                                "title": "SANYO_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SANYO_AC88",
+                                "name": "IRREMOTE_DECODE_SANYO_AC88",
+                                "range": null,
+                                "title": "SANYO_AC88: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SANYO_AC88",
+                                "name": "IRREMOTE_SEND_SANYO_AC88",
+                                "range": null,
+                                "title": "SANYO_AC88: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SANYO_AC152",
+                                "name": "IRREMOTE_DECODE_SANYO_AC152",
+                                "range": null,
+                                "title": "SANYO_AC152: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SANYO_AC152",
+                                "name": "IRREMOTE_SEND_SANYO_AC152",
+                                "range": null,
+                                "title": "SANYO_AC152: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHI",
+                                "name": "IRREMOTE_DECODE_MITSUBISHI",
+                                "range": null,
+                                "title": "MITSUBISHI: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHI",
+                                "name": "IRREMOTE_SEND_MITSUBISHI",
+                                "range": null,
+                                "title": "MITSUBISHI: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHI2",
+                                "name": "IRREMOTE_DECODE_MITSUBISHI2",
+                                "range": null,
+                                "title": "MITSUBISHI2: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHI2",
+                                "name": "IRREMOTE_SEND_MITSUBISHI2",
+                                "range": null,
+                                "title": "MITSUBISHI2: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DISH",
+                                "name": "IRREMOTE_DECODE_DISH",
+                                "range": null,
+                                "title": "DISH: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DISH",
+                                "name": "IRREMOTE_SEND_DISH",
+                                "range": null,
+                                "title": "DISH: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SHARP",
+                                "name": "IRREMOTE_DECODE_SHARP",
+                                "range": null,
+                                "title": "SHARP: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SHARP",
+                                "name": "IRREMOTE_SEND_SHARP",
+                                "range": null,
+                                "title": "SHARP: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SHARP_AC",
+                                "name": "IRREMOTE_DECODE_SHARP_AC",
+                                "range": null,
+                                "title": "SHARP_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SHARP_AC",
+                                "name": "IRREMOTE_SEND_SHARP_AC",
+                                "range": null,
+                                "title": "SHARP_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DENON",
+                                "name": "IRREMOTE_DECODE_DENON",
+                                "range": null,
+                                "title": "DENON: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DENON",
+                                "name": "IRREMOTE_SEND_DENON",
+                                "range": null,
+                                "title": "DENON: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_KELVINATOR",
+                                "name": "IRREMOTE_DECODE_KELVINATOR",
+                                "range": null,
+                                "title": "KELVINATOR: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_KELVINATOR",
+                                "name": "IRREMOTE_SEND_KELVINATOR",
+                                "range": null,
+                                "title": "KELVINATOR: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHI_AC",
+                                "name": "IRREMOTE_DECODE_MITSUBISHI_AC",
+                                "range": null,
+                                "title": "MITSUBISHI_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHI_AC",
+                                "name": "IRREMOTE_SEND_MITSUBISHI_AC",
+                                "range": null,
+                                "title": "MITSUBISHI_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHI136",
+                                "name": "IRREMOTE_DECODE_MITSUBISHI136",
+                                "range": null,
+                                "title": "MITSUBISHI136: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHI136",
+                                "name": "IRREMOTE_SEND_MITSUBISHI136",
+                                "range": null,
+                                "title": "MITSUBISHI136: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHI112",
+                                "name": "IRREMOTE_DECODE_MITSUBISHI112",
+                                "range": null,
+                                "title": "MITSUBISHI112: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHI112",
+                                "name": "IRREMOTE_SEND_MITSUBISHI112",
+                                "range": null,
+                                "title": "MITSUBISHI112: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_FUJITSU_AC",
+                                "name": "IRREMOTE_DECODE_FUJITSU_AC",
+                                "range": null,
+                                "title": "FUJITSU_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_FUJITSU_AC",
+                                "name": "IRREMOTE_SEND_FUJITSU_AC",
+                                "range": null,
+                                "title": "FUJITSU_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_INAX",
+                                "name": "IRREMOTE_DECODE_INAX",
+                                "range": null,
+                                "title": "INAX: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_INAX",
+                                "name": "IRREMOTE_SEND_INAX",
+                                "range": null,
+                                "title": "INAX: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN",
+                                "name": "IRREMOTE_DECODE_DAIKIN",
+                                "range": null,
+                                "title": "DAIKIN: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN",
+                                "name": "IRREMOTE_SEND_DAIKIN",
+                                "range": null,
+                                "title": "DAIKIN: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_COOLIX",
+                                "name": "IRREMOTE_DECODE_COOLIX",
+                                "range": null,
+                                "title": "COOLIX: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_COOLIX",
+                                "name": "IRREMOTE_SEND_COOLIX",
+                                "range": null,
+                                "title": "COOLIX: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_COOLIX48",
+                                "name": "IRREMOTE_DECODE_COOLIX48",
+                                "range": null,
+                                "title": "COOLIX48: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_COOLIX48",
+                                "name": "IRREMOTE_SEND_COOLIX48",
+                                "range": null,
+                                "title": "COOLIX48: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_GLOBALCACHE",
+                                "name": "IRREMOTE_SEND_GLOBALCACHE",
+                                "range": null,
+                                "title": "GLOBALCACHE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_GOODWEATHER",
+                                "name": "IRREMOTE_DECODE_GOODWEATHER",
+                                "range": null,
+                                "title": "GOODWEATHER: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_GOODWEATHER",
+                                "name": "IRREMOTE_SEND_GOODWEATHER",
+                                "range": null,
+                                "title": "GOODWEATHER: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_GREE",
+                                "name": "IRREMOTE_DECODE_GREE",
+                                "range": null,
+                                "title": "GREE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_GREE",
+                                "name": "IRREMOTE_SEND_GREE",
+                                "range": null,
+                                "title": "GREE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_PRONTO",
+                                "name": "IRREMOTE_SEND_PRONTO",
+                                "range": null,
+                                "title": "PRONTO: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ARGO",
+                                "name": "IRREMOTE_DECODE_ARGO",
+                                "range": null,
+                                "title": "ARGO: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ARGO",
+                                "name": "IRREMOTE_SEND_ARGO",
+                                "range": null,
+                                "title": "ARGO: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TROTEC",
+                                "name": "IRREMOTE_DECODE_TROTEC",
+                                "range": null,
+                                "title": "TROTEC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TROTEC",
+                                "name": "IRREMOTE_SEND_TROTEC",
+                                "range": null,
+                                "title": "TROTEC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TROTEC_3550",
+                                "name": "IRREMOTE_DECODE_TROTEC_3550",
+                                "range": null,
+                                "title": "TROTEC_3550: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TROTEC_3550",
+                                "name": "IRREMOTE_SEND_TROTEC_3550",
+                                "range": null,
+                                "title": "TROTEC_3550: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_NIKAI",
+                                "name": "IRREMOTE_DECODE_NIKAI",
+                                "range": null,
+                                "title": "NIKAI: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_NIKAI",
+                                "name": "IRREMOTE_SEND_NIKAI",
+                                "range": null,
+                                "title": "NIKAI: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TOSHIBA_AC",
+                                "name": "IRREMOTE_DECODE_TOSHIBA_AC",
+                                "range": null,
+                                "title": "TOSHIBA_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TOSHIBA_AC",
+                                "name": "IRREMOTE_SEND_TOSHIBA_AC",
+                                "range": null,
+                                "title": "TOSHIBA_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MAGIQUEST",
+                                "name": "IRREMOTE_DECODE_MAGIQUEST",
+                                "range": null,
+                                "title": "MAGIQUEST: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MAGIQUEST",
+                                "name": "IRREMOTE_SEND_MAGIQUEST",
+                                "range": null,
+                                "title": "MAGIQUEST: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MIDEA",
+                                "name": "IRREMOTE_DECODE_MIDEA",
+                                "range": null,
+                                "title": "MIDEA: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MIDEA",
+                                "name": "IRREMOTE_SEND_MIDEA",
+                                "range": null,
+                                "title": "MIDEA: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MIDEA24",
+                                "name": "IRREMOTE_DECODE_MIDEA24",
+                                "range": null,
+                                "title": "MIDEA24: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MIDEA24",
+                                "name": "IRREMOTE_SEND_MIDEA24",
+                                "range": null,
+                                "title": "MIDEA24: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_LASERTAG",
+                                "name": "IRREMOTE_DECODE_LASERTAG",
+                                "range": null,
+                                "title": "LASERTAG: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_LASERTAG",
+                                "name": "IRREMOTE_SEND_LASERTAG",
+                                "range": null,
+                                "title": "LASERTAG: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CARRIER_AC",
+                                "name": "IRREMOTE_DECODE_CARRIER_AC",
+                                "range": null,
+                                "title": "CARRIER_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CARRIER_AC",
+                                "name": "IRREMOTE_SEND_CARRIER_AC",
+                                "range": null,
+                                "title": "CARRIER_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CARRIER_AC40",
+                                "name": "IRREMOTE_DECODE_CARRIER_AC40",
+                                "range": null,
+                                "title": "CARRIER_AC40: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CARRIER_AC40",
+                                "name": "IRREMOTE_SEND_CARRIER_AC40",
+                                "range": null,
+                                "title": "CARRIER_AC40: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CARRIER_AC64",
+                                "name": "IRREMOTE_DECODE_CARRIER_AC64",
+                                "range": null,
+                                "title": "CARRIER_AC64: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CARRIER_AC64",
+                                "name": "IRREMOTE_SEND_CARRIER_AC64",
+                                "range": null,
+                                "title": "CARRIER_AC64: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CARRIER_AC128",
+                                "name": "IRREMOTE_DECODE_CARRIER_AC128",
+                                "range": null,
+                                "title": "CARRIER_AC128: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CARRIER_AC128",
+                                "name": "IRREMOTE_SEND_CARRIER_AC128",
+                                "range": null,
+                                "title": "CARRIER_AC128: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HAIER_AC",
+                                "name": "IRREMOTE_DECODE_HAIER_AC",
+                                "range": null,
+                                "title": "HAIER_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HAIER_AC",
+                                "name": "IRREMOTE_SEND_HAIER_AC",
+                                "range": null,
+                                "title": "HAIER_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC",
+                                "range": null,
+                                "title": "HITACHI_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC",
+                                "name": "IRREMOTE_SEND_HITACHI_AC",
+                                "range": null,
+                                "title": "HITACHI_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC1",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC1",
+                                "range": null,
+                                "title": "HITACHI_AC1: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC1",
+                                "name": "IRREMOTE_SEND_HITACHI_AC1",
+                                "range": null,
+                                "title": "HITACHI_AC1: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC2",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC2",
+                                "range": null,
+                                "title": "HITACHI_AC2: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC2",
+                                "name": "IRREMOTE_SEND_HITACHI_AC2",
+                                "range": null,
+                                "title": "HITACHI_AC2: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC3",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC3",
+                                "range": null,
+                                "title": "HITACHI_AC3: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC3",
+                                "name": "IRREMOTE_SEND_HITACHI_AC3",
+                                "range": null,
+                                "title": "HITACHI_AC3: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC264",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC264",
+                                "range": null,
+                                "title": "HITACHI_AC264: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC264",
+                                "name": "IRREMOTE_SEND_HITACHI_AC264",
+                                "range": null,
+                                "title": "HITACHI_AC264: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC296",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC296",
+                                "range": null,
+                                "title": "HITACHI_AC296: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC296",
+                                "name": "IRREMOTE_SEND_HITACHI_AC296",
+                                "range": null,
+                                "title": "HITACHI_AC296: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC344",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC344",
+                                "range": null,
+                                "title": "HITACHI_AC344: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC344",
+                                "name": "IRREMOTE_SEND_HITACHI_AC344",
+                                "range": null,
+                                "title": "HITACHI_AC344: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HITACHI_AC424",
+                                "name": "IRREMOTE_DECODE_HITACHI_AC424",
+                                "range": null,
+                                "title": "HITACHI_AC424: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HITACHI_AC424",
+                                "name": "IRREMOTE_SEND_HITACHI_AC424",
+                                "range": null,
+                                "title": "HITACHI_AC424: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_GICABLE",
+                                "name": "IRREMOTE_DECODE_GICABLE",
+                                "range": null,
+                                "title": "GICABLE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_GICABLE",
+                                "name": "IRREMOTE_SEND_GICABLE",
+                                "range": null,
+                                "title": "GICABLE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HAIER_AC_YRW02",
+                                "name": "IRREMOTE_DECODE_HAIER_AC_YRW02",
+                                "range": null,
+                                "title": "HAIER_AC_YRW02: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HAIER_AC_YRW02",
+                                "name": "IRREMOTE_SEND_HAIER_AC_YRW02",
+                                "range": null,
+                                "title": "HAIER_AC_YRW02: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_WHIRLPOOL_AC",
+                                "name": "IRREMOTE_DECODE_WHIRLPOOL_AC",
+                                "range": null,
+                                "title": "WHIRLPOOL_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_WHIRLPOOL_AC",
+                                "name": "IRREMOTE_SEND_WHIRLPOOL_AC",
+                                "range": null,
+                                "title": "WHIRLPOOL_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_LUTRON",
+                                "name": "IRREMOTE_DECODE_LUTRON",
+                                "range": null,
+                                "title": "LUTRON: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_LUTRON",
+                                "name": "IRREMOTE_SEND_LUTRON",
+                                "range": null,
+                                "title": "LUTRON: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ELECTRA_AC",
+                                "name": "IRREMOTE_DECODE_ELECTRA_AC",
+                                "range": null,
+                                "title": "ELECTRA_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ELECTRA_AC",
+                                "name": "IRREMOTE_SEND_ELECTRA_AC",
+                                "range": null,
+                                "title": "ELECTRA_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_PANASONIC_AC",
+                                "name": "IRREMOTE_DECODE_PANASONIC_AC",
+                                "range": null,
+                                "title": "PANASONIC_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_PANASONIC_AC",
+                                "name": "IRREMOTE_SEND_PANASONIC_AC",
+                                "range": null,
+                                "title": "PANASONIC_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_PANASONIC_AC32",
+                                "name": "IRREMOTE_DECODE_PANASONIC_AC32",
+                                "range": null,
+                                "title": "PANASONIC_AC32: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_PANASONIC_AC32",
+                                "name": "IRREMOTE_SEND_PANASONIC_AC32",
+                                "range": null,
+                                "title": "PANASONIC_AC32: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MWM",
+                                "name": "IRREMOTE_DECODE_MWM",
+                                "range": null,
+                                "title": "MWM: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MWM",
+                                "name": "IRREMOTE_SEND_MWM",
+                                "range": null,
+                                "title": "MWM: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_PIONEER",
+                                "name": "IRREMOTE_DECODE_PIONEER",
+                                "range": null,
+                                "title": "PIONEER: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_PIONEER",
+                                "name": "IRREMOTE_SEND_PIONEER",
+                                "range": null,
+                                "title": "PIONEER: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN2",
+                                "name": "IRREMOTE_DECODE_DAIKIN2",
+                                "range": null,
+                                "title": "DAIKIN2: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN2",
+                                "name": "IRREMOTE_SEND_DAIKIN2",
+                                "range": null,
+                                "title": "DAIKIN2: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_VESTEL_AC",
+                                "name": "IRREMOTE_DECODE_VESTEL_AC",
+                                "range": null,
+                                "title": "VESTEL_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_VESTEL_AC",
+                                "name": "IRREMOTE_SEND_VESTEL_AC",
+                                "range": null,
+                                "title": "VESTEL_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TECO",
+                                "name": "IRREMOTE_DECODE_TECO",
+                                "range": null,
+                                "title": "TECO: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TECO",
+                                "name": "IRREMOTE_SEND_TECO",
+                                "range": null,
+                                "title": "TECO: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TCL96AC",
+                                "name": "IRREMOTE_DECODE_TCL96AC",
+                                "range": null,
+                                "title": "TCL96AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TCL96AC",
+                                "name": "IRREMOTE_SEND_TCL96AC",
+                                "range": null,
+                                "title": "TCL96AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TCL112AC",
+                                "name": "IRREMOTE_DECODE_TCL112AC",
+                                "range": null,
+                                "title": "TCL112AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TCL112AC",
+                                "name": "IRREMOTE_SEND_TCL112AC",
+                                "range": null,
+                                "title": "TCL112AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_LEGOPF",
+                                "name": "IRREMOTE_DECODE_LEGOPF",
+                                "range": null,
+                                "title": "LEGOPF: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_LEGOPF",
+                                "name": "IRREMOTE_SEND_LEGOPF",
+                                "range": null,
+                                "title": "LEGOPF: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MITSUBISHIHEAVY",
+                                "name": "IRREMOTE_DECODE_MITSUBISHIHEAVY",
+                                "range": null,
+                                "title": "MITSUBISHIHEAVY: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MITSUBISHIHEAVY",
+                                "name": "IRREMOTE_SEND_MITSUBISHIHEAVY",
+                                "range": null,
+                                "title": "MITSUBISHIHEAVY: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN216",
+                                "name": "IRREMOTE_DECODE_DAIKIN216",
+                                "range": null,
+                                "title": "DAIKIN216: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN216",
+                                "name": "IRREMOTE_SEND_DAIKIN216",
+                                "range": null,
+                                "title": "DAIKIN216: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN160",
+                                "name": "IRREMOTE_DECODE_DAIKIN160",
+                                "range": null,
+                                "title": "DAIKIN160: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN160",
+                                "name": "IRREMOTE_SEND_DAIKIN160",
+                                "range": null,
+                                "title": "DAIKIN160: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_NEOCLIMA",
+                                "name": "IRREMOTE_DECODE_NEOCLIMA",
+                                "range": null,
+                                "title": "NEOCLIMA: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_NEOCLIMA",
+                                "name": "IRREMOTE_SEND_NEOCLIMA",
+                                "range": null,
+                                "title": "NEOCLIMA: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN176",
+                                "name": "IRREMOTE_DECODE_DAIKIN176",
+                                "range": null,
+                                "title": "DAIKIN176: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN176",
+                                "name": "IRREMOTE_SEND_DAIKIN176",
+                                "range": null,
+                                "title": "DAIKIN176: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN128",
+                                "name": "IRREMOTE_DECODE_DAIKIN128",
+                                "range": null,
+                                "title": "DAIKIN128: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN128",
+                                "name": "IRREMOTE_SEND_DAIKIN128",
+                                "range": null,
+                                "title": "DAIKIN128: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_AMCOR",
+                                "name": "IRREMOTE_DECODE_AMCOR",
+                                "range": null,
+                                "title": "AMCOR: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_AMCOR",
+                                "name": "IRREMOTE_SEND_AMCOR",
+                                "range": null,
+                                "title": "AMCOR: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN152",
+                                "name": "IRREMOTE_DECODE_DAIKIN152",
+                                "range": null,
+                                "title": "DAIKIN152: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN152",
+                                "name": "IRREMOTE_SEND_DAIKIN152",
+                                "range": null,
+                                "title": "DAIKIN152: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_EPSON",
+                                "name": "IRREMOTE_DECODE_EPSON",
+                                "range": null,
+                                "title": "EPSON: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_EPSON",
+                                "name": "IRREMOTE_SEND_EPSON",
+                                "range": null,
+                                "title": "EPSON: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_SYMPHONY",
+                                "name": "IRREMOTE_DECODE_SYMPHONY",
+                                "range": null,
+                                "title": "SYMPHONY: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_SYMPHONY",
+                                "name": "IRREMOTE_SEND_SYMPHONY",
+                                "range": null,
+                                "title": "SYMPHONY: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN64",
+                                "name": "IRREMOTE_DECODE_DAIKIN64",
+                                "range": null,
+                                "title": "DAIKIN64: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN64",
+                                "name": "IRREMOTE_SEND_DAIKIN64",
+                                "range": null,
+                                "title": "DAIKIN64: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_AIRWELL",
+                                "name": "IRREMOTE_DECODE_AIRWELL",
+                                "range": null,
+                                "title": "AIRWELL: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_AIRWELL",
+                                "name": "IRREMOTE_SEND_AIRWELL",
+                                "range": null,
+                                "title": "AIRWELL: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DELONGHI_AC",
+                                "name": "IRREMOTE_DECODE_DELONGHI_AC",
+                                "range": null,
+                                "title": "DELONGHI_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DELONGHI_AC",
+                                "name": "IRREMOTE_SEND_DELONGHI_AC",
+                                "range": null,
+                                "title": "DELONGHI_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DOSHISHA",
+                                "name": "IRREMOTE_DECODE_DOSHISHA",
+                                "range": null,
+                                "title": "DOSHISHA: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DOSHISHA",
+                                "name": "IRREMOTE_SEND_DOSHISHA",
+                                "range": null,
+                                "title": "DOSHISHA: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MULTIBRACKETS",
+                                "name": "IRREMOTE_DECODE_MULTIBRACKETS",
+                                "range": null,
+                                "title": "MULTIBRACKETS: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MULTIBRACKETS",
+                                "name": "IRREMOTE_SEND_MULTIBRACKETS",
+                                "range": null,
+                                "title": "MULTIBRACKETS: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TECHNIBEL_AC",
+                                "name": "IRREMOTE_DECODE_TECHNIBEL_AC",
+                                "range": null,
+                                "title": "TECHNIBEL_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TECHNIBEL_AC",
+                                "name": "IRREMOTE_SEND_TECHNIBEL_AC",
+                                "range": null,
+                                "title": "TECHNIBEL_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CORONA_AC",
+                                "name": "IRREMOTE_DECODE_CORONA_AC",
+                                "range": null,
+                                "title": "CORONA_AC: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CORONA_AC",
+                                "name": "IRREMOTE_SEND_CORONA_AC",
+                                "range": null,
+                                "title": "CORONA_AC: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ZEPEAL",
+                                "name": "IRREMOTE_DECODE_ZEPEAL",
+                                "range": null,
+                                "title": "ZEPEAL: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ZEPEAL",
+                                "name": "IRREMOTE_SEND_ZEPEAL",
+                                "range": null,
+                                "title": "ZEPEAL: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_VOLTAS",
+                                "name": "IRREMOTE_DECODE_VOLTAS",
+                                "range": null,
+                                "title": "VOLTAS: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_VOLTAS",
+                                "name": "IRREMOTE_SEND_VOLTAS",
+                                "range": null,
+                                "title": "VOLTAS: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_METZ",
+                                "name": "IRREMOTE_DECODE_METZ",
+                                "range": null,
+                                "title": "METZ: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_METZ",
+                                "name": "IRREMOTE_SEND_METZ",
+                                "range": null,
+                                "title": "METZ: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TRANSCOLD",
+                                "name": "IRREMOTE_DECODE_TRANSCOLD",
+                                "range": null,
+                                "title": "TRANSCOLD: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TRANSCOLD",
+                                "name": "IRREMOTE_SEND_TRANSCOLD",
+                                "range": null,
+                                "title": "TRANSCOLD: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MIRAGE",
+                                "name": "IRREMOTE_DECODE_MIRAGE",
+                                "range": null,
+                                "title": "MIRAGE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MIRAGE",
+                                "name": "IRREMOTE_SEND_MIRAGE",
+                                "range": null,
+                                "title": "MIRAGE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ELITESCREENS",
+                                "name": "IRREMOTE_DECODE_ELITESCREENS",
+                                "range": null,
+                                "title": "ELITESCREENS: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ELITESCREENS",
+                                "name": "IRREMOTE_SEND_ELITESCREENS",
+                                "range": null,
+                                "title": "ELITESCREENS: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_MILESTAG2",
+                                "name": "IRREMOTE_DECODE_MILESTAG2",
+                                "range": null,
+                                "title": "MILESTAG2: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_MILESTAG2",
+                                "name": "IRREMOTE_SEND_MILESTAG2",
+                                "range": null,
+                                "title": "MILESTAG2: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ECOCLIM",
+                                "name": "IRREMOTE_DECODE_ECOCLIM",
+                                "range": null,
+                                "title": "ECOCLIM: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ECOCLIM",
+                                "name": "IRREMOTE_SEND_ECOCLIM",
+                                "range": null,
+                                "title": "ECOCLIM: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_XMP",
+                                "name": "IRREMOTE_DECODE_XMP",
+                                "range": null,
+                                "title": "XMP: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_XMP",
+                                "name": "IRREMOTE_SEND_XMP",
+                                "range": null,
+                                "title": "XMP: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TRUMA",
+                                "name": "IRREMOTE_DECODE_TRUMA",
+                                "range": null,
+                                "title": "TRUMA: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TRUMA",
+                                "name": "IRREMOTE_SEND_TRUMA",
+                                "range": null,
+                                "title": "TRUMA: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HAIER_AC176",
+                                "name": "IRREMOTE_DECODE_HAIER_AC176",
+                                "range": null,
+                                "title": "HAIER_AC176: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HAIER_AC176",
+                                "name": "IRREMOTE_SEND_HAIER_AC176",
+                                "range": null,
+                                "title": "HAIER_AC176: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TEKNOPOINT",
+                                "name": "IRREMOTE_DECODE_TEKNOPOINT",
+                                "range": null,
+                                "title": "TEKNOPOINT: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TEKNOPOINT",
+                                "name": "IRREMOTE_SEND_TEKNOPOINT",
+                                "range": null,
+                                "title": "TEKNOPOINT: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_KELON",
+                                "name": "IRREMOTE_DECODE_KELON",
+                                "range": null,
+                                "title": "KELON: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_KELON",
+                                "name": "IRREMOTE_SEND_KELON",
+                                "range": null,
+                                "title": "KELON: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_BOSE",
+                                "name": "IRREMOTE_DECODE_BOSE",
+                                "range": null,
+                                "title": "BOSE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_BOSE",
+                                "name": "IRREMOTE_SEND_BOSE",
+                                "range": null,
+                                "title": "BOSE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_ARRIS",
+                                "name": "IRREMOTE_DECODE_ARRIS",
+                                "range": null,
+                                "title": "ARRIS: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_ARRIS",
+                                "name": "IRREMOTE_SEND_ARRIS",
+                                "range": null,
+                                "title": "ARRIS: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_RHOSS",
+                                "name": "IRREMOTE_DECODE_RHOSS",
+                                "range": null,
+                                "title": "RHOSS: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_RHOSS",
+                                "name": "IRREMOTE_SEND_RHOSS",
+                                "range": null,
+                                "title": "RHOSS: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_AIRTON",
+                                "name": "IRREMOTE_DECODE_AIRTON",
+                                "range": null,
+                                "title": "AIRTON: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_AIRTON",
+                                "name": "IRREMOTE_SEND_AIRTON",
+                                "range": null,
+                                "title": "AIRTON: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_KELON168",
+                                "name": "IRREMOTE_DECODE_KELON168",
+                                "range": null,
+                                "title": "KELON168: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_KELON168",
+                                "name": "IRREMOTE_SEND_KELON168",
+                                "range": null,
+                                "title": "KELON168: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN200",
+                                "name": "IRREMOTE_DECODE_DAIKIN200",
+                                "range": null,
+                                "title": "DAIKIN200: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN200",
+                                "name": "IRREMOTE_SEND_DAIKIN200",
+                                "range": null,
+                                "title": "DAIKIN200: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_HAIER_AC160",
+                                "name": "IRREMOTE_DECODE_HAIER_AC160",
+                                "range": null,
+                                "title": "HAIER_AC160: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_HAIER_AC160",
+                                "name": "IRREMOTE_SEND_HAIER_AC160",
+                                "range": null,
+                                "title": "HAIER_AC160: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_TOTO",
+                                "name": "IRREMOTE_DECODE_TOTO",
+                                "range": null,
+                                "title": "TOTO: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_TOTO",
+                                "name": "IRREMOTE_SEND_TOTO",
+                                "range": null,
+                                "title": "TOTO: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CLIMABUTLER",
+                                "name": "IRREMOTE_DECODE_CLIMABUTLER",
+                                "range": null,
+                                "title": "CLIMABUTLER: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CLIMABUTLER",
+                                "name": "IRREMOTE_SEND_CLIMABUTLER",
+                                "range": null,
+                                "title": "CLIMABUTLER: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_BOSCH144",
+                                "name": "IRREMOTE_DECODE_BOSCH144",
+                                "range": null,
+                                "title": "BOSCH144: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_BOSCH144",
+                                "name": "IRREMOTE_SEND_BOSCH144",
+                                "range": null,
+                                "title": "BOSCH144: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_DAIKIN312",
+                                "name": "IRREMOTE_DECODE_DAIKIN312",
+                                "range": null,
+                                "title": "DAIKIN312: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_DAIKIN312",
+                                "name": "IRREMOTE_SEND_DAIKIN312",
+                                "range": null,
+                                "title": "DAIKIN312: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_GORENJE",
+                                "name": "IRREMOTE_DECODE_GORENJE",
+                                "range": null,
+                                "title": "GORENJE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_GORENJE",
+                                "name": "IRREMOTE_SEND_GORENJE",
+                                "range": null,
+                                "title": "GORENJE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_WOWWEE",
+                                "name": "IRREMOTE_DECODE_WOWWEE",
+                                "range": null,
+                                "title": "WOWWEE: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_WOWWEE",
+                                "name": "IRREMOTE_SEND_WOWWEE",
+                                "range": null,
+                                "title": "WOWWEE: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_CARRIER_AC84",
+                                "name": "IRREMOTE_DECODE_CARRIER_AC84",
+                                "range": null,
+                                "title": "CARRIER_AC84: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_CARRIER_AC84",
+                                "name": "IRREMOTE_SEND_CARRIER_AC84",
+                                "range": null,
+                                "title": "CARRIER_AC84: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_YORK",
+                                "name": "IRREMOTE_DECODE_YORK",
+                                "range": null,
+                                "title": "YORK: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_YORK",
+                                "name": "IRREMOTE_SEND_YORK",
+                                "range": null,
+                                "title": "YORK: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_BLUESTARHEAVY",
+                                "name": "IRREMOTE_DECODE_BLUESTARHEAVY",
+                                "range": null,
+                                "title": "BLUESTARHEAVY: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_BLUESTARHEAVY",
+                                "name": "IRREMOTE_SEND_BLUESTARHEAVY",
+                                "range": null,
+                                "title": "BLUESTARHEAVY: send",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_DECODE_EUROM",
+                                "name": "IRREMOTE_DECODE_EUROM",
+                                "range": null,
+                                "title": "EUROM: decode",
+                                "type": "bool"
+                            },
+                            {
+                                "children": [],
+                                "depends_on": null,
+                                "help": null,
+                                "id": "IRREMOTE_SEND_EUROM",
+                                "name": "IRREMOTE_SEND_EUROM",
+                                "range": null,
+                                "title": "EUROM: send",
+                                "type": "bool"
+                            }
+                        ],
+                        "depends_on": null,
+                        "id": "component-config-irremote-infrared-send-receive--protocols",
+                        "title": "Protocols",
+                        "type": "menu"
+                    }
+                ],
+                "depends_on": null,
+                "id": "component-config-irremote-infrared-send-receive-",
+                "title": "IRremote (infrared send/receive)",
+                "type": "menu"
+            },
+            {
+                "children": [
+                    {
                         "children": [
                             {
                                 "children": [

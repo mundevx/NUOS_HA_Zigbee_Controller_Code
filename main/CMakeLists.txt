@@ -5,6 +5,7 @@ idf_component_register(
     "app_hardware_driver_dali_direct_switch.cpp"
     "app_hardware_driver_dali_tunable_light_tuya.cpp"
     "app_hardware_driver_dali_scene_switch.cpp"
+    "app_hardware_driver_ir_blaster.cpp"
     "app_nvs_store_info.c"
     "app_zigbee_clusters.c"
     "switch_driver.c"

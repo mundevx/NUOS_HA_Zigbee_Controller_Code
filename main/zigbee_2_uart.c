@@ -17,12 +17,12 @@
     #include "app_zigbee_misc.h"
     #include "freertos/semphr.h"
 
-#define UART_HEARTBEAT_FXN             250
-#define UART_HEARTBEAT_ACK_FXN         251
-#define UART_HEARTBEAT_FAULT_FXN       252
-#define UART_HEARTBEAT_PERIOD_OK_MS    60000
-#define UART_HEARTBEAT_PERIOD_FAULT_MS 2000
-#define UART_HEARTBEAT_TIMEOUT_MS      75000
+    #define UART_HEARTBEAT_FXN             250
+    #define UART_HEARTBEAT_ACK_FXN         251
+    #define UART_HEARTBEAT_FAULT_FXN       252
+    #define UART_HEARTBEAT_PERIOD_OK_MS    60000
+    #define UART_HEARTBEAT_PERIOD_FAULT_MS 2000
+    #define UART_HEARTBEAT_TIMEOUT_MS      75000
 
 
     #define UART_PORT_NUM                                           UART_NUM_0
