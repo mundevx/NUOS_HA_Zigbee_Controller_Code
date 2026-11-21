@@ -1,0 +1,3 @@
+[submodule "components/IRremoteIDF"]
+	path = components/IRremoteIDF
+	url = https://github.com/jorgecis/IRremoteIDF.git
